@@ -408,9 +408,20 @@ const docTemplate = `{
                     "user"
                 ],
                 "summary": "modify user, need login",
+                "parameters": [
+                    {
+                        "description": "json",
+                        "name": "json",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/apis.ModifyUserRequest"
+                        }
+                    }
+                ],
                 "responses": {
-                    "201": {
-                        "description": "Created",
+                    "200": {
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/models.User"
                         }
@@ -547,6 +558,27 @@ const docTemplate = `{
                 "phone": {
                     "description": "phone number in e164 mode",
                     "type": "string"
+                }
+            }
+        },
+        "apis.ModifyUserRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "nickname": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "phone": {
+                    "description": "phone number in e164 mode",
+                    "type": "string"
+                },
+                "verification": {
+                    "type": "string",
+                    "maxLength": 6,
+                    "minLength": 6
                 }
             }
         },

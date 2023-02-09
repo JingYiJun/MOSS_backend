@@ -11,6 +11,21 @@ definitions:
         description: phone number in e164 mode
         type: string
     type: object
+  apis.ModifyUserRequest:
+    properties:
+      email:
+        type: string
+      nickname:
+        minLength: 1
+        type: string
+      phone:
+        description: phone number in e164 mode
+        type: string
+      verification:
+        maxLength: 6
+        minLength: 6
+        type: string
+    type: object
   apis.RecordCreateModel:
     properties:
       request:
@@ -416,11 +431,18 @@ paths:
       tags:
       - user
     put:
+      parameters:
+      - description: json
+        in: body
+        name: json
+        required: true
+        schema:
+          $ref: '#/definitions/apis.ModifyUserRequest'
       produces:
       - application/json
       responses:
-        "201":
-          description: Created
+        "200":
+          description: OK
           schema:
             $ref: '#/definitions/models.User'
         "500":
