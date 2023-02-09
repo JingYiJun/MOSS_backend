@@ -7,7 +7,7 @@ type EmailModel struct {
 }
 
 type PhoneModel struct {
-	Phone string `json:"phone,omitempty" query:"phone" validate:"omitempty,e164"` // phone number in e164 mode
+	Phone string `json:"phone" query:"phone" validate:"omitempty"` // phone number in e164 mode
 }
 
 type LoginRequest struct {
