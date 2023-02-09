@@ -86,7 +86,7 @@ func DeleteChat(c *fiber.Ctx) error {
 
 // ListRecords
 // @Summary list records of a chat
-// @Tags chat
+// @Tags record
 // @Router /chats/{chat_id}/records [get]
 // @Param chat_id path int true "chat id"
 // @Success 200 {array} models.Record

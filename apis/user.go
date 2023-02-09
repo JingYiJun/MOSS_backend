@@ -11,7 +11,7 @@ import (
 // GetCurrentUser godoc
 //
 //	@Summary		get current user
-//	@Tags			User
+//	@Tags			user
 //	@Produce		json
 //	@Router			/users/me [get]
 //	@Success		200	{object}	User
@@ -33,7 +33,7 @@ func GetCurrentUser(c *fiber.Ctx) error {
 // ModifyUser godoc
 //
 //	@Summary		modify user, need login
-//	@Tags			User
+//	@Tags			user
 //	@Produce		json
 //	@Router			/users/me [put]
 //	@Success		201		{object}	User

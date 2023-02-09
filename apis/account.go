@@ -222,9 +222,7 @@ func ChangePassword(c *fiber.Ctx) error {
 //	@Router			/verify/email [get]
 //	@Param			email	query		EmailModel	true	"email"
 //	@Success		200		{object}	VerifyResponse
-//	@Failure		400		{object}	utils.MessageResponse
-//	@Failure		403		{object}	utils.MessageResponse	“email不在白名单中”
-//	@Failure		500		{object}	utils.MessageResponse
+//	@Failure		400		{object}	utils.MessageResponse	"已注册“
 func VerifyWithEmail(c *fiber.Ctx) error {
 	var query EmailModel
 	err := ValidateQuery(c, &query)
@@ -274,6 +272,16 @@ func VerifyWithEmail(c *fiber.Ctx) error {
 	})
 }
 
+// VerifyWithPhone godoc
+//
+//	@Summary		verify with phone in query
+//	@Description	verify with phone in query, Send verification message
+//	@Tags			account
+//	@Produce		json
+//	@Router			/verify/email [get]
+//	@Param			email	query		PhoneModel	true	"email"
+//	@Success		200		{object}	VerifyResponse
+//	@Failure		400		{object}	utils.MessageResponse	"已注册“
 func VerifyWithPhone(c *fiber.Ctx) error {
 	var query PhoneModel
 	err := ValidateQuery(c, &query)
