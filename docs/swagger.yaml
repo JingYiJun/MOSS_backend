@@ -35,7 +35,7 @@ definitions:
     type: object
   apis.RecordModifyModel:
     properties:
-      Feedback:
+      feedback:
         type: string
       like:
         description: 1 like, -1 dislike, 0 reset

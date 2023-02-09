@@ -46,6 +46,6 @@ type RecordCreateModel struct {
 }
 
 type RecordModifyModel struct {
-	Feedback *string `json:"Feedback"`
+	Feedback *string `json:"feedback"`
 	Like     *int    `json:"like" validate:"omitempty,oneof=1 0 -1"` // 1 like, -1 dislike, 0 reset
 }

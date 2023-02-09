@@ -621,7 +621,7 @@ const docTemplate = `{
         "apis.RecordModifyModel": {
             "type": "object",
             "properties": {
-                "Feedback": {
+                "feedback": {
                     "type": "string"
                 },
                 "like": {
