@@ -159,7 +159,7 @@ const docTemplate = `{
                 "tags": [
                     "record"
                 ],
-                "summary": "regenerate the last record of a record",
+                "summary": "regenerate the last record of a chat",
                 "parameters": [
                     {
                         "type": "integer",
@@ -170,8 +170,8 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "201": {
-                        "description": "Created",
+                    "200": {
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/models.Record"
                         }

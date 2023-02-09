@@ -251,11 +251,11 @@ paths:
         required: true
         type: integer
       responses:
-        "201":
-          description: Created
+        "200":
+          description: OK
           schema:
             $ref: '#/definitions/models.Record'
-      summary: regenerate the last record of a record
+      summary: regenerate the last record of a chat
       tags:
       - record
   /login:

@@ -43,7 +43,7 @@ func Infer(input string) (output string, duration float64, err error) {
 	duration = float64(time.Now().Sub(startTime)) / 1000_000_000
 	if response.Code != 200 {
 		return "", 0, &HttpError{
-			Message: fmt.Sprintf("%s; duration: %d", response.Message, duration),
+			Message: fmt.Sprintf("%s; duration: %f s", response.Message, duration),
 			Code:    response.Code,
 		}
 	} else {

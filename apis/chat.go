@@ -178,11 +178,11 @@ func AddRecord(c *fiber.Ctx) error {
 }
 
 // RetryRecord
-// @Summary regenerate the last record of a record
+// @Summary regenerate the last record of a chat
 // @Tags record
 // @Router /chats/{chat_id}/regenerate [put]
 // @Param chat_id path int true "chat id"
-// @Success 201 {object} models.Record
+// @Success 200 {object} models.Record
 func RetryRecord(c *fiber.Ctx) error {
 	chatID, err := c.ParamsInt("id")
 	if err != nil {
