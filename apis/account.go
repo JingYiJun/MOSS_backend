@@ -278,8 +278,8 @@ func VerifyWithEmail(c *fiber.Ctx) error {
 //	@Description	verify with phone in query, Send verification message
 //	@Tags			account
 //	@Produce		json
-//	@Router			/verify/email [get]
-//	@Param			email	query		PhoneModel	true	"email"
+//	@Router			/verify/phone [get]
+//	@Param			phone	query		PhoneModel	true	"phone"
 //	@Success		200		{object}	VerifyResponse
 //	@Failure		400		{object}	utils.MessageResponse	"已注册“
 func VerifyWithPhone(c *fiber.Ctx) error {

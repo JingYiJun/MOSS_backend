@@ -97,7 +97,7 @@ const docTemplate = `{
         "/chats/{chat_id}/records": {
             "get": {
                 "tags": [
-                    "chat"
+                    "record"
                 ],
                 "summary": "list records of a chat",
                 "parameters": [
@@ -376,7 +376,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "User"
+                    "user"
                 ],
                 "summary": "get current user",
                 "responses": {
@@ -405,7 +405,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "User"
+                    "user"
                 ],
                 "summary": "modify user, need login",
                 "responses": {
@@ -490,19 +490,41 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "已注册“",
                         "schema": {
                             "$ref": "#/definitions/utils.MessageResponse"
                         }
-                    },
-                    "403": {
-                        "description": "Forbidden",
+                    }
+                }
+            }
+        },
+        "/verify/phone": {
+            "get": {
+                "description": "verify with phone in query, Send verification message",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "account"
+                ],
+                "summary": "verify with phone in query",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "phone number in e164 mode",
+                        "name": "phone",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/utils.MessageResponse"
+                            "$ref": "#/definitions/apis.VerifyResponse"
                         }
                     },
-                    "500": {
-                        "description": "Internal Server Error",
+                    "400": {
+                        "description": "已注册“",
                         "schema": {
                             "$ref": "#/definitions/utils.MessageResponse"
                         }

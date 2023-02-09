@@ -204,7 +204,7 @@ paths:
             type: array
       summary: list records of a chat
       tags:
-      - chat
+      - record
     post:
       parameters:
       - description: chat id
@@ -414,7 +414,7 @@ paths:
             $ref: '#/definitions/utils.MessageResponse'
       summary: get current user
       tags:
-      - User
+      - user
     put:
       produces:
       - application/json
@@ -429,7 +429,7 @@ paths:
             $ref: '#/definitions/utils.MessageResponse'
       summary: modify user, need login
       tags:
-      - User
+      - user
   /verify/email:
     get:
       description: verify with email in query, Send verification email
@@ -445,18 +445,32 @@ paths:
           schema:
             $ref: '#/definitions/apis.VerifyResponse'
         "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/utils.MessageResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/utils.MessageResponse'
-        "500":
-          description: Internal Server Error
+          description: 已注册“
           schema:
             $ref: '#/definitions/utils.MessageResponse'
       summary: verify with email in query
+      tags:
+      - account
+  /verify/phone:
+    get:
+      description: verify with phone in query, Send verification message
+      parameters:
+      - description: phone number in e164 mode
+        in: query
+        name: phone
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apis.VerifyResponse'
+        "400":
+          description: 已注册“
+          schema:
+            $ref: '#/definitions/utils.MessageResponse'
+      summary: verify with phone in query
       tags:
       - account
 swagger: "2.0"
