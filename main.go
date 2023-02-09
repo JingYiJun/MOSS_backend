@@ -17,6 +17,7 @@ package main
 import (
 	"MOSS_backend/apis"
 	"MOSS_backend/config"
+	_ "MOSS_backend/docs"
 	"MOSS_backend/middlewares"
 	"MOSS_backend/models"
 	"MOSS_backend/utils"
