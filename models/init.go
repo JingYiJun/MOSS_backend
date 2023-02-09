@@ -77,9 +77,7 @@ func InitDB() {
 	}
 
 	// migrate database
-	err = DB.AutoMigrate(
-		User{},
-	)
+	err = DB.AutoMigrate(User{}, Chat{}, Record{}, ActiveStatus{})
 	if err != nil {
 		panic(err)
 	}

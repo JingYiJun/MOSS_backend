@@ -40,3 +40,13 @@ type ModifyUserRequest struct {
 	*PhoneModel  `validate:"omitempty"`
 	Verification string `json:"verification" minLength:"6" maxLength:"6" validate:"len=6"`
 }
+
+type RecordCreateModel struct {
+	Request  string `json:"request" validate:"required"`
+	Response string `json:"response" validated:"required"`
+}
+
+type RecordModifyModel struct {
+	Feedback *string `json:"Feedback"`
+	Like     *int    `json:"like" validate:"omitempty,oneof=1 0 -1"` // 1 like, -1 dislike, 0 reset
+}

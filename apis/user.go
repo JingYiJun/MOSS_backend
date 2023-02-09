@@ -6,7 +6,6 @@ import (
 	"MOSS_backend/utils/auth"
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 // GetCurrentUser godoc
@@ -23,11 +22,12 @@ func GetCurrentUser(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	user, err := LoadUserFromDB(DB, userID)
+	var user User
+	err = DB.Take(&user, userID).Error
 	if err != nil {
 		return err
 	}
-	return c.JSON(&user)
+	return c.JSON(user)
 }
 
 // ModifyUser godoc
@@ -51,9 +51,9 @@ func ModifyUser(c *fiber.Ctx) error {
 		return err
 	}
 
-	var user *User
+	var user User
 	err = DB.Transaction(func(tx *gorm.DB) error {
-		user, err = LoadUserFromDB(tx.Clauses(clause.Locking{Strength: "UPDATE"}), userID)
+		err = tx.Clauses(LockingClause).Take(&user, userID).Error
 		if err != nil {
 			return err
 		}

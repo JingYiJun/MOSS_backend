@@ -1,14 +1,18 @@
 package models
 
-import "time"
+import (
+	"gorm.io/gorm"
+	"time"
+)
 
 type Chat struct {
-	ID        int       `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	UserID    int       `json:"user_id"`
-	Count     int       `json:"count"` // Record 条数
-	Records   Records   `json:"records,omitempty"`
+	ID        int            `json:"id"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `json:"-"`
+	UserID    int            `json:"user_id"`
+	Count     int            `json:"count"` // Record 条数
+	Records   Records        `json:"records,omitempty"`
 }
 
 type Chats []Chat

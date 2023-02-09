@@ -34,4 +34,14 @@ func RegisterRoutes(app *fiber.App) {
 	// user info
 	routes.Get("/users/me", GetCurrentUser)
 	routes.Put("/users/me", ModifyUser)
+
+	// chat
+	routes.Get("/chats", ListChats)
+	routes.Post("/chats", AddChat)
+	routes.Delete("/chats/:id", DeleteChat)
+
+	// record
+	routes.Get("/chats/:id/records", ListRecords)
+	routes.Post("/chats/:id", AddRecord)
+	routes.Put("/records/:id", ModifyRecord)
 }

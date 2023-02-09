@@ -87,7 +87,8 @@ func Logout(c *fiber.Ctx) error {
 		return err
 	}
 
-	_, err = LoadUserFromDB(DB, userID)
+	var user User
+	err = DB.Take(&user, userID).Error
 	if err != nil {
 		return err
 	}

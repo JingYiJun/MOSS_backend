@@ -29,20 +29,6 @@ type User struct {
 	Chats       Chats          `json:"chats,omitempty"`
 }
 
-func LoadUserFromDB(tx *gorm.DB, userID int) (*User, error) {
-	var user User
-	err := tx.Take(&user, userID).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, utils.NotFound("User Not Found")
-		} else {
-			return nil, err
-		}
-	} else {
-		return &user, nil
-	}
-}
-
 func GetUserID(c *fiber.Ctx) (int, error) {
 	if config.Config.Mode == "dev" || config.Config.Mode == "test" {
 		return 1, nil
@@ -99,7 +85,9 @@ func GetUserByRefreshToken(c *fiber.Ctx) (*User, error) {
 		return nil, utils.Unauthorized("refresh token invalid")
 	}
 
-	return LoadUserFromDB(DB, userID)
+	var user User
+	err = DB.Take(&user, userID).Error
+	return &user, err
 }
 
 func (user *User) UpdateIP(ip string) {
