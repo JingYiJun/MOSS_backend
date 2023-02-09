@@ -516,6 +516,16 @@ const docTemplate = `{
                         "type": "string",
                         "name": "email",
                         "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "register",
+                            "reset",
+                            "modify"
+                        ],
+                        "type": "string",
+                        "name": "scope",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -549,6 +559,16 @@ const docTemplate = `{
                         "type": "string",
                         "description": "phone number in e164 mode",
                         "name": "phone",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "register",
+                            "reset",
+                            "modify"
+                        ],
+                        "type": "string",
+                        "name": "scope",
                         "in": "query"
                     }
                 ],

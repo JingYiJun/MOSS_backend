@@ -220,11 +220,11 @@ func ChangePassword(c *fiber.Ctx) error {
 //	@Tags			account
 //	@Produce		json
 //	@Router			/verify/email [get]
-//	@Param			email	query		EmailModel	true	"email"
+//	@Param			email	query		VerifyEmailRequest	true	"email"
 //	@Success		200		{object}	VerifyResponse
 //	@Failure		400		{object}	utils.MessageResponse	"已注册“
 func VerifyWithEmail(c *fiber.Ctx) error {
-	var query EmailModel
+	var query VerifyEmailRequest
 	err := ValidateQuery(c, &query)
 	if err != nil {
 		return BadRequest("invalid email")
@@ -255,6 +255,34 @@ func VerifyWithEmail(c *fiber.Ctx) error {
 			return BadRequest("该邮箱已被注册")
 		}
 	}
+	if query.Scope != "" {
+		if scope != query.Scope {
+			switch scope {
+			case "register":
+				return BadRequest("该邮箱未注册")
+			case "reset":
+				switch query.Scope {
+				case "register":
+					return BadRequest("该邮箱已被注册")
+				case "modify":
+					return BadRequest("未登录状态，禁止修改邮箱")
+				default:
+					return BadRequest()
+				}
+			case "modify":
+				switch query.Scope {
+				case "register":
+					return BadRequest("该邮箱已被注册")
+				case "reset":
+					return BadRequest("登录状态无法重置密码，请退出登录然后重试")
+				default:
+					return BadRequest()
+				}
+			default:
+				return BadRequest()
+			}
+		}
+	}
 
 	code, err := auth.SetVerificationCode(query.Email, scope)
 	if err != nil {
@@ -279,11 +307,11 @@ func VerifyWithEmail(c *fiber.Ctx) error {
 //	@Tags			account
 //	@Produce		json
 //	@Router			/verify/phone [get]
-//	@Param			phone	query		PhoneModel	true	"phone"
+//	@Param			phone	query		VerifyPhoneRequest	true	"phone"
 //	@Success		200		{object}	VerifyResponse
 //	@Failure		400		{object}	utils.MessageResponse	"已注册“
 func VerifyWithPhone(c *fiber.Ctx) error {
-	var query PhoneModel
+	var query VerifyPhoneRequest
 	err := ValidateQuery(c, &query)
 	if err != nil {
 		return BadRequest("invalid phone number")
@@ -311,6 +339,35 @@ func VerifyWithPhone(c *fiber.Ctx) error {
 			scope = "reset" // 已注册、未登录
 		} else {
 			return BadRequest("该手机号已被注册") // 已注册、已登录
+		}
+	}
+
+	if query.Scope != "" {
+		if scope != query.Scope {
+			switch scope {
+			case "register":
+				return BadRequest("该手机号未注册")
+			case "reset":
+				switch query.Scope {
+				case "register":
+					return BadRequest("该手机号已被注册")
+				case "modify":
+					return BadRequest("未登录状态，禁止修改手机号")
+				default:
+					return BadRequest()
+				}
+			case "modify":
+				switch query.Scope {
+				case "register":
+					return BadRequest("该手机号已被注册")
+				case "reset":
+					return BadRequest("登录状态无法重置密码，请退出登录然后重试")
+				default:
+					return BadRequest()
+				}
+			default:
+				return BadRequest()
+			}
 		}
 	}
 	code, err := auth.SetVerificationCode(query.Phone, scope)

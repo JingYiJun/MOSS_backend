@@ -6,8 +6,22 @@ type EmailModel struct {
 	Email string `json:"email" query:"email" validate:"omitempty,email"`
 }
 
+type ScopeModel struct {
+	Scope string `json:"scope" query:"scope" validate:"omitempty,oneof=register reset modify"`
+}
+
 type PhoneModel struct {
 	Phone string `json:"phone" query:"phone" validate:"omitempty"` // phone number in e164 mode
+}
+
+type VerifyEmailRequest struct {
+	EmailModel
+	ScopeModel
+}
+
+type VerifyPhoneRequest struct {
+	PhoneModel
+	ScopeModel
 }
 
 type LoginRequest struct {

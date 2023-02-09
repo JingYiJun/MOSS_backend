@@ -476,6 +476,13 @@ paths:
       - in: query
         name: email
         type: string
+      - enum:
+        - register
+        - reset
+        - modify
+        in: query
+        name: scope
+        type: string
       produces:
       - application/json
       responses:
@@ -497,6 +504,13 @@ paths:
       - description: phone number in e164 mode
         in: query
         name: phone
+        type: string
+      - enum:
+        - register
+        - reset
+        - modify
+        in: query
+        name: scope
         type: string
       produces:
       - application/json
