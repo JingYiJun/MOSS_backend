@@ -1,0 +1,462 @@
+basePath: /api
+definitions:
+  apis.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        minLength: 8
+        type: string
+      phone:
+        description: phone number in e164 mode
+        type: string
+    type: object
+  apis.RecordCreateModel:
+    properties:
+      request:
+        type: string
+      response:
+        type: string
+    required:
+    - request
+    type: object
+  apis.RecordModifyModel:
+    properties:
+      Feedback:
+        type: string
+      like:
+        description: 1 like, -1 dislike, 0 reset
+        enum:
+        - 1
+        - 0
+        - -1
+        type: integer
+    type: object
+  apis.RegisterRequest:
+    properties:
+      email:
+        type: string
+      password:
+        minLength: 8
+        type: string
+      phone:
+        description: phone number in e164 mode
+        type: string
+      verification:
+        maxLength: 6
+        minLength: 6
+        type: string
+    type: object
+  apis.TokenResponse:
+    properties:
+      access:
+        type: string
+      message:
+        type: string
+      refresh:
+        type: string
+    type: object
+  apis.VerifyResponse:
+    properties:
+      message:
+        type: string
+      scope:
+        enum:
+        - register
+        - reset
+        type: string
+    type: object
+  models.Chat:
+    properties:
+      count:
+        description: Record 条数
+        type: integer
+      created_at:
+        type: string
+      id:
+        type: integer
+      records:
+        items:
+          $ref: '#/definitions/models.Record'
+        type: array
+      updated_at:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  models.Map:
+    additionalProperties: {}
+    type: object
+  models.Record:
+    properties:
+      chat_id:
+        type: integer
+      created_at:
+        type: string
+      feedback:
+        type: string
+      id:
+        type: integer
+      like_data:
+        description: 1 like, -1 dislike
+        type: integer
+      request:
+        type: string
+      response:
+        type: string
+    type: object
+  models.User:
+    properties:
+      chats:
+        items:
+          $ref: '#/definitions/models.Chat'
+        type: array
+      email:
+        type: string
+      id:
+        type: integer
+      joined_time:
+        type: string
+      last_login:
+        type: string
+      nickname:
+        type: string
+      phone:
+        type: string
+    type: object
+  utils.MessageResponse:
+    properties:
+      data: {}
+      message:
+        type: string
+    type: object
+host: localhost:8000
+info:
+  contact:
+    email: dev@fduhole.com
+    name: Maintainer Chen Ke
+    url: https://danxi.fduhole.com/about
+  description: Moss Backend
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+  title: Moss Backend
+  version: 0.0.1
+paths:
+  /:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Map'
+  /chats:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Chat'
+            type: array
+      summary: list user's chats
+      tags:
+      - chat
+    post:
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Chat'
+      summary: add a chat
+      tags:
+      - chat
+  /chats/{chat_id}:
+    delete:
+      parameters:
+      - description: chat id
+        in: path
+        name: chat_id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+      summary: delete a chat
+      tags:
+      - chat
+  /chats/{chat_id}/records:
+    get:
+      parameters:
+      - description: chat id
+        in: path
+        name: chat_id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Record'
+            type: array
+      summary: list records of a chat
+      tags:
+      - chat
+    post:
+      parameters:
+      - description: chat id
+        in: path
+        name: chat_id
+        required: true
+        type: integer
+      - description: json
+        in: body
+        name: json
+        required: true
+        schema:
+          $ref: '#/definitions/apis.RecordCreateModel'
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Record'
+      summary: add a record
+      tags:
+      - record
+  /login:
+    post:
+      consumes:
+      - application/json
+      description: Login with email and password, return jwt token, not need jwt
+      parameters:
+      - description: json
+        in: body
+        name: json
+        required: true
+        schema:
+          $ref: '#/definitions/apis.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apis.TokenResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.MessageResponse'
+        "404":
+          description: User Not Found
+          schema:
+            $ref: '#/definitions/utils.MessageResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.MessageResponse'
+      summary: Login
+      tags:
+      - token
+  /logout:
+    get:
+      description: Logout, clear jwt credential and return successful message, logout,
+        login required
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.MessageResponse'
+      summary: Logout
+      tags:
+      - token
+  /records/{record_id}:
+    put:
+      parameters:
+      - description: record id
+        in: path
+        name: record_id
+        required: true
+        type: integer
+      - description: json
+        in: body
+        name: json
+        required: true
+        schema:
+          $ref: '#/definitions/apis.RecordModifyModel'
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Record'
+      summary: modify a record
+      tags:
+      - record
+  /refresh:
+    post:
+      description: Refresh jwt token with refresh token in header, login required
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apis.TokenResponse'
+      summary: Refresh jwt token
+      tags:
+      - token
+  /register:
+    post:
+      consumes:
+      - application/json
+      description: register with email or phone, password and verification code
+      parameters:
+      - description: json
+        in: body
+        name: json
+        required: true
+        schema:
+          $ref: '#/definitions/apis.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/apis.TokenResponse'
+        "400":
+          description: 验证码错误、用户已注册
+          schema:
+            $ref: '#/definitions/utils.MessageResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.MessageResponse'
+      summary: register
+      tags:
+      - account
+    put:
+      consumes:
+      - application/json
+      description: reset password, reset jwt credential
+      parameters:
+      - description: json
+        in: body
+        name: json
+        required: true
+        schema:
+          $ref: '#/definitions/apis.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apis.TokenResponse'
+        "400":
+          description: 验证码错误
+          schema:
+            $ref: '#/definitions/utils.MessageResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.MessageResponse'
+      summary: reset password
+      tags:
+      - account
+  /users/me:
+    delete:
+      description: delete user and related jwt credentials
+      parameters:
+      - description: email, password
+        in: body
+        name: json
+        required: true
+        schema:
+          $ref: '#/definitions/apis.LoginRequest'
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: 密码错误“
+          schema:
+            $ref: '#/definitions/utils.MessageResponse'
+        "404":
+          description: 用户不存在“
+          schema:
+            $ref: '#/definitions/utils.MessageResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.MessageResponse'
+      summary: delete user
+      tags:
+      - account
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.User'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/utils.MessageResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.MessageResponse'
+      summary: get current user
+      tags:
+      - User
+    put:
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.User'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.MessageResponse'
+      summary: modify user, need login
+      tags:
+      - User
+  /verify/email:
+    get:
+      description: verify with email in query, Send verification email
+      parameters:
+      - in: query
+        name: email
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apis.VerifyResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.MessageResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.MessageResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.MessageResponse'
+      summary: verify with email in query
+      tags:
+      - account
+swagger: "2.0"

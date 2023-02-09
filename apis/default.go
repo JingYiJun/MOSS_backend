@@ -8,8 +8,8 @@ import (
 // Index
 //
 //	@Produce	application/json
-//	@Success	200	{object}	Info
 //	@Router		/ [get]
+//	@Success	200	{object}	models.Map
 func Index(c *fiber.Ctx) error {
 	return c.JSON(models.Map{
 		"name":    "MOSS backend",
