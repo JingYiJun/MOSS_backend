@@ -36,7 +36,8 @@ func GetCurrentUser(c *fiber.Ctx) error {
 //	@Tags			user
 //	@Produce		json
 //	@Router			/users/me [put]
-//	@Success		201		{object}	User
+//	@Param			json	body		ModifyUserRequest	true	"json"
+//	@Success		200		{object}	User
 //	@Failure		500		{object}	utils.MessageResponse
 func ModifyUser(c *fiber.Ctx) error {
 	scope := "modify"
@@ -71,15 +72,6 @@ func ModifyUser(c *fiber.Ctx) error {
 				return BadRequest("verification code error")
 			}
 
-			var found int64
-			err = tx.Where("email = ?", body.Email).Count(&found).Error
-			if err != nil {
-				return err
-			}
-			if found > 0 {
-				return BadRequest("this email has been registered")
-			}
-
 			user.Email = body.Email
 		}
 
@@ -92,15 +84,6 @@ func ModifyUser(c *fiber.Ctx) error {
 				return BadRequest("verification code error")
 			}
 
-			var found int64
-			err = tx.Where("phone = ?", body.Phone).Count(&found).Error
-			if err != nil {
-				return err
-			}
-			if found > 0 {
-				return BadRequest("this phone has been registered")
-			}
-
 			user.Phone = body.Phone
 		}
 
@@ -110,5 +93,5 @@ func ModifyUser(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Status(201).JSON(user)
+	return c.JSON(user)
 }
