@@ -157,7 +157,11 @@ func AddRecord(c *fiber.Ctx) error {
 		}
 		record.ChatID = chat.ID
 		record.Request = body.Request
-		record.Response = body.Response
+		record.Response, record.Duration, err = Infer(body.Request)
+		if err != nil {
+			return err
+		}
+
 		err = tx.Create(&record).Error
 		if err != nil {
 			return err
@@ -171,6 +175,61 @@ func AddRecord(c *fiber.Ctx) error {
 	}
 
 	return c.Status(201).JSON(record)
+}
+
+// RetryRecord
+// @Summary regenerate the last record of a record
+// @Tags record
+// @Router /chats/{chat_id}/regenerate [put]
+// @Param chat_id path int true "chat id"
+// @Success 201 {object} models.Record
+func RetryRecord(c *fiber.Ctx) error {
+	chatID, err := c.ParamsInt("id")
+	if err != nil {
+		return err
+	}
+
+	userID, err := GetUserID(c)
+	if err != nil {
+		return err
+	}
+
+	var record Record
+	err = DB.Transaction(func(tx *gorm.DB) error {
+		var chat Chat
+		err = tx.Clauses(LockingClause).Take(&chat, chatID).Error
+		if err != nil {
+			return err
+		}
+
+		if chat.UserID != userID {
+			return Forbidden()
+		}
+
+		var oldRecord Record
+		err = tx.Last(&oldRecord, "chat_id = ?", chat.ID).Error
+		if err != nil {
+			return err
+		}
+
+		record.Request = oldRecord.Request
+		record.Response, record.Duration, err = Infer(record.Request)
+		if err != nil {
+			return err
+		}
+
+		err = tx.Delete(&oldRecord).Error
+		if err != nil {
+			return err
+		}
+
+		return tx.Create(&record).Error
+	})
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(record)
 }
 
 // ModifyRecord

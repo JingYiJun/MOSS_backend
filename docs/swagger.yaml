@@ -30,8 +30,6 @@ definitions:
     properties:
       request:
         type: string
-      response:
-        type: string
     required:
     - request
     type: object
@@ -108,6 +106,9 @@ definitions:
         type: integer
       created_at:
         type: string
+      duration:
+        description: 处理时间，单位 s
+        type: number
       feedback:
         type: string
       id:
@@ -239,6 +240,22 @@ paths:
           schema:
             $ref: '#/definitions/models.Record'
       summary: add a record
+      tags:
+      - record
+  /chats/{chat_id}/regenerate:
+    put:
+      parameters:
+      - description: chat id
+        in: path
+        name: chat_id
+        required: true
+        type: integer
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Record'
+      summary: regenerate the last record of a record
       tags:
       - record
   /login:

@@ -42,8 +42,7 @@ type ModifyUserRequest struct {
 }
 
 type RecordCreateModel struct {
-	Request  string `json:"request" validate:"required"`
-	Response string `json:"response" validated:"required"`
+	Request string `json:"request" validate:"required"`
 }
 
 type RecordModifyModel struct {

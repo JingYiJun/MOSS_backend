@@ -38,6 +38,7 @@ func RegisterRoutes(app *fiber.App) {
 	// chat
 	routes.Get("/chats", ListChats)
 	routes.Post("/chats", AddChat)
+	routes.Post("/chats/:id/regenerate", RetryRecord)
 	routes.Delete("/chats/:id", DeleteChat)
 
 	// record

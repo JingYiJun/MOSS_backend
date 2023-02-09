@@ -154,6 +154,31 @@ const docTemplate = `{
                 }
             }
         },
+        "/chats/{chat_id}/regenerate": {
+            "put": {
+                "tags": [
+                    "record"
+                ],
+                "summary": "regenerate the last record of a record",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "chat id",
+                        "name": "chat_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.Record"
+                        }
+                    }
+                }
+            }
+        },
         "/login": {
             "post": {
                 "description": "Login with email and password, return jwt token, not need jwt",
@@ -590,9 +615,6 @@ const docTemplate = `{
             "properties": {
                 "request": {
                     "type": "string"
-                },
-                "response": {
-                    "type": "string"
                 }
             }
         },
@@ -702,6 +724,10 @@ const docTemplate = `{
                 },
                 "created_at": {
                     "type": "string"
+                },
+                "duration": {
+                    "description": "处理时间，单位 s",
+                    "type": "number"
                 },
                 "feedback": {
                     "type": "string"

@@ -18,13 +18,15 @@ type Chat struct {
 type Chats []Chat
 
 type Record struct {
-	ID        int       `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	ChatID    int       `json:"chat_id"`
-	Request   string    `json:"request"`
-	Response  string    `json:"response"`
-	LikeData  int       `json:"like_data"` // 1 like, -1 dislike
-	Feedback  string    `json:"feedback"`
+	ID        int            `json:"id"`
+	CreatedAt time.Time      `json:"created_at"`
+	DeletedAt gorm.DeletedAt `json:"-"`
+	Duration  float64        `json:"duration"` // 处理时间，单位 s
+	ChatID    int            `json:"chat_id"`
+	Request   string         `json:"request"`
+	Response  string         `json:"response"`
+	LikeData  int            `json:"like_data"` // 1 like, -1 dislike
+	Feedback  string         `json:"feedback"`
 }
 
 type Records []Record
