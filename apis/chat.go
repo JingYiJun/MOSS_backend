@@ -212,6 +212,7 @@ func RetryRecord(c *fiber.Ctx) error {
 			return err
 		}
 
+		record.ChatID = chatID
 		record.Request = oldRecord.Request
 		record.Response, record.Duration, err = Infer(record.Request)
 		if err != nil {
