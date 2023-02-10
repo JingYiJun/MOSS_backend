@@ -47,6 +47,54 @@ func AddChat(c *fiber.Ctx) error {
 	return c.Status(201).JSON(chat)
 }
 
+// ModifyChat
+// @Summary modify a chat
+// @Tags chat
+// @Router /chats/{chat_id} [put]
+// @Param chat_id path int true "chat id"
+// @Param json body ChatModifyModel true "json"
+// @Success 200 {object} models.Chat
+func ModifyChat(c *fiber.Ctx) error {
+	userID, err := GetUserID(c)
+	if err != nil {
+		return err
+	}
+
+	chatID, err := c.ParamsInt("id")
+	if err != nil {
+		return err
+	}
+
+	var body ChatModifyModel
+	err = ValidateBody(c, &body)
+	if err != nil {
+		return err
+	}
+
+	var chat Chat
+	err = DB.Transaction(func(tx *gorm.DB) error {
+		err = tx.Clauses(LockingClause).Take(&chat, chatID).Error
+		if err != nil {
+			return err
+		}
+
+		if chat.UserID != userID {
+			return Forbidden()
+		}
+
+		if body.Name != nil {
+			chat.Name = *body.Name
+		}
+
+		return tx.Save(&chat).Error
+	})
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(chat)
+}
+
 // DeleteChat
 // @Summary delete a chat
 // @Tags chat
@@ -174,6 +222,9 @@ func AddRecord(c *fiber.Ctx) error {
 			return err
 		}
 
+		if chat.Count == 0 {
+			chat.Name = record.Request
+		}
 		chat.Count += 1
 		return tx.Save(&chat).Error
 	})

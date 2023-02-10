@@ -73,6 +73,38 @@ const docTemplate = `{
             }
         },
         "/chats/{chat_id}": {
+            "put": {
+                "tags": [
+                    "chat"
+                ],
+                "summary": "modify a chat",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "chat id",
+                        "name": "chat_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "json",
+                        "name": "json",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/apis.ChatModifyModel"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Chat"
+                        }
+                    }
+                }
+            },
             "delete": {
                 "tags": [
                     "chat"
@@ -590,6 +622,15 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "apis.ChatModifyModel": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "minLength": 1
+                }
+            }
+        },
         "apis.LoginRequest": {
             "type": "object",
             "properties": {
@@ -717,6 +758,9 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "integer"
+                },
+                "name": {
+                    "type": "string"
                 },
                 "records": {
                     "type": "array",

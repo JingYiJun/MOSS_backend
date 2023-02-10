@@ -55,6 +55,10 @@ type ModifyUserRequest struct {
 	Verification string `json:"verification" minLength:"6" maxLength:"6" validate:"len=6"`
 }
 
+type ChatModifyModel struct {
+	Name *string `json:"name" validate:"omitempty,min=1"`
+}
+
 type RecordCreateModel struct {
 	Request string `json:"request" validate:"required"`
 }

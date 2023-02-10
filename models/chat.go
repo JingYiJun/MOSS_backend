@@ -11,6 +11,7 @@ type Chat struct {
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"index:idx_chat_user_deleted,priority:2"`
 	UserID    int            `json:"user_id" gorm:"index:idx_chat_user_deleted,priority:1"`
+	Name      string         `json:"name"`
 	Count     int            `json:"count"` // Record 条数
 	Records   Records        `json:"records,omitempty"`
 }

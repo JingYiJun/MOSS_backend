@@ -1,5 +1,11 @@
 basePath: /api
 definitions:
+  apis.ChatModifyModel:
+    properties:
+      name:
+        minLength: 1
+        type: string
+    type: object
   apis.LoginRequest:
     properties:
       email:
@@ -88,6 +94,8 @@ definitions:
         type: string
       id:
         type: integer
+      name:
+        type: string
       records:
         items:
           $ref: '#/definitions/models.Record'
@@ -201,6 +209,27 @@ paths:
         "204":
           description: No Content
       summary: delete a chat
+      tags:
+      - chat
+    put:
+      parameters:
+      - description: chat id
+        in: path
+        name: chat_id
+        required: true
+        type: integer
+      - description: json
+        in: body
+        name: json
+        required: true
+        schema:
+          $ref: '#/definitions/apis.ChatModifyModel'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Chat'
+      summary: modify a chat
       tags:
       - chat
   /chats/{chat_id}/records:
