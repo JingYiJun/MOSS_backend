@@ -10,14 +10,27 @@ import (
 	"time"
 )
 
-type MessageModel struct {
-	Code    int    `json:"code,omitempty"`
+type Param struct {
+	ID    int     `json:"-"`
+	Name  string  `json:"name"`
+	Value float64 `json:"value"`
+}
+
+type Params []Param
+
+type InferRequest struct {
+	Message string `json:"message"`
+	Params  Params `json:"params,omitempty"`
+}
+
+type InferResponse struct {
+	Code    int    `json:"code"`
 	Message string `json:"message"`
 }
 
-func Infer(input string) (output string, duration float64, err error) {
+func Infer(input string, params Params) (output string, duration float64, err error) {
 	startTime := time.Now()
-	request := MessageModel{Message: input}
+	request := InferRequest{Message: input, Params: params}
 	data, err := json.Marshal(request)
 	if err != nil {
 		return "", 0, fmt.Errorf("error marshal request data: %s", err)
@@ -35,7 +48,7 @@ func Infer(input string) (output string, duration float64, err error) {
 		_ = res.Body.Close()
 	}()
 
-	var response MessageModel
+	var response InferResponse
 	err = json.Unmarshal(data, &response)
 	if err != nil {
 		return "", 0, fmt.Errorf("error unmarshal response data: %s", err)

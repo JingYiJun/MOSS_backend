@@ -155,9 +155,16 @@ func AddRecord(c *fiber.Ctx) error {
 		if chat.UserID != userID {
 			return Forbidden()
 		}
+
+		var params Params
+		err = tx.Find(&params).Error
+		if err != nil {
+			return err
+		}
+
 		record.ChatID = chat.ID
 		record.Request = body.Request
-		record.Response, record.Duration, err = Infer(body.Request)
+		record.Response, record.Duration, err = Infer(body.Request, params)
 		if err != nil {
 			return err
 		}
@@ -212,9 +219,15 @@ func RetryRecord(c *fiber.Ctx) error {
 			return err
 		}
 
+		var params Params
+		err = tx.Find(&params).Error
+		if err != nil {
+			return err
+		}
+
 		record.ChatID = chatID
 		record.Request = oldRecord.Request
-		record.Response, record.Duration, err = Infer(record.Request)
+		record.Response, record.Duration, err = Infer(record.Request, params)
 		if err != nil {
 			return err
 		}
