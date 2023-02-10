@@ -661,6 +661,9 @@ const docTemplate = `{
                     "description": "phone number in e164 mode",
                     "type": "string"
                 },
+                "share_consent": {
+                    "type": "boolean"
+                },
                 "verification": {
                     "type": "string",
                     "maxLength": 6,
@@ -837,6 +840,9 @@ const docTemplate = `{
                 },
                 "phone": {
                     "type": "string"
+                },
+                "share_consent": {
+                    "type": "boolean"
                 }
             }
         },

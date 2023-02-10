@@ -15,18 +15,19 @@ import (
 )
 
 type User struct {
-	ID          int            `json:"id" gorm:"primaryKey"`
-	JoinedTime  time.Time      `json:"joined_time" gorm:"autoCreateTime"`
-	LastLogin   time.Time      `json:"last_login" gorm:"autoUpdateTime"`
-	DeletedAt   gorm.DeletedAt `json:"-" gorm:"index"`
-	Nickname    string         `json:"nickname" gorm:"size:128;default:'user'"`
-	Email       string         `json:"email" gorm:"size:128;index:,length:5"`
-	Phone       string         `json:"phone" gorm:"size:128;index:,length:5"`
-	Password    string         `json:"-" gorm:"size:128"`
-	RegisterIP  string         `json:"-" gorm:"size:32"`
-	LastLoginIP string         `json:"-" gorm:"size:32"`
-	LoginIP     []string       `json:"-" gorm:"serializer:json"`
-	Chats       Chats          `json:"chats,omitempty"`
+	ID           int            `json:"id" gorm:"primaryKey"`
+	JoinedTime   time.Time      `json:"joined_time" gorm:"autoCreateTime"`
+	LastLogin    time.Time      `json:"last_login" gorm:"autoUpdateTime"`
+	DeletedAt    gorm.DeletedAt `json:"-" gorm:"index"`
+	Nickname     string         `json:"nickname" gorm:"size:128;default:'user'"`
+	Email        string         `json:"email" gorm:"size:128;index:,length:5"`
+	Phone        string         `json:"phone" gorm:"size:128;index:,length:5"`
+	Password     string         `json:"-" gorm:"size:128"`
+	RegisterIP   string         `json:"-" gorm:"size:32"`
+	LastLoginIP  string         `json:"-" gorm:"size:32"`
+	LoginIP      []string       `json:"-" gorm:"serializer:json"`
+	Chats        Chats          `json:"chats,omitempty"`
+	ShareConsent bool           `json:"share_consent"`
 }
 
 func GetUserID(c *fiber.Ctx) (int, error) {

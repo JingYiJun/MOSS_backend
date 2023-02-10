@@ -27,6 +27,8 @@ definitions:
       phone:
         description: phone number in e164 mode
         type: string
+      share_consent:
+        type: boolean
       verification:
         maxLength: 6
         minLength: 6
@@ -147,6 +149,8 @@ definitions:
         type: string
       phone:
         type: string
+      share_consent:
+        type: boolean
     type: object
   utils.MessageResponse:
     properties:

@@ -63,6 +63,10 @@ func ModifyUser(c *fiber.Ctx) error {
 			user.Nickname = *body.Nickname
 		}
 
+		if body.ShareConsent != nil {
+			user.ShareConsent = *body.ShareConsent
+		}
+
 		if body.EmailModel != nil && body.Email != user.Email {
 			ok, err := auth.CheckVerificationCode(body.Email, scope, body.Verification)
 			if err != nil {
