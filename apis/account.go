@@ -82,7 +82,7 @@ func Register(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	remoteIP := c.IP()
+	remoteIP := GetRealIP(c)
 
 	if registered {
 		if deleted {

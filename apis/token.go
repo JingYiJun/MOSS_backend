@@ -55,7 +55,7 @@ func Login(c *fiber.Ctx) error {
 	}
 
 	// update login time and ip
-	user.UpdateIP(c.IP())
+	user.UpdateIP(GetRealIP(c))
 	err = DB.Save(&user).Error
 	if err != nil {
 		return err
@@ -115,8 +115,9 @@ func Refresh(c *fiber.Ctx) error {
 		return err
 	}
 
-	// update login time
-	err = DB.Model(&user).Select("LastLogin").Updates(&user).Error
+	// update login time and ip
+	user.UpdateIP(GetRealIP(c))
+	err = DB.Save(&user).Error
 	if err != nil {
 		return err
 	}
