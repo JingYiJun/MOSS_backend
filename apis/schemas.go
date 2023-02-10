@@ -53,7 +53,7 @@ type ModifyUserRequest struct {
 	ShareConsent *bool   `json:"share_consent"`
 	*EmailModel  `validate:"omitempty"`
 	*PhoneModel  `validate:"omitempty"`
-	Verification string `json:"verification" minLength:"6" maxLength:"6" validate:"len=6"`
+	Verification string `json:"verification" minLength:"6" maxLength:"6" validate:"omitempty,len=6"`
 }
 
 type ChatModifyModel struct {
