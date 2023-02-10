@@ -1,6 +1,7 @@
 package models
 
 import (
+	"MOSS_backend/utils"
 	"gorm.io/gorm"
 	"time"
 )
@@ -31,3 +32,13 @@ type Record struct {
 }
 
 type Records []Record
+
+func (records Records) ToRecordModel() (recordModel []utils.RecordModel) {
+	for _, record := range records {
+		recordModel = append(recordModel, utils.RecordModel{
+			Request:  record.Request,
+			Response: record.Response,
+		})
+	}
+	return
+}

@@ -204,6 +204,7 @@ func AddRecord(c *fiber.Ctx) error {
 			return Forbidden()
 		}
 
+		// get all params to infer server
 		var params Params
 		err = tx.Find(&params).Error
 		if err != nil {
@@ -212,7 +213,19 @@ func AddRecord(c *fiber.Ctx) error {
 
 		record.ChatID = chat.ID
 		record.Request = body.Request
-		record.Response, record.Duration, err = Infer(body.Request, params)
+
+		// find all records to make dialogs
+		var records Records
+		err = tx.Find(&records, "chat_id = ?", chatID).Error
+		if err != nil {
+			return err
+		}
+
+		record.Response, record.Duration, err = Infer(InferRequest{
+			Records: records.ToRecordModel(),
+			Message: record.Request,
+			Params:  params,
+		})
 		if err != nil {
 			return err
 		}
@@ -270,6 +283,7 @@ func RetryRecord(c *fiber.Ctx) error {
 			return err
 		}
 
+		// get all params to infer server
 		var params Params
 		err = tx.Find(&params).Error
 		if err != nil {
@@ -278,7 +292,19 @@ func RetryRecord(c *fiber.Ctx) error {
 
 		record.ChatID = chatID
 		record.Request = oldRecord.Request
-		record.Response, record.Duration, err = Infer(record.Request, params)
+
+		// find all records to make dialogs
+		var records Records
+		err = tx.Find(&records, "chat_id = ?", chatID).Error
+		if err != nil {
+			return err
+		}
+
+		record.Response, record.Duration, err = Infer(InferRequest{
+			Records: records.ToRecordModel(),
+			Message: record.Request,
+			Params:  params,
+		})
 		if err != nil {
 			return err
 		}

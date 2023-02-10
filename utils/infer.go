@@ -10,6 +10,11 @@ import (
 	"time"
 )
 
+type RecordModel struct {
+	Request  string `json:"request"`
+	Response string `json:"response"`
+}
+
 type Param struct {
 	ID    int     `json:"-"`
 	Name  string  `json:"name"`
@@ -19,8 +24,9 @@ type Param struct {
 type Params []Param
 
 type InferRequest struct {
-	Message string `json:"message"`
-	Params  Params `json:"params,omitempty"`
+	Records []RecordModel `json:"records,omitempty"`
+	Message string        `json:"message"`
+	Params  Params        `json:"params,omitempty"`
 }
 
 type InferResponse struct {
@@ -28,9 +34,8 @@ type InferResponse struct {
 	Message string `json:"message"`
 }
 
-func Infer(input string, params Params) (output string, duration float64, err error) {
+func Infer(request InferRequest) (output string, duration float64, err error) {
 	startTime := time.Now()
-	request := InferRequest{Message: input, Params: params}
 	data, err := json.Marshal(request)
 	if err != nil {
 		return "", 0, fmt.Errorf("error marshal request data: %s", err)
