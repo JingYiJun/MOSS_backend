@@ -68,10 +68,7 @@ func ModifyUser(c *fiber.Ctx) error {
 		}
 
 		if body.EmailModel != nil && body.Email != user.Email {
-			ok, err := auth.CheckVerificationCode(body.Email, scope, body.Verification)
-			if err != nil {
-				return err
-			}
+			ok := auth.CheckVerificationCode(body.Email, scope, body.Verification)
 			if !ok {
 				return BadRequest("verification code error")
 			}
@@ -80,10 +77,7 @@ func ModifyUser(c *fiber.Ctx) error {
 		}
 
 		if body.PhoneModel != nil && body.Phone != user.Phone {
-			ok, err := auth.CheckVerificationCode(body.Phone, scope, body.Verification)
-			if err != nil {
-				return err
-			}
+			ok := auth.CheckVerificationCode(body.Phone, scope, body.Verification)
 			if !ok {
 				return BadRequest("verification code error")
 			}

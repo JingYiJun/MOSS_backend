@@ -49,12 +49,9 @@ func Register(c *fiber.Ctx) error {
 
 	// check verification code first
 	if body.PhoneModel != nil {
-		ok, err = auth.CheckVerificationCode(body.Phone, scope, body.Verification)
+		ok = auth.CheckVerificationCode(body.Phone, scope, body.Verification)
 	} else if body.EmailModel != nil {
-		ok, err = auth.CheckVerificationCode(body.Email, scope, body.Verification)
-	}
-	if err != nil {
-		return err
+		ok = auth.CheckVerificationCode(body.Email, scope, body.Verification)
 	}
 	if !ok {
 		return BadRequest("verification code error")
@@ -88,6 +85,7 @@ func Register(c *fiber.Ctx) error {
 			registered = false
 			user.Phone = body.Phone
 		} else {
+			registered = true
 			deleted = user.DeletedAt.Valid
 		}
 	} else if body.EmailModel != nil {
@@ -99,6 +97,7 @@ func Register(c *fiber.Ctx) error {
 			registered = false
 			user.Email = body.Email
 		} else {
+			registered = true
 			deleted = user.DeletedAt.Valid
 		}
 	} else {
@@ -188,12 +187,9 @@ func ChangePassword(c *fiber.Ctx) error {
 	}
 
 	if body.PhoneModel != nil {
-		ok, err = auth.CheckVerificationCode(body.Phone, scope, body.Verification)
+		ok = auth.CheckVerificationCode(body.Phone, scope, body.Verification)
 	} else if body.EmailModel != nil {
-		ok, err = auth.CheckVerificationCode(body.Email, scope, body.Verification)
-	}
-	if err != nil {
-		return err
+		ok = auth.CheckVerificationCode(body.Email, scope, body.Verification)
 	}
 	if !ok {
 		return BadRequest("验证码错误")

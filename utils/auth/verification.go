@@ -54,15 +54,12 @@ func SetVerificationCode(info, scope string) (string, error) {
 }
 
 // CheckVerificationCode 检查验证码
-func CheckVerificationCode(info, scope, code string) (bool, error) {
+func CheckVerificationCode(info, scope, code string) bool {
 	storedCode, err := verificationCodeCache.Get(
 		context.Background(),
 		fmt.Sprintf("%v-%v", scope, info),
 	)
-	if err != nil {
-		return false, err
-	}
-	return storedCode == code, nil
+	return err == nil && storedCode == code
 }
 
 func DeleteVerificationCode(info, scope string) error {
