@@ -19,7 +19,7 @@ func ListChats(c *fiber.Ctx) error {
 	}
 
 	var chats = Chats{}
-	err = DB.Find(&chats, "user_id = ?", userID).Error
+	err = DB.Order("updated_at desc").Find(&chats, "user_id = ?", userID).Error
 	if err != nil {
 		return err
 	}
