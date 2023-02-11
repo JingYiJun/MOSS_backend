@@ -148,7 +148,11 @@ func Register(c *fiber.Ctx) error {
 		return err
 	}
 
-	err = auth.DeleteVerificationCode(body.Email, scope)
+	if body.EmailModel != nil {
+		err = auth.DeleteVerificationCode(body.Email, scope)
+	} else {
+		err = auth.DeleteVerificationCode(body.Phone, scope)
+	}
 	if err != nil {
 		return err
 	}
@@ -230,7 +234,11 @@ func ChangePassword(c *fiber.Ctx) error {
 		return err
 	}
 
-	err = auth.DeleteVerificationCode(body.Email, scope)
+	if body.EmailModel != nil {
+		err = auth.DeleteVerificationCode(body.Email, scope)
+	} else {
+		err = auth.DeleteVerificationCode(body.Phone, scope)
+	}
 	if err != nil {
 		return err
 	}
