@@ -38,7 +38,8 @@ type TokenResponse struct {
 
 type RegisterRequest struct {
 	LoginRequest
-	Verification string `json:"verification" minLength:"6" maxLength:"6" validate:"len=6"`
+	Verification string  `json:"verification" minLength:"6" maxLength:"6" validate:"len=6"`
+	InviteCode   *string `json:"invite_code" validate:"omitempty,min=1"`
 }
 
 type VerifyResponse struct {

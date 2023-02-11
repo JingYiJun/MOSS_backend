@@ -64,6 +64,9 @@ definitions:
     properties:
       email:
         type: string
+      invite_code:
+        minLength: 1
+        type: string
       password:
         minLength: 8
         type: string

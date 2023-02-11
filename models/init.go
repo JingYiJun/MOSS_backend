@@ -86,6 +86,7 @@ func InitDB() {
 		ActiveStatus{},
 		utils.Param{},
 		Config{},
+		InviteCode{},
 	)
 	if err != nil {
 		panic(err)

@@ -34,6 +34,39 @@ func Register(c *fiber.Ctx) error {
 		return err
 	}
 
+	var (
+		user       User
+		registered = false
+		deleted    = false
+	)
+
+	// check invite code config
+	var configObject Config
+	err = DB.First(&configObject).Error
+	if err != nil {
+		return err
+	}
+
+	if configObject.InviteRequired {
+		if body.InviteCode == nil {
+			return BadRequest("need invite code")
+		}
+		// check invite code
+		var inviteCode InviteCode
+		err = DB.Transaction(func(tx *gorm.DB) error {
+			err = DB.Clauses(LockingClause).Take(&inviteCode, "code = ?", body.InviteCode).Error
+			if err != nil {
+				return BadRequest("invite code invalid")
+			}
+			return DB.Delete(&inviteCode).Error
+		})
+		if err != nil {
+			return err
+		}
+		user.InviteCode = inviteCode.Code
+	}
+
+	// check verification code
 	if body.PhoneModel != nil {
 		ok, err = auth.CheckVerificationCode(body.Phone, scope, body.Verification)
 	} else if body.EmailModel != nil {
@@ -45,12 +78,6 @@ func Register(c *fiber.Ctx) error {
 	if !ok {
 		return BadRequest("verification code error")
 	}
-
-	var (
-		user       User
-		registered = false
-		deleted    = false
-	)
 
 	if body.PhoneModel != nil {
 		err = DB.Unscoped().Take(&user, "phone = ?", body.Phone).Error

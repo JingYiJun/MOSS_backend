@@ -735,6 +735,10 @@ const docTemplate = `{
                 "email": {
                     "type": "string"
                 },
+                "invite_code": {
+                    "type": "string",
+                    "minLength": 1
+                },
                 "password": {
                     "type": "string",
                     "minLength": 8
