@@ -211,6 +211,25 @@ const docTemplate = `{
                 }
             }
         },
+        "/config": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Config"
+                ],
+                "summary": "get global config",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apis.ConfigResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/login": {
             "post": {
                 "description": "Login with email and password, return jwt token, not need jwt",
@@ -628,6 +647,17 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "minLength": 1
+                }
+            }
+        },
+        "apis.ConfigResponse": {
+            "type": "object",
+            "properties": {
+                "invite_required": {
+                    "type": "boolean"
+                },
+                "region": {
+                    "type": "string"
                 }
             }
         },

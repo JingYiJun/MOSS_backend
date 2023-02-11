@@ -68,3 +68,8 @@ type RecordModifyModel struct {
 	Feedback *string `json:"feedback"`
 	Like     *int    `json:"like" validate:"omitempty,oneof=1 0 -1"` // 1 like, -1 dislike, 0 reset
 }
+
+type ConfigResponse struct {
+	Region         string `json:"region"`
+	InviteRequired bool   `json:"invite_required"`
+}

@@ -3,6 +3,7 @@ package models
 import (
 	"MOSS_backend/config"
 	"MOSS_backend/utils"
+	"errors"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -78,8 +79,21 @@ func InitDB() {
 	}
 
 	// migrate database
-	err = DB.AutoMigrate(User{}, Chat{}, Record{}, ActiveStatus{}, utils.Param{})
+	err = DB.AutoMigrate(
+		User{},
+		Chat{},
+		Record{},
+		ActiveStatus{},
+		utils.Param{},
+		Config{},
+	)
 	if err != nil {
 		panic(err)
+	}
+
+	var configObject Config
+	err = DB.First(&configObject).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		DB.Create(&configObject)
 	}
 }

@@ -6,6 +6,13 @@ definitions:
         minLength: 1
         type: string
     type: object
+  apis.ConfigResponse:
+    properties:
+      invite_required:
+        type: boolean
+      region:
+        type: string
+    type: object
   apis.LoginRequest:
     properties:
       email:
@@ -291,6 +298,18 @@ paths:
       summary: regenerate the last record of a chat
       tags:
       - record
+  /config:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apis.ConfigResponse'
+      summary: get global config
+      tags:
+      - Config
   /login:
     post:
       consumes:
