@@ -300,6 +300,11 @@ func RetryRecord(c *fiber.Ctx) error {
 			return err
 		}
 
+		// remove the latest record
+		if len(records) > 0 {
+			records = records[0 : len(records)-1]
+		}
+
 		record.Response, record.Duration, err = Infer(InferRequest{
 			Records: records.ToRecordModel(),
 			Message: record.Request,
