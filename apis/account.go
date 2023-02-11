@@ -93,6 +93,7 @@ func Register(c *fiber.Ctx) error {
 
 			user.RegisterIP = remoteIP
 			user.UpdateIP(remoteIP)
+			user.ShareConsent = true
 			err = DB.Unscoped().Model(&user).Select("RegisterIP", "LoginIP", "LastLoginIP").Updates(&user).Error
 			if err != nil {
 				return err
@@ -103,6 +104,7 @@ func Register(c *fiber.Ctx) error {
 	} else {
 		user.RegisterIP = remoteIP
 		user.UpdateIP(remoteIP)
+		user.ShareConsent = true
 		err = DB.Create(&user).Error
 		if err != nil {
 			return err

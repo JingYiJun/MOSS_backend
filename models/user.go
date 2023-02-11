@@ -27,7 +27,7 @@ type User struct {
 	LastLoginIP  string         `json:"-" gorm:"size:32"`
 	LoginIP      []string       `json:"-" gorm:"serializer:json"`
 	Chats        Chats          `json:"chats,omitempty"`
-	ShareConsent bool           `json:"share_consent"`
+	ShareConsent bool           `json:"share_consent" gorm:"default:true"`
 }
 
 func GetUserID(c *fiber.Ctx) (int, error) {
