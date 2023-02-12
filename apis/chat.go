@@ -165,7 +165,7 @@ func ListRecords(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.JSON(records)
+	return Serialize(c, records)
 }
 
 // AddRecord
@@ -181,6 +181,7 @@ func AddRecord(c *fiber.Ctx) error {
 		return err
 	}
 
+	// validate body
 	var body RecordCreateModel
 	err = ValidateBody(c, &body)
 	if err != nil {
@@ -192,40 +193,59 @@ func AddRecord(c *fiber.Ctx) error {
 		return err
 	}
 
-	var record Record
-	err = DB.Transaction(func(tx *gorm.DB) error {
-		var chat Chat
-		err = tx.Clauses(LockingClause).Take(&chat, chatID).Error
-		if err != nil {
-			return err
-		}
+	var chat Chat
+	err = DB.Take(&chat, chatID).Error
+	if err != nil {
+		return err
+	} // not exists
 
-		if chat.UserID != userID {
-			return Forbidden()
-		}
+	// permission
+	if chat.UserID != userID {
+		return Forbidden()
+	}
 
+	record := Record{
+		ChatID:  chatID,
+		Request: body.Request,
+	}
+
+	// sensitive request check
+	if IsSensitive(record.Request) {
+		record.RequestSensitive = true
+		record.Response = DefaultResponse
+	} else {
+		/* infer */
 		// get all params to infer server
 		var params Params
-		err = tx.Find(&params).Error
+		err = DB.Find(&params).Error
 		if err != nil {
 			return err
 		}
 
-		record.ChatID = chat.ID
-		record.Request = body.Request
-
-		// find all records to make dialogs
+		// find all records to make dialogs, without sensitive content
 		var records Records
-		err = tx.Find(&records, "chat_id = ?", chatID).Error
+		err = DB.Find(&records, "chat_id = ? and request_sensitive <> true and response_sensitive <> true", chatID).Error
 		if err != nil {
 			return err
 		}
 
+		// infer request
 		record.Response, record.Duration, err = Infer(InferRequest{
 			Records: records.ToRecordModel(),
 			Message: record.Request,
 			Params:  params,
 		})
+		if err != nil {
+			return err
+		}
+
+		if IsSensitive(record.Response) {
+			record.ResponseSensitive = true
+		}
+	}
+
+	err = DB.Transaction(func(tx *gorm.DB) error {
+		err = tx.Clauses(LockingClause).Take(&chat, chatID).Error
 		if err != nil {
 			return err
 		}
@@ -238,14 +258,13 @@ func AddRecord(c *fiber.Ctx) error {
 		if chat.Count == 0 {
 			chat.Name = record.Request
 		}
-		chat.Count += 1
 		return tx.Save(&chat).Error
 	})
 	if err != nil {
 		return err
 	}
 
-	return c.Status(201).JSON(record)
+	return Serialize(c.Status(201), &record)
 }
 
 // RetryRecord
@@ -265,51 +284,70 @@ func RetryRecord(c *fiber.Ctx) error {
 		return err
 	}
 
-	var record Record
+	var chat Chat
+	err = DB.Take(&chat, chatID).Error
+	if err != nil {
+		return err
+	}
+
+	// permission
+	if chat.UserID != userID {
+		return Forbidden()
+	}
+
+	// get the latest record
+	var oldRecord Record
+	err = DB.Last(&oldRecord, "chat_id = ?", chat.ID).Error
+	if err != nil {
+		return err
+	}
+
+	if oldRecord.RequestSensitive {
+		// old record request is sensitive
+		return Serialize(c, &oldRecord)
+	}
+
+	record := Record{
+		ChatID:  chatID,
+		Request: oldRecord.Request,
+	}
+
+	/* infer */
+	// get all params to infer server
+	var params Params
+	err = DB.Find(&params).Error
+	if err != nil {
+		return err
+	}
+
+	// find all records to make dialogs, without sensitive content
+	var records Records
+	err = DB.Find(&records, "chat_id = ? and request_sensitive <> true and response_sensitive <> true", chatID).Error
+	if err != nil {
+		return err
+	}
+
+	// remove the latest record
+	if len(records) > 0 {
+		records = records[0 : len(records)-1]
+	}
+
+	// infer request
+	record.Response, record.Duration, err = Infer(InferRequest{
+		Records: records.ToRecordModel(),
+		Message: record.Request,
+		Params:  params,
+	})
+	if err != nil {
+		return err
+	}
+
+	if IsSensitive(record.Response) {
+		record.ResponseSensitive = true
+	}
+
 	err = DB.Transaction(func(tx *gorm.DB) error {
-		var chat Chat
 		err = tx.Clauses(LockingClause).Take(&chat, chatID).Error
-		if err != nil {
-			return err
-		}
-
-		if chat.UserID != userID {
-			return Forbidden()
-		}
-
-		var oldRecord Record
-		err = tx.Last(&oldRecord, "chat_id = ?", chat.ID).Error
-		if err != nil {
-			return err
-		}
-
-		// get all params to infer server
-		var params Params
-		err = tx.Find(&params).Error
-		if err != nil {
-			return err
-		}
-
-		record.ChatID = chatID
-		record.Request = oldRecord.Request
-
-		// find all records to make dialogs
-		var records Records
-		err = tx.Find(&records, "chat_id = ?", chatID).Error
-		if err != nil {
-			return err
-		}
-
-		// remove the latest record
-		if len(records) > 0 {
-			records = records[0 : len(records)-1]
-		}
-
-		record.Response, record.Duration, err = Infer(InferRequest{
-			Records: records.ToRecordModel(),
-			Message: record.Request,
-			Params:  params,
-		})
 		if err != nil {
 			return err
 		}
@@ -319,13 +357,18 @@ func RetryRecord(c *fiber.Ctx) error {
 			return err
 		}
 
-		return tx.Create(&record).Error
+		err = tx.Create(&record).Error
+		if err != nil {
+			return err
+		}
+
+		return tx.Save(&chat).Error
 	})
 	if err != nil {
 		return err
 	}
 
-	return c.JSON(record)
+	return Serialize(c, &record)
 }
 
 // ModifyRecord
@@ -358,11 +401,6 @@ func ModifyRecord(c *fiber.Ctx) error {
 
 	var record Record
 	err = DB.Transaction(func(tx *gorm.DB) error {
-		err = tx.Clauses(LockingClause).Take(&record, recordID).Error
-		if err != nil {
-			return err
-		}
-
 		var chat Chat
 		err = tx.Take(&chat, record.ChatID).Error
 		if err != nil {
@@ -371,6 +409,11 @@ func ModifyRecord(c *fiber.Ctx) error {
 
 		if chat.UserID != userID {
 			return Forbidden()
+		}
+
+		err = tx.Clauses(LockingClause).Take(&record, recordID).Error
+		if err != nil {
+			return err
 		}
 
 		if body.Feedback != nil {

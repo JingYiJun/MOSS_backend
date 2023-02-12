@@ -2,6 +2,7 @@ package models
 
 import (
 	"MOSS_backend/utils"
+	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 	"time"
 )
@@ -20,18 +21,36 @@ type Chat struct {
 type Chats []Chat
 
 type Record struct {
-	ID        int            `json:"id"`
-	CreatedAt time.Time      `json:"created_at"`
-	DeletedAt gorm.DeletedAt `json:"-" gorm:"index:idx_record_chat_deleted,priority:2"`
-	Duration  float64        `json:"duration"` // 处理时间，单位 s
-	ChatID    int            `json:"chat_id" gorm:"index:idx_record_chat_deleted,priority:1"`
-	Request   string         `json:"request"`
-	Response  string         `json:"response"`
-	LikeData  int            `json:"like_data"` // 1 like, -1 dislike
-	Feedback  string         `json:"feedback"`
+	ID                int            `json:"id"`
+	CreatedAt         time.Time      `json:"created_at"`
+	DeletedAt         gorm.DeletedAt `json:"-" gorm:"index:idx_record_chat_deleted,priority:2"`
+	Duration          float64        `json:"duration"` // 处理时间，单位 s
+	ChatID            int            `json:"chat_id" gorm:"index:idx_record_chat_deleted,priority:1"`
+	Request           string         `json:"request"`
+	Response          string         `json:"response"`
+	LikeData          int            `json:"like_data"` // 1 like, -1 dislike
+	Feedback          string         `json:"feedback"`
+	RequestSensitive  bool           `json:"request_sensitive"`
+	ResponseSensitive bool           `json:"response_sensitive"`
 }
 
 type Records []Record
+
+func (record *Record) Preprocess(_ *fiber.Ctx) error {
+	if record.ResponseSensitive {
+		record.Response = DefaultResponse
+	}
+	return nil
+}
+
+func (records Records) Preprocess(c *fiber.Ctx) error {
+	for i := range records {
+		_ = records[i].Preprocess(c)
+	}
+	return nil
+}
+
+const DefaultResponse = `Sorry, I have nothing to say. Try another topic :)`
 
 func (records Records) ToRecordModel() (recordModel []utils.RecordModel) {
 	for _, record := range records {

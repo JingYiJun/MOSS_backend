@@ -58,7 +58,7 @@ func Infer(request InferRequest) (output string, duration float64, err error) {
 	if err != nil {
 		return "", 0, fmt.Errorf("error unmarshal response data: %s", err)
 	}
-	duration = float64(time.Now().Sub(startTime)) / 1000_000_000
+	duration = float64(time.Since(startTime)) / 1000_000_000
 	if response.Code != 200 {
 		return "", 0, &HttpError{
 			Message: fmt.Sprintf("%s; duration: %f s", response.Message, duration),
