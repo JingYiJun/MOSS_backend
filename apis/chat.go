@@ -258,6 +258,7 @@ func AddRecord(c *fiber.Ctx) error {
 		if chat.Count == 0 {
 			chat.Name = record.Request
 		}
+		chat.Count += 1
 		return tx.Save(&chat).Error
 	})
 	if err != nil {
