@@ -431,5 +431,5 @@ func ModifyRecord(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.JSON(&record)
+	return Serialize(c, &record)
 }
