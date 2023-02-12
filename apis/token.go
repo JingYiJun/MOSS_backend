@@ -30,6 +30,8 @@ func Login(c *fiber.Ctx) error {
 		return err
 	}
 
+	errCollection, messageCollection := GetInfoByIP(GetRealIP(c))
+
 	var user User
 	if body.EmailModel != nil {
 		err = DB.Where("email = ?", body.Email).Take(&user).Error
@@ -51,7 +53,7 @@ func Login(c *fiber.Ctx) error {
 		return err
 	}
 	if !ok {
-		return Unauthorized("password incorrect")
+		return errCollection.ErrPasswordIncorrect
 	}
 
 	// update login time and ip
@@ -69,7 +71,7 @@ func Login(c *fiber.Ctx) error {
 	return c.JSON(TokenResponse{
 		Access:  access,
 		Refresh: refresh,
-		Message: "Login successful",
+		Message: messageCollection.MessageLoginSuccess,
 	})
 }
 
@@ -87,6 +89,8 @@ func Logout(c *fiber.Ctx) error {
 		return err
 	}
 
+	_, messageCollection := GetInfoByIP(GetRealIP(c))
+
 	var user User
 	err = DB.Take(&user, userID).Error
 	if err != nil {
@@ -98,7 +102,7 @@ func Logout(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.JSON(Message("logout successful"))
+	return c.JSON(MessageResponse{Message: messageCollection.MessageLogoutSuccess})
 }
 
 // Refresh

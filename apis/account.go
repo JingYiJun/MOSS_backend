@@ -40,6 +40,8 @@ func Register(c *fiber.Ctx) error {
 		deleted    = false
 	)
 
+	errCollection, messageCollection := GetInfoByIP(GetRealIP(c))
+
 	// check invite code config
 	var configObject Config
 	err = DB.First(&configObject).Error
@@ -54,19 +56,19 @@ func Register(c *fiber.Ctx) error {
 		ok = auth.CheckVerificationCode(body.Email, scope, body.Verification)
 	}
 	if !ok {
-		return BadRequest("verification code error")
+		return errCollection.ErrVerificationCodeInvalid
 	}
 
 	if configObject.InviteRequired {
 		if body.InviteCode == nil {
-			return BadRequest("need invite code")
+			return errCollection.ErrNeedInviteCode
 		}
 		// check invite code
 		var inviteCode InviteCode
 		err = DB.Transaction(func(tx *gorm.DB) error {
 			err = tx.Clauses(LockingClause).Take(&inviteCode, "code = ?", body.InviteCode).Error
 			if err != nil {
-				return BadRequest("invite code invalid")
+				return errCollection.ErrInviteCodeInvalid
 			}
 			return tx.Delete(&inviteCode, body.InviteCode).Error
 		})
@@ -125,7 +127,7 @@ func Register(c *fiber.Ctx) error {
 				return err
 			}
 		} else {
-			return BadRequest("该用户已注册，如果忘记密码，请使用忘记密码功能找回")
+			return errCollection.ErrRegistered
 		}
 	} else {
 		user.RegisterIP = remoteIP
@@ -159,7 +161,7 @@ func Register(c *fiber.Ctx) error {
 	return c.JSON(TokenResponse{
 		Access:  accessToken,
 		Refresh: refreshToken,
-		Message: "register successful",
+		Message: messageCollection.MessageRegisterSuccess,
 	})
 }
 
@@ -186,13 +188,15 @@ func ChangePassword(c *fiber.Ctx) error {
 		return err
 	}
 
+	errCollection, messageCollection := GetInfoByIP(GetRealIP(c))
+
 	if body.PhoneModel != nil {
 		ok = auth.CheckVerificationCode(body.Phone, scope, body.Verification)
 	} else if body.EmailModel != nil {
 		ok = auth.CheckVerificationCode(body.Email, scope, body.Verification)
 	}
 	if !ok {
-		return BadRequest("验证码错误")
+		return errCollection.ErrVerificationCodeInvalid
 	}
 
 	var user User
@@ -242,7 +246,7 @@ func ChangePassword(c *fiber.Ctx) error {
 	return c.JSON(TokenResponse{
 		Access:  accessToken,
 		Refresh: refreshToken,
-		Message: "reset password successful",
+		Message: messageCollection.MessageResetPasswordSuccess,
 	})
 }
 
@@ -260,8 +264,10 @@ func VerifyWithEmail(c *fiber.Ctx) error {
 	var query VerifyEmailRequest
 	err := ValidateQuery(c, &query)
 	if err != nil {
-		return BadRequest("invalid email")
+		return err
 	}
+
+	errCollection, messageCollection := GetInfoByIP(GetRealIP(c))
 
 	var (
 		user  User
@@ -285,29 +291,29 @@ func VerifyWithEmail(c *fiber.Ctx) error {
 		if !login {
 			scope = "reset"
 		} else {
-			return BadRequest("该邮箱已被注册")
+			return errCollection.ErrEmailRegistered
 		}
 	}
 	if query.Scope != "" {
 		if scope != query.Scope {
 			switch scope {
 			case "register":
-				return BadRequest("该邮箱未注册")
+				return errCollection.ErrEmailNotRegistered
 			case "reset":
 				switch query.Scope {
 				case "register":
-					return BadRequest("该邮箱已被注册")
+					return errCollection.ErrEmailRegistered
 				case "modify":
-					return BadRequest("未登录状态，禁止修改邮箱")
+					return errCollection.ErrEmailCannotModify
 				default:
 					return BadRequest()
 				}
 			case "modify":
 				switch query.Scope {
 				case "register":
-					return BadRequest("该邮箱已被注册")
+					return errCollection.ErrEmailRegistered
 				case "reset":
-					return BadRequest("登录状态无法重置密码，请退出登录然后重试")
+					return errCollection.ErrEmailCannotReset
 				default:
 					return BadRequest()
 				}
@@ -328,7 +334,7 @@ func VerifyWithEmail(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(VerifyResponse{
-		Message: "验证邮件已发送，请查收\n如未收到，请检查邮件地址是否正确，检查垃圾箱，或重试",
+		Message: messageCollection.MessageVerificationEmailSend,
 		Scope:   scope,
 	})
 }
@@ -349,6 +355,8 @@ func VerifyWithPhone(c *fiber.Ctx) error {
 	if err != nil {
 		return BadRequest("invalid phone number")
 	}
+
+	errCollection, messageCollection := GetInfoByIP(GetRealIP(c))
 
 	var (
 		user  User
@@ -371,7 +379,7 @@ func VerifyWithPhone(c *fiber.Ctx) error {
 		if !login {
 			scope = "reset" // 已注册、未登录
 		} else {
-			return BadRequest("该手机号已被注册") // 已注册、已登录
+			return errCollection.ErrPhoneRegistered // 已注册、已登录
 		}
 	}
 
@@ -379,22 +387,22 @@ func VerifyWithPhone(c *fiber.Ctx) error {
 		if scope != query.Scope {
 			switch scope {
 			case "register":
-				return BadRequest("该手机号未注册")
+				return errCollection.ErrPhoneNotRegistered
 			case "reset":
 				switch query.Scope {
 				case "register":
-					return BadRequest("该手机号已被注册")
+					return errCollection.ErrPhoneRegistered
 				case "modify":
-					return BadRequest("未登录状态，禁止修改手机号")
+					return errCollection.ErrPhoneCannotModify
 				default:
 					return BadRequest()
 				}
 			case "modify":
 				switch query.Scope {
 				case "register":
-					return BadRequest("该手机号已被注册")
+					return errCollection.ErrPhoneRegistered
 				case "reset":
-					return BadRequest("登录状态无法重置密码，请退出登录然后重试")
+					return errCollection.ErrPhoneCannotReset
 				default:
 					return BadRequest()
 				}
@@ -414,7 +422,7 @@ func VerifyWithPhone(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(VerifyResponse{
-		Message: "验证短信已发送，请查收\n如未收到，请检查手机号是否正确，检查垃圾箱，或重试",
+		Message: messageCollection.MessageVerificationPhoneSend,
 		Scope:   scope,
 	})
 }
@@ -437,6 +445,8 @@ func DeleteUser(c *fiber.Ctx) error {
 		return err
 	}
 
+	errCollection, _ := GetInfoByIP(GetRealIP(c))
+
 	var user User
 	err = DB.Transaction(func(tx *gorm.DB) error {
 		querySet := tx.Clauses(clause.Locking{Strength: "UPDATE"})
@@ -457,7 +467,7 @@ func DeleteUser(c *fiber.Ctx) error {
 			return err
 		}
 		if !ok {
-			return Forbidden("password incorrect")
+			return errCollection.ErrPasswordIncorrect
 		}
 
 		return tx.Delete(&user).Error

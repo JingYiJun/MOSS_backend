@@ -10,22 +10,22 @@ import (
 )
 
 type ErrorDetailElement struct {
-	Field string                `json:"field"`
-	Tag   string                `json:"tag"`
-	Value string                `json:"value"`
-	Error *validator.FieldError `json:"-"`
+	validator.FieldError
+	Field string `json:"field"`
+	Tag   string `json:"tag"`
+	Value string `json:"value"`
 }
 
 type ErrorDetail []*ErrorDetailElement
 
-func (e *ErrorDetail) Error() string {
-	return "Validation Error"
-	//var builder strings.Builder
-	//for _, err := range *e {
-	//	builder.WriteString((*err.Error).Error())
-	//	builder.WriteString("\n")
-	//}
-	//return builder.String()
+func (e ErrorDetail) Error() string {
+	var builder strings.Builder
+	builder.WriteString("Validation Error: ")
+	for _, err := range e {
+		builder.WriteString("invalid " + err.Field)
+		builder.WriteString("\n")
+	}
+	return builder.String()
 }
 
 var validate = validator.New()
@@ -48,10 +48,10 @@ func Validate(model any) error {
 		var errorDetail ErrorDetail
 		for _, err := range errors.(validator.ValidationErrors) {
 			detail := ErrorDetailElement{
-				Field: err.Field(),
-				Tag:   err.Tag(),
-				Value: err.Param(),
-				Error: &err,
+				FieldError: err,
+				Field:      err.Field(),
+				Tag:        err.Tag(),
+				Value:      err.Param(),
 			}
 			errorDetail = append(errorDetail, &detail)
 		}
