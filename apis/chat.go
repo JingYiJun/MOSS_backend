@@ -402,6 +402,11 @@ func ModifyRecord(c *fiber.Ctx) error {
 	var record Record
 	err = DB.Transaction(func(tx *gorm.DB) error {
 		var chat Chat
+		err = tx.Clauses(LockingClause).Take(&record, recordID).Error
+		if err != nil {
+			return err
+		}
+
 		err = tx.Take(&chat, record.ChatID).Error
 		if err != nil {
 			return err
@@ -409,11 +414,6 @@ func ModifyRecord(c *fiber.Ctx) error {
 
 		if chat.UserID != userID {
 			return Forbidden()
-		}
-
-		err = tx.Clauses(LockingClause).Take(&record, recordID).Error
-		if err != nil {
-			return err
 		}
 
 		if body.Feedback != nil {
