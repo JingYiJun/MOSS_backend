@@ -24,6 +24,7 @@ var Config struct {
 	SensitiveCheckToken string `env:"SENSITIVE_CHECK_TOKEN,required"`
 
 	VerificationCodeExpires int `env:"VERIFICATION_CODE_EXPIRES" envDefault:"10"`
+	ChatNameLength          int `env:"CHAT_NAME_LENGTH" envDefault:"30"`
 }
 
 func InitConfig() {

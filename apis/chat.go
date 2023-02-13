@@ -1,6 +1,7 @@
 package apis
 
 import (
+	"MOSS_backend/config"
 	. "MOSS_backend/models"
 	. "MOSS_backend/utils"
 	"github.com/gofiber/fiber/v2"
@@ -263,7 +264,7 @@ func AddRecord(c *fiber.Ctx) error {
 		}
 
 		if chat.Count == 0 {
-			chat.Name = record.Request
+			chat.Name = StripContent(record.Request, config.Config.ChatNameLength)
 		}
 		chat.Count += 1
 		return tx.Save(&chat).Error
