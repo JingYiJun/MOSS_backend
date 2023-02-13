@@ -18,6 +18,13 @@ func ListChats(c *fiber.Ctx) error {
 		return err
 	}
 
+	// delete empty chats
+	err = DB.Where("user_id = ? and count = 0", userID).Delete(&Chat{}).Error
+	if err != nil {
+		return err
+	}
+
+	// get all chats
 	var chats = Chats{}
 	err = DB.Order("updated_at desc").Find(&chats, "user_id = ?", userID).Error
 	if err != nil {
