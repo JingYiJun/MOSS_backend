@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"time"
 )
 
 // Register godoc
@@ -112,14 +113,19 @@ func Register(c *fiber.Ctx) error {
 				return err
 			}
 
+			user.DeletedAt.Valid = false
+			user.DeletedAt.Time = time.Unix(0, 0)
+
+			user.JoinedTime = time.Now()
 			user.RegisterIP = remoteIP
+			user.LoginIP = []string{}
 			user.UpdateIP(remoteIP)
 			user.ShareConsent = true
 			// set invite code
 			if configObject.InviteRequired {
 				user.InviteCode = inviteCode.Code
 			}
-			err = DB.Unscoped().Model(&user).Select("RegisterIP", "LoginIP", "LastLoginIP").Updates(&user).Error
+			err = DB.Save(&user).Error
 			if err != nil {
 				return err
 			}
