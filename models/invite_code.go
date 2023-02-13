@@ -1,5 +1,8 @@
 package models
 
 type InviteCode struct {
-	Code string `gorm:"primaryKey,size:32"`
+	ID          string `gorm:"primaryKey"`
+	Code        string `gorm:"unique,size:32"`
+	IsSend      bool
+	IsActivated bool
 }

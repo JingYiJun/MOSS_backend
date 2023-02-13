@@ -38,6 +38,7 @@ func Register(c *fiber.Ctx) error {
 		user       User
 		registered = false
 		deleted    = false
+		inviteCode InviteCode
 	)
 
 	errCollection, messageCollection := GetInfoByIP(GetRealIP(c))
@@ -59,23 +60,15 @@ func Register(c *fiber.Ctx) error {
 		return errCollection.ErrVerificationCodeInvalid
 	}
 
+	// check Invite code
 	if configObject.InviteRequired {
 		if body.InviteCode == nil {
 			return errCollection.ErrNeedInviteCode
 		}
-		// check invite code
-		var inviteCode InviteCode
-		err = DB.Transaction(func(tx *gorm.DB) error {
-			err = tx.Clauses(LockingClause).Take(&inviteCode, "code = ?", body.InviteCode).Error
-			if err != nil {
-				return errCollection.ErrInviteCodeInvalid
-			}
-			return tx.Delete(&inviteCode, body.InviteCode).Error
-		})
-		if err != nil {
-			return err
+		err = DB.Take(&inviteCode, "code = ?", body.InviteCode).Error
+		if err != nil || !inviteCode.IsSend || inviteCode.IsActivated {
+			return errCollection.ErrInviteCodeInvalid
 		}
-		user.InviteCode = inviteCode.Code
 	}
 
 	if body.PhoneModel != nil {
@@ -122,6 +115,10 @@ func Register(c *fiber.Ctx) error {
 			user.RegisterIP = remoteIP
 			user.UpdateIP(remoteIP)
 			user.ShareConsent = true
+			// set invite code
+			if configObject.InviteRequired {
+				user.InviteCode = inviteCode.Code
+			}
 			err = DB.Unscoped().Model(&user).Select("RegisterIP", "LoginIP", "LastLoginIP").Updates(&user).Error
 			if err != nil {
 				return err
@@ -133,6 +130,12 @@ func Register(c *fiber.Ctx) error {
 		user.RegisterIP = remoteIP
 		user.UpdateIP(remoteIP)
 		user.ShareConsent = true
+
+		// set invite code
+		if configObject.InviteRequired {
+			user.InviteCode = inviteCode.Code
+		}
+
 		err = DB.Create(&user).Error
 		if err != nil {
 			return err
@@ -144,18 +147,23 @@ func Register(c *fiber.Ctx) error {
 		}
 	}
 
+	// create kong token
 	accessToken, refreshToken, err := kong.CreateToken(&user)
 	if err != nil {
 		return err
 	}
 
+	// delete verification
 	if body.EmailModel != nil {
-		err = auth.DeleteVerificationCode(body.Email, scope)
+		_ = auth.DeleteVerificationCode(body.Email, scope)
 	} else {
-		err = auth.DeleteVerificationCode(body.Phone, scope)
+		_ = auth.DeleteVerificationCode(body.Phone, scope)
 	}
-	if err != nil {
-		return err
+
+	// update inviteCode
+	if configObject.InviteRequired {
+		inviteCode.IsActivated = true
+		DB.Save(&inviteCode)
 	}
 
 	return c.JSON(TokenResponse{
