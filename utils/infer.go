@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"time"
 )
@@ -53,6 +54,14 @@ func Infer(request InferRequest) (output string, duration float64, err error) {
 		_ = res.Body.Close()
 	}()
 
+	if res.StatusCode != 200 {
+		log.Println("error from infer server: " + string(data))
+		return "", 0, &HttpError{
+			Message: "Internal Server Error",
+			Code:    res.StatusCode,
+		}
+	}
+
 	var response InferResponse
 	err = json.Unmarshal(data, &response)
 	if err != nil {
@@ -60,8 +69,9 @@ func Infer(request InferRequest) (output string, duration float64, err error) {
 	}
 	duration = float64(time.Since(startTime)) / 1000_000_000
 	if response.Code != 200 {
+		log.Println(response.Message)
 		return "", 0, &HttpError{
-			Message: fmt.Sprintf("%s; duration: %f s", response.Message, duration),
+			Message: "Internal Server Error",
 			Code:    response.Code,
 		}
 	} else {
