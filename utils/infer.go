@@ -109,7 +109,7 @@ func InferMosec(message string, records []RecordModel) (string, float64, error) 
 	startTime := time.Now()
 	rsp, err := http.Post(config.Config.InferenceUrl, "application/json", bytes.NewBuffer(data))
 	if err != nil {
-		log.Println(err)
+		log.Printf("error post to infer server: %s\n", err)
 		return "", 0, &HttpError{
 			Message: "Internal Server Error",
 			Code:    rsp.StatusCode,
@@ -123,7 +123,7 @@ func InferMosec(message string, records []RecordModel) (string, float64, error) 
 	data, _ = io.ReadAll(rsp.Body)
 	output := string(data)
 	if rsp.StatusCode != 200 {
-		log.Println(output)
+		log.Printf("error response from inference server, status code: %d, output: %v\n", rsp.StatusCode, output)
 		return "", 0, &HttpError{
 			Message: "Internal Server Error",
 			Code:    rsp.StatusCode,
@@ -132,7 +132,7 @@ func InferMosec(message string, records []RecordModel) (string, float64, error) 
 
 	index := strings.LastIndex(output, "[MOSS]:")
 	if index == -1 {
-		log.Println("error find [MOSS]:")
+		log.Printf("error find \"[MOSS]:\" from inference server, output: %v\n", output)
 		return "", 0, &HttpError{
 			Message: "Internal Server Error",
 			Code:    rsp.StatusCode,
@@ -141,6 +141,7 @@ func InferMosec(message string, records []RecordModel) (string, float64, error) 
 	output = output[index+7:]
 	output = strings.Trim(output, " ")
 	output, _ = strings.CutSuffix(output, "<eoa>")
+	output, _ = strings.CutSuffix(output, "<eoh>")
 	output = strings.Trim(output, " ")
 	return output, duration, nil
 }
