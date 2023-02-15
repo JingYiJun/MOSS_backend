@@ -33,7 +33,11 @@ func Infer(message string, records []RecordModel) (string, float64, error) {
 	startTime := time.Now()
 	rsp, err := http.Post(config.Config.InferenceUrl, "application/json", bytes.NewBuffer(data))
 	if err != nil {
-		return "", 0, err
+		log.Println(err)
+		return "", 0, &HttpError{
+			Message: "Internal Server Error",
+			Code:    rsp.StatusCode,
+		}
 	}
 	duration := float64(time.Since(startTime)) / 1000_000_000
 
