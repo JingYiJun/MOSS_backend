@@ -130,7 +130,7 @@ func InferMosec(message string, records []RecordModel) (string, float64, error) 
 		}
 	}
 
-	index := strings.LastIndex(output, "[MOSS]: ")
+	index := strings.LastIndex(output, "[MOSS]:")
 	if index != -1 {
 		log.Println("error find [MOSS]:")
 		return "", 0, &HttpError{
@@ -138,7 +138,7 @@ func InferMosec(message string, records []RecordModel) (string, float64, error) 
 			Code:    rsp.StatusCode,
 		}
 	}
-	output = output[index+8:]
+	output = output[index+7:]
 	output = strings.Trim(output, " ")
 	output, _ = strings.CutSuffix(output, "<eoa>")
 	output = strings.Trim(output, " ")
