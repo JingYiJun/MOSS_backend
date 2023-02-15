@@ -223,12 +223,6 @@ func AddRecord(c *fiber.Ctx) error {
 		record.Response = DefaultResponse
 	} else {
 		/* infer */
-		// get all params to infer server
-		var params Params
-		err = DB.Find(&params).Error
-		if err != nil {
-			return err
-		}
 
 		// find all records to make dialogs, without sensitive content
 		var records Records
@@ -238,11 +232,7 @@ func AddRecord(c *fiber.Ctx) error {
 		}
 
 		// infer request
-		record.Response, record.Duration, err = Infer(InferRequest{
-			Records: records.ToRecordModel(),
-			Message: record.Request,
-			Params:  params,
-		})
+		record.Response, record.Duration, err = Infer(record.Request, records.ToRecordModel())
 		if err != nil {
 			return err
 		}
@@ -322,12 +312,6 @@ func RetryRecord(c *fiber.Ctx) error {
 	}
 
 	/* infer */
-	// get all params to infer server
-	var params Params
-	err = DB.Find(&params).Error
-	if err != nil {
-		return err
-	}
 
 	// find all records to make dialogs, without sensitive content
 	var records Records
@@ -342,11 +326,7 @@ func RetryRecord(c *fiber.Ctx) error {
 	}
 
 	// infer request
-	record.Response, record.Duration, err = Infer(InferRequest{
-		Records: records.ToRecordModel(),
-		Message: record.Request,
-		Params:  params,
-	})
+	record.Response, record.Duration, err = Infer(record.Request, records.ToRecordModel())
 	if err != nil {
 		return err
 	}

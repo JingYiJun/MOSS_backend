@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -16,65 +17,41 @@ type RecordModel struct {
 	Response string `json:"response"`
 }
 
-type Param struct {
-	ID    int     `json:"-"`
-	Name  string  `json:"name"`
-	Value float64 `json:"value"`
-}
+func Infer(message string, records []RecordModel) (string, float64, error) {
+	const prefix = `MOSS is an AI assistant developed by the FudanNLP Lab and Shanghai AI Lab. Below is a conversation between MOSS and human.`
 
-type Params []Param
+	var builder strings.Builder
+	builder.WriteString(prefix)
+	for _, record := range records {
+		builder.WriteString(fmt.Sprintf(" [Human]: %s<eoh> [MOSS]: %s<eoa>", record.Request, record.Response))
+	}
+	builder.WriteString(fmt.Sprintf(" [Human]: %s<eoh> [MOSS]:", message))
+	input := builder.String()
 
-type InferRequest struct {
-	Records []RecordModel `json:"records,omitempty"`
-	Message string        `json:"message"`
-	Params  Params        `json:"params,omitempty"`
-}
+	data, _ := json.Marshal(map[string]any{"x": input})
 
-type InferResponse struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-}
-
-func Infer(request InferRequest) (output string, duration float64, err error) {
 	startTime := time.Now()
-	data, err := json.Marshal(request)
+	rsp, err := http.Post(config.Config.InferenceUrl, "application/json", bytes.NewBuffer(data))
 	if err != nil {
-		return "", 0, fmt.Errorf("error marshal request data: %s", err)
+		return "", 0, err
 	}
-	res, err := http.DefaultClient.Post(config.Config.InferenceUrl, "application/json", bytes.NewBuffer(data))
-	if err != nil {
-		return "", 0, fmt.Errorf("error sending request to inference server: %s", err)
-	}
+	duration := float64(time.Since(startTime)) / 1000_000_000
 
-	data, err = io.ReadAll(res.Body)
-	if err != nil {
-		return "", 0, fmt.Errorf("error reading response body: %s", err)
-	}
 	defer func() {
-		_ = res.Body.Close()
+		_ = rsp.Body.Close()
 	}()
-
-	if res.StatusCode != 200 {
-		log.Println("error from infer server: " + string(data))
+	data, _ = io.ReadAll(rsp.Body)
+	output := string(data)
+	if rsp.StatusCode != 200 {
+		log.Println(output)
 		return "", 0, &HttpError{
 			Message: "Internal Server Error",
-			Code:    res.StatusCode,
+			Code:    rsp.StatusCode,
 		}
 	}
 
-	var response InferResponse
-	err = json.Unmarshal(data, &response)
-	if err != nil {
-		return "", 0, fmt.Errorf("error unmarshal response data: %s", err)
-	}
-	duration = float64(time.Since(startTime)) / 1000_000_000
-	if response.Code != 200 {
-		log.Println(response.Message)
-		return "", 0, &HttpError{
-			Message: "Internal Server Error",
-			Code:    response.Code,
-		}
-	} else {
-		return response.Message, duration, nil
-	}
+	output, _ = strings.CutPrefix(output, input)
+	output, _ = strings.CutSuffix(output, "<eoa>")
+	output = strings.Trim(output, " ")
+	return output, duration, nil
 }
