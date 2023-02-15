@@ -232,7 +232,7 @@ func AddRecord(c *fiber.Ctx) error {
 		}
 
 		// infer request
-		record.Response, record.Duration, err = Infer(record.Request, records.ToRecordModel())
+		record.Response, record.Duration, err = infer(record.Request, records)
 		if err != nil {
 			return err
 		}
@@ -326,7 +326,7 @@ func RetryRecord(c *fiber.Ctx) error {
 	}
 
 	// infer request
-	record.Response, record.Duration, err = Infer(record.Request, records.ToRecordModel())
+	record.Response, record.Duration, err = infer(record.Request, records)
 	if err != nil {
 		return err
 	}
