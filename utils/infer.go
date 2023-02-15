@@ -130,7 +130,16 @@ func InferMosec(message string, records []RecordModel) (string, float64, error) 
 		}
 	}
 
-	output, _ = strings.CutPrefix(output, input)
+	index := strings.LastIndex(output, "[MOSS]: ")
+	if index != -1 {
+		log.Println("error find [MOSS]:")
+		return "", 0, &HttpError{
+			Message: "Internal Server Error",
+			Code:    rsp.StatusCode,
+		}
+	}
+	output = output[index+8:]
+	output = strings.Trim(output, " ")
 	output, _ = strings.CutSuffix(output, "<eoa>")
 	output = strings.Trim(output, " ")
 	return output, duration, nil
