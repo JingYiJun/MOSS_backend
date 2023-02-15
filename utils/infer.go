@@ -124,6 +124,12 @@ func InferMosec(message string, records []RecordModel) (string, float64, error) 
 	output := string(data)
 	if rsp.StatusCode != 200 {
 		log.Printf("error response from inference server, status code: %d, output: %v\n", rsp.StatusCode, output)
+		if rsp.StatusCode == 400 {
+			return "", 0, &HttpError{
+				Code:    400,
+				Message: "The maximum context length is exceeded",
+			}
+		}
 		return "", 0, &HttpError{
 			Message: "Internal Server Error",
 			Code:    rsp.StatusCode,
