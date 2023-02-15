@@ -131,7 +131,7 @@ func InferMosec(message string, records []RecordModel) (string, float64, error) 
 	}
 
 	index := strings.LastIndex(output, "[MOSS]:")
-	if index != -1 {
+	if index == -1 {
 		log.Println("error find [MOSS]:")
 		return "", 0, &HttpError{
 			Message: "Internal Server Error",
