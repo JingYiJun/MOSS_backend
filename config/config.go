@@ -27,6 +27,9 @@ var Config struct {
 
 	VerificationCodeExpires int `env:"VERIFICATION_CODE_EXPIRES" envDefault:"10"`
 	ChatNameLength          int `env:"CHAT_NAME_LENGTH" envDefault:"30"`
+
+	AccessExpireTime  int `env:"ACCESS_EXPIRE_TIME" envDefault:"30"`  // 30 minutes
+	RefreshExpireTime int `env:"REFRESH_EXPIRE_TIME" envDefault:"30"` // 30 days
 }
 
 func InitConfig() {
