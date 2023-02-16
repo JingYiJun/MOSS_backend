@@ -65,6 +65,17 @@ func NotFound(messages ...string) *HttpError {
 	}
 }
 
+func InternalServerError(messages ...string) *HttpError {
+	message := "Internal Server Error"
+	if len(messages) > 0 {
+		message = messages[0]
+	}
+	return &HttpError{
+		Code:    500,
+		Message: message,
+	}
+}
+
 func MyErrorHandler(ctx *fiber.Ctx, err error) error {
 	if err == nil {
 		return nil

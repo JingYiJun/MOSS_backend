@@ -1,6 +1,10 @@
 package apis
 
 import (
+	"MOSS_backend/apis/account"
+	"MOSS_backend/apis/chat"
+	"MOSS_backend/apis/config"
+	"MOSS_backend/apis/record"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/swagger"
 )
@@ -19,34 +23,8 @@ func RegisterRoutes(app *fiber.App) {
 	routes := app.Group("/api")
 	routes.Get("/", Index)
 
-	// token
-	routes.Post("/login", Login)
-	routes.Get("/logout", Logout)
-	routes.Post("/refresh", Refresh)
-
-	// account management
-	routes.Get("/verify/email", VerifyWithEmail)
-	routes.Get("/verify/phone", VerifyWithPhone)
-	routes.Post("/register", Register)
-	routes.Put("/register", ChangePassword)
-	routes.Delete("/users/me", DeleteUser)
-
-	// user info
-	routes.Get("/users/me", GetCurrentUser)
-	routes.Put("/users/me", ModifyUser)
-
-	// chat
-	routes.Get("/chats", ListChats)
-	routes.Post("/chats", AddChat)
-	routes.Put("/chats/:id/regenerate", RetryRecord)
-	routes.Put("/chats/:id", ModifyChat)
-	routes.Delete("/chats/:id", DeleteChat)
-
-	// record
-	routes.Get("/chats/:id/records", ListRecords)
-	routes.Post("/chats/:id/records", AddRecord)
-	routes.Put("/records/:id", ModifyRecord)
-
-	// config
-	routes.Get("/config", GetConfig)
+	account.RegisterRoutes(routes)
+	chat.RegisterRoutes(routes)
+	record.RegisterRoutes(routes)
+	config.RegisterRoutes(routes)
 }

@@ -1,144 +1,20 @@
-package apis
+package record
 
 import (
 	"MOSS_backend/config"
 	. "MOSS_backend/models"
 	. "MOSS_backend/utils"
+	"context"
+	"encoding/json"
+	"fmt"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/websocket/v2"
 	"gorm.io/gorm"
+	"log"
+	"strconv"
+	"strings"
+	"time"
 )
-
-// ListChats
-// @Summary list user's chats
-// @Tags chat
-// @Router /chats [get]
-// @Success 200 {array} models.Chat
-func ListChats(c *fiber.Ctx) error {
-	userID, err := GetUserID(c)
-	if err != nil {
-		return err
-	}
-
-	// delete empty chats
-	err = DB.Where("user_id = ? and count = 0", userID).Delete(&Chat{}).Error
-	if err != nil {
-		return err
-	}
-
-	// get all chats
-	var chats = Chats{}
-	err = DB.Order("updated_at desc").Find(&chats, "user_id = ?", userID).Error
-	if err != nil {
-		return err
-	}
-
-	return c.JSON(chats)
-}
-
-// AddChat
-// @Summary add a chat
-// @Tags chat
-// @Router /chats [post]
-// @Success 201 {object} models.Chat
-func AddChat(c *fiber.Ctx) error {
-	userID, err := GetUserID(c)
-	if err != nil {
-		return err
-	}
-
-	chat := Chat{UserID: userID}
-	err = DB.Create(&chat).Error
-	if err != nil {
-		return err
-	}
-
-	return c.Status(201).JSON(chat)
-}
-
-// ModifyChat
-// @Summary modify a chat
-// @Tags chat
-// @Router /chats/{chat_id} [put]
-// @Param chat_id path int true "chat id"
-// @Param json body ChatModifyModel true "json"
-// @Success 200 {object} models.Chat
-func ModifyChat(c *fiber.Ctx) error {
-	userID, err := GetUserID(c)
-	if err != nil {
-		return err
-	}
-
-	chatID, err := c.ParamsInt("id")
-	if err != nil {
-		return err
-	}
-
-	var body ChatModifyModel
-	err = ValidateBody(c, &body)
-	if err != nil {
-		return err
-	}
-
-	var chat Chat
-	err = DB.Transaction(func(tx *gorm.DB) error {
-		err = tx.Clauses(LockingClause).Take(&chat, chatID).Error
-		if err != nil {
-			return err
-		}
-
-		if chat.UserID != userID {
-			return Forbidden()
-		}
-
-		if body.Name != nil {
-			chat.Name = *body.Name
-		}
-
-		return tx.Save(&chat).Error
-	})
-	if err != nil {
-		return err
-	}
-
-	return c.JSON(chat)
-}
-
-// DeleteChat
-// @Summary delete a chat
-// @Tags chat
-// @Router /chats/{chat_id} [delete]
-// @Param chat_id path int true "chat id"
-// @Success 204
-func DeleteChat(c *fiber.Ctx) error {
-	userID, err := GetUserID(c)
-	if err != nil {
-		return err
-	}
-
-	chatID, err := c.ParamsInt("id")
-	if err != nil {
-		return err
-	}
-
-	var chat Chat
-	err = DB.Transaction(func(tx *gorm.DB) error {
-		err = tx.Clauses(LockingClause).Take(&chat, chatID).Error
-		if err != nil {
-			return err
-		}
-
-		if chat.UserID != userID {
-			return Forbidden()
-		}
-
-		return tx.Delete(&chat).Error
-	})
-	if err != nil {
-		return err
-	}
-
-	return c.SendStatus(204)
-}
 
 // ListRecords
 // @Summary list records of a chat
@@ -181,7 +57,7 @@ func ListRecords(c *fiber.Ctx) error {
 // @Tags record
 // @Router /chats/{chat_id}/records [post]
 // @Param chat_id path int true "chat id"
-// @Param json body RecordCreateModel true "json"
+// @Param json body CreateModel true "json"
 // @Success 201 {object} models.Record
 func AddRecord(c *fiber.Ctx) error {
 	chatID, err := c.ParamsInt("id")
@@ -190,7 +66,7 @@ func AddRecord(c *fiber.Ctx) error {
 	}
 
 	// validate body
-	var body RecordCreateModel
+	var body CreateModel
 	err = ValidateBody(c, &body)
 	if err != nil {
 		return err
@@ -232,7 +108,7 @@ func AddRecord(c *fiber.Ctx) error {
 		}
 
 		// infer request
-		record.Response, record.Duration, err = infer(record.Request, records)
+		record.Response, record.Duration, err = Infer(record.Request, records)
 		if err != nil {
 			return err
 		}
@@ -264,6 +140,206 @@ func AddRecord(c *fiber.Ctx) error {
 	}
 
 	return Serialize(c.Status(201), &record)
+}
+
+// AddRecordAsync
+// @Summary add a record
+// @Tags Websocket
+// @Router /ws/chats/{chat_id}/records [get]
+// @Param chat_id path int true "chat id"
+// @Param json body CreateModel true "json"
+// @Success 201 {object} models.Record
+func AddRecordAsync(c *websocket.Conn) {
+	var (
+		chatID  int
+		userID  int
+		message []byte
+		err     error
+	)
+
+	defer func() {
+		if err != nil {
+			log.Println(err)
+			response := InferResponseModel{Status: -1, Output: err.Error()}
+			if httpError, ok := err.(*HttpError); ok {
+				response.StatusCode = httpError.Code
+			}
+			_ = c.WriteJSON(response)
+		}
+	}()
+
+	procedure := func() error {
+		// get chatID
+		if chatID, err = strconv.Atoi(c.Params("id")); err != nil {
+			return BadRequest("invalid chat_id")
+		}
+
+		// read body
+		if _, message, err = c.ReadMessage(); err != nil {
+			return fmt.Errorf("error receive message: %s\n", err)
+		}
+
+		// unmarshal body
+		var body CreateModel
+		err = json.Unmarshal(message, &body)
+		if err != nil {
+			return fmt.Errorf("error unmarshal text: %s", err)
+		}
+
+		// get user id
+		userID, err = GetUserIDFromWs(c)
+		if err != nil {
+			return Unauthorized()
+		}
+
+		// load chat
+		var chat Chat
+		err = DB.Take(&chat, chatID).Error
+		if err != nil {
+			return err
+		}
+
+		// permission
+		if chat.UserID != userID {
+			return Forbidden()
+		}
+
+		record := Record{
+			ChatID:  chatID,
+			Request: body.Request,
+		}
+
+		// sensitive request check
+		if IsSensitive(record.Request) {
+			record.RequestSensitive = true
+			record.Response = DefaultResponse
+		} else {
+			/* infer */
+
+			// find all records to make dialogs, without sensitive content
+			var records Records
+			err = DB.Find(&records, "chat_id = ? and request_sensitive <> true and response_sensitive <> true", chatID).Error
+			if err != nil {
+				return InternalServerError()
+			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
+			defer cancel()
+
+			var (
+				outputChan    = make(chan InferResponseModel, 100)
+				errChan       = make(chan error)
+				interruptChan = make(chan any)
+				duration      float64
+				outputBuilder strings.Builder
+			)
+
+			// async infer
+			go InferAsync(ctx, record.Request, records, outputChan, errChan, &duration)
+
+			// async interrupt
+			go func() {
+				for {
+					var innerError error
+					if _, message, innerError = c.ReadMessage(); innerError != nil {
+						errChan <- innerError
+						return
+					}
+
+					var interrupt InterruptModel
+					innerError = json.Unmarshal(message, &interrupt)
+					if innerError != nil {
+						errChan <- innerError
+						return
+					}
+
+					if interrupt.Interrupt {
+						close(interruptChan)
+						return
+					}
+				}
+			}()
+
+		MainLoop:
+			for {
+				select {
+				case <-ctx.Done():
+					return InternalServerError("infer timeout")
+				case response, ok := <-outputChan:
+					if !ok {
+						break MainLoop
+					}
+					outputBuilder.WriteString(response.Output)
+
+					// output sensitive check
+					if IsSensitive(outputBuilder.String()) {
+						record.ResponseSensitive = true
+						err = c.WriteJSON(InferResponseModel{
+							Status: -2, // sensitive
+							Output: DefaultResponse,
+						})
+						if err != nil {
+							return fmt.Errorf("write sensitive error: %v", err)
+						}
+					}
+
+					err = c.WriteJSON(response)
+					if err != nil {
+						return fmt.Errorf("write response error: %v", err)
+					}
+				case err = <-errChan:
+					return err
+				case <-interruptChan:
+					err = c.WriteJSON(InferResponseModel{Status: -1, Output: "client interrupt"})
+					if err != nil {
+						return fmt.Errorf("write response error: %v", err)
+					}
+				}
+			}
+
+			// record
+			record.Response = outputBuilder.String()
+			record.Duration = duration
+
+			// infer end
+			err = c.WriteJSON(InferResponseModel{Status: 0})
+			if err != nil {
+				return fmt.Errorf("write end status error: %v", err)
+			}
+		}
+
+		// store into database
+		err = DB.Transaction(func(tx *gorm.DB) error {
+			err = tx.Clauses(LockingClause).Take(&chat, chatID).Error
+			if err != nil {
+				return err
+			}
+
+			err = tx.Create(&record).Error
+			if err != nil {
+				return err
+			}
+
+			if chat.Count == 0 {
+				chat.Name = StripContent(record.Request, config.Config.ChatNameLength)
+			}
+			chat.Count += 1
+			return tx.Save(&chat).Error
+		})
+		if err != nil {
+			return err
+		}
+
+		// return a total record structure
+		err = c.WriteJSON(record)
+		if err != nil {
+			return fmt.Errorf("write record error: %v", err)
+		}
+
+		return nil
+	}
+
+	err = procedure()
 }
 
 // RetryRecord
@@ -326,7 +402,7 @@ func RetryRecord(c *fiber.Ctx) error {
 	}
 
 	// infer request
-	record.Response, record.Duration, err = infer(record.Request, records)
+	record.Response, record.Duration, err = Infer(record.Request, records)
 	if err != nil {
 		return err
 	}
@@ -365,7 +441,7 @@ func RetryRecord(c *fiber.Ctx) error {
 // @Tags record
 // @Router /records/{record_id} [put]
 // @Param record_id path int true "record id"
-// @Param json body RecordModifyModel true "json"
+// @Param json body ModifyModel true "json"
 // @Success 201 {object} models.Record
 func ModifyRecord(c *fiber.Ctx) error {
 	recordID, err := c.ParamsInt("id")
@@ -373,7 +449,7 @@ func ModifyRecord(c *fiber.Ctx) error {
 		return err
 	}
 
-	var body RecordModifyModel
+	var body ModifyModel
 	err = ValidateBody(c, &body)
 	if err != nil {
 		return err

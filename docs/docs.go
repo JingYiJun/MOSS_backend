@@ -92,7 +92,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/apis.ChatModifyModel"
+                            "$ref": "#/definitions/chat.ModifyModel"
                         }
                     }
                 ],
@@ -172,7 +172,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/apis.RecordCreateModel"
+                            "$ref": "#/definitions/record.CreateModel"
                         }
                     }
                 ],
@@ -224,7 +224,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/apis.ConfigResponse"
+                            "$ref": "#/definitions/config.Response"
                         }
                     }
                 }
@@ -250,7 +250,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/apis.LoginRequest"
+                            "$ref": "#/definitions/account.LoginRequest"
                         }
                     }
                 ],
@@ -258,7 +258,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/apis.TokenResponse"
+                            "$ref": "#/definitions/account.TokenResponse"
                         }
                     },
                     "400": {
@@ -322,7 +322,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/apis.RecordModifyModel"
+                            "$ref": "#/definitions/record.ModifyModel"
                         }
                     }
                 ],
@@ -350,7 +350,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/apis.TokenResponse"
+                            "$ref": "#/definitions/account.TokenResponse"
                         }
                     }
                 }
@@ -376,7 +376,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/apis.RegisterRequest"
+                            "$ref": "#/definitions/account.RegisterRequest"
                         }
                     }
                 ],
@@ -384,7 +384,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/apis.TokenResponse"
+                            "$ref": "#/definitions/account.TokenResponse"
                         }
                     },
                     "400": {
@@ -420,7 +420,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/apis.RegisterRequest"
+                            "$ref": "#/definitions/account.RegisterRequest"
                         }
                     }
                 ],
@@ -428,7 +428,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/apis.TokenResponse"
+                            "$ref": "#/definitions/account.TokenResponse"
                         }
                     },
                     "400": {
@@ -491,7 +491,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/apis.ModifyUserRequest"
+                            "$ref": "#/definitions/account.ModifyUserRequest"
                         }
                     }
                 ],
@@ -523,7 +523,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/apis.LoginRequest"
+                            "$ref": "#/definitions/account.LoginRequest"
                         }
                     }
                 ],
@@ -583,7 +583,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/apis.VerifyResponse"
+                            "$ref": "#/definitions/account.VerifyResponse"
                         }
                     },
                     "400": {
@@ -627,7 +627,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/apis.VerifyResponse"
+                            "$ref": "#/definitions/account.VerifyResponse"
                         }
                     },
                     "400": {
@@ -638,30 +638,44 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/ws/chats/{chat_id}/records": {
+            "get": {
+                "tags": [
+                    "Websocket"
+                ],
+                "summary": "add a record",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "chat id",
+                        "name": "chat_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "json",
+                        "name": "json",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/record.CreateModel"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.Record"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
-        "apis.ChatModifyModel": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "minLength": 1
-                }
-            }
-        },
-        "apis.ConfigResponse": {
-            "type": "object",
-            "properties": {
-                "invite_required": {
-                    "type": "boolean"
-                },
-                "region": {
-                    "type": "string"
-                }
-            }
-        },
-        "apis.LoginRequest": {
+        "account.LoginRequest": {
             "type": "object",
             "properties": {
                 "email": {
@@ -677,7 +691,7 @@ const docTemplate = `{
                 }
             }
         },
-        "apis.ModifyUserRequest": {
+        "account.ModifyUserRequest": {
             "type": "object",
             "properties": {
                 "email": {
@@ -701,35 +715,7 @@ const docTemplate = `{
                 }
             }
         },
-        "apis.RecordCreateModel": {
-            "type": "object",
-            "required": [
-                "request"
-            ],
-            "properties": {
-                "request": {
-                    "type": "string"
-                }
-            }
-        },
-        "apis.RecordModifyModel": {
-            "type": "object",
-            "properties": {
-                "feedback": {
-                    "type": "string"
-                },
-                "like": {
-                    "description": "1 like, -1 dislike, 0 reset",
-                    "type": "integer",
-                    "enum": [
-                        1,
-                        0,
-                        -1
-                    ]
-                }
-            }
-        },
-        "apis.RegisterRequest": {
+        "account.RegisterRequest": {
             "type": "object",
             "properties": {
                 "email": {
@@ -754,7 +740,7 @@ const docTemplate = `{
                 }
             }
         },
-        "apis.TokenResponse": {
+        "account.TokenResponse": {
             "type": "object",
             "properties": {
                 "access": {
@@ -768,7 +754,7 @@ const docTemplate = `{
                 }
             }
         },
-        "apis.VerifyResponse": {
+        "account.VerifyResponse": {
             "type": "object",
             "properties": {
                 "message": {
@@ -780,6 +766,26 @@ const docTemplate = `{
                         "register",
                         "reset"
                     ]
+                }
+            }
+        },
+        "chat.ModifyModel": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "minLength": 1
+                }
+            }
+        },
+        "config.Response": {
+            "type": "object",
+            "properties": {
+                "invite_required": {
+                    "type": "boolean"
+                },
+                "region": {
+                    "type": "string"
                 }
             }
         },
@@ -843,8 +849,14 @@ const docTemplate = `{
                 "request": {
                     "type": "string"
                 },
+                "request_sensitive": {
+                    "type": "boolean"
+                },
                 "response": {
                     "type": "string"
+                },
+                "response_sensitive": {
+                    "type": "boolean"
                 }
             }
         },
@@ -877,6 +889,34 @@ const docTemplate = `{
                 },
                 "share_consent": {
                     "type": "boolean"
+                }
+            }
+        },
+        "record.CreateModel": {
+            "type": "object",
+            "required": [
+                "request"
+            ],
+            "properties": {
+                "request": {
+                    "type": "string"
+                }
+            }
+        },
+        "record.ModifyModel": {
+            "type": "object",
+            "properties": {
+                "feedback": {
+                    "type": "string"
+                },
+                "like": {
+                    "description": "1 like, -1 dislike, 0 reset",
+                    "type": "integer",
+                    "enum": [
+                        1,
+                        0,
+                        -1
+                    ]
                 }
             }
         },

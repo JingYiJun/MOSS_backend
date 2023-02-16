@@ -20,7 +20,8 @@ var Config struct {
 	UniSignature  string `env:"UNI_SIGNATURE" envDefault:"fastnlp"`
 	UniTemplateID string `env:"UNI_TEMPLATE_ID,required"`
 
-	InferenceUrl string `env:"INFERENCE_URL,required"`
+	InferenceUrl     string `env:"INFERENCE_URL,required"`
+	TestInferenceUrl string `env:"TEST_INFERENCE_URL"`
 	//OldInferenceUrl     string `env:"OLD_INFERENCE_URL,required"`
 	SensitiveCheckToken string `env:"SENSITIVE_CHECK_TOKEN,required"`
 
