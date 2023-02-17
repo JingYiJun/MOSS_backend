@@ -223,7 +223,7 @@ func AddRecordAsync(c *websocket.Conn) {
 				return InternalServerError()
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 			defer cancel()
 
 			var (
@@ -237,7 +237,7 @@ func AddRecordAsync(c *websocket.Conn) {
 			// async infer
 			go InferAsync(ctx, record.Request, records, outputChan, errChan, &duration)
 
-			// async interrupt
+			// async interrupt & heart beat
 			go func() {
 				for {
 					var innerError error
@@ -246,11 +246,15 @@ func AddRecordAsync(c *websocket.Conn) {
 						return
 					}
 
+					if config.Config.Debug {
+						log.Printf("receive from client: %v\n", string(message))
+					}
+
 					var interrupt InterruptModel
 					innerError = json.Unmarshal(message, &interrupt)
 					if innerError != nil {
-						errChan <- innerError
-						return
+						log.Printf("error unmarshal interrupt: %v\n", string(message))
+						continue
 					}
 
 					if interrupt.Interrupt {
