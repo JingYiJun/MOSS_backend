@@ -13,5 +13,5 @@ func RegisterRoutes(routes fiber.Router) {
 	routes.Put("/records/:id", ModifyRecord)
 
 	// infer response
-	routes.Put("/ws/response", websocket.New(ReceiveInferResponse))
+	routes.Get("/ws/response", websocket.New(ReceiveInferResponse))
 }
