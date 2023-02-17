@@ -1,7 +1,6 @@
 package models
 
 import (
-	"MOSS_backend/utils"
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 	"time"
@@ -52,12 +51,23 @@ func (records Records) Preprocess(c *fiber.Ctx) error {
 
 const DefaultResponse = `Sorry, I have nothing to say. Try another topic :)`
 
-func (records Records) ToRecordModel() (recordModel []utils.RecordModel) {
+func (records Records) ToRecordModel() (recordModel []RecordModel) {
 	for _, record := range records {
-		recordModel = append(recordModel, utils.RecordModel{
+		recordModel = append(recordModel, RecordModel{
 			Request:  record.Request,
 			Response: record.Response,
 		})
 	}
 	return
+}
+
+type RecordModel struct {
+	Request  string `json:"request"`
+	Response string `json:"response"`
+}
+
+type Param struct {
+	ID    string
+	Name  string
+	Value float64
 }

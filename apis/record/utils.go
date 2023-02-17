@@ -7,10 +7,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/gofiber/websocket/v2"
 	"github.com/google/uuid"
+	"io"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -34,13 +37,27 @@ func InferAsync(
 	uuidText := uuid.New()
 	ch := make(chan InferResponseModel, 0)
 	InferResponseChannel.Store(uuidText, ch)
+	defer InferResponseChannel.Delete(uuidText)
 
-	data, _ := json.Marshal(map[string]any{"x": formattedText, "uuid": uuidText})
+	request := map[string]any{"x": formattedText, "uuid": uuidText}
 
-	// send infer request
-	_, err := http.Post(config.Config.TestInferenceUrl, "application/json", bytes.NewBuffer(data))
+	// get params
+	var params []Param
+	err := DB.Find(&params).Error
 	if err != nil {
 		errChan <- err
+		return
+	}
+	for _, param := range params {
+		request[param.Name] = param.Value
+	}
+	data, _ := json.Marshal(request)
+
+	// send infer request
+	_, err = http.Post(config.Config.TestInferenceUrl, "application/json", bytes.NewBuffer(data))
+	if err != nil {
+		log.Println(err)
+		errChan <- InternalServerError()
 		return
 	}
 
@@ -56,17 +73,14 @@ func InferAsync(
 			case 1: // ok
 				outputChan <- response
 			case 0: // end
-				InferResponseChannel.Delete(uuidText)
 				close(outputChan)
 				return
 			case -1: // error
-				InferResponseChannel.Delete(uuidText)
-				errChan <- &HttpError{Code: 500, Message: response.Output}
+				errChan <- InternalServerError(response.Output)
 				return
 			}
 		case <-ctx.Done():
-			InferResponseChannel.Delete(uuidText)
-			errChan <- &HttpError{Code: 500, Message: "Internal Server Timeout"}
+			errChan <- InternalServerError("Internal Server Timeout")
 			return
 		}
 	}
@@ -107,4 +121,78 @@ func ReceiveInferResponse(c *websocket.Conn) {
 			log.Printf("invalid uuid: %s\n", inferResponse.UUID)
 		}
 	}
+}
+
+func InferPreprocess(input string, records []RecordModel) (formattedText string) {
+	const prefix = `MOSS is an AI assistant developed by the FudanNLP Lab and Shanghai AI Lab. Below is a conversation between MOSS and human.`
+
+	var builder strings.Builder
+	builder.WriteString(prefix)
+	for _, record := range records {
+		builder.WriteString(fmt.Sprintf(" [Human]: %s<eoh> [MOSS]: %s<eoa>", record.Request, record.Response))
+	}
+	builder.WriteString(fmt.Sprintf(" [Human]: %s<eoh> [MOSS]:", input))
+	return builder.String()
+}
+
+func InferMosec(input string, records []RecordModel) (string, float64, error) {
+	formattedText := InferPreprocess(input, records)
+
+	request := map[string]any{"x": formattedText}
+
+	// get params
+	var params []Param
+	err := DB.Find(&params).Error
+	if err != nil {
+		return "", 0, err
+	}
+	for _, param := range params {
+		request[param.Name] = param.Value
+	}
+	data, _ := json.Marshal(request)
+
+	startTime := time.Now()
+	rsp, err := http.Post(config.Config.InferenceUrl, "application/json", bytes.NewBuffer(data))
+	if err != nil {
+		log.Printf("error post to infer server: %s\n", err)
+		return "", 0, &HttpError{
+			Message: "Internal Server Error",
+			Code:    rsp.StatusCode,
+		}
+	}
+	duration := float64(time.Since(startTime)) / 1000_000_000
+
+	defer func() {
+		_ = rsp.Body.Close()
+	}()
+	data, _ = io.ReadAll(rsp.Body)
+	output := string(data)
+	if rsp.StatusCode != 200 {
+		log.Printf("error response from inference server, status code: %d, output: %v\n", rsp.StatusCode, output)
+		if rsp.StatusCode == 400 {
+			return "", 0, &HttpError{
+				Code:    400,
+				Message: "The maximum context length is exceeded",
+			}
+		}
+		return "", 0, &HttpError{
+			Message: "Internal Server Error",
+			Code:    rsp.StatusCode,
+		}
+	}
+
+	index := strings.LastIndex(output, "[MOSS]:")
+	if index == -1 {
+		log.Printf("error find \"[MOSS]:\" from inference server, output: %v\n", output)
+		return "", 0, &HttpError{
+			Message: "Internal Server Error",
+			Code:    rsp.StatusCode,
+		}
+	}
+	output = output[index+7:]
+	output = strings.Trim(output, " ")
+	output, _ = strings.CutSuffix(output, "<eoa>")
+	output, _ = strings.CutSuffix(output, "<eoh>")
+	output = strings.Trim(output, " ")
+	return output, duration, nil
 }
