@@ -273,6 +273,10 @@ func AddRecordAsync(c *websocket.Conn) {
 						break MainLoop
 					}
 
+					if config.Config.Debug {
+						log.Printf("receive response from output channal: %v\nsensitive checking\n", response.Output)
+					}
+
 					// output sensitive check
 					if IsSensitive(response.Output) {
 						record.ResponseSensitive = true
@@ -283,6 +287,10 @@ func AddRecordAsync(c *websocket.Conn) {
 						if err != nil {
 							return fmt.Errorf("write sensitive error: %v", err)
 						}
+					}
+
+					if config.Config.Debug {
+						log.Printf("not sensitive")
 					}
 
 					err = c.WriteJSON(response)
