@@ -12,7 +12,6 @@ import (
 	"gorm.io/gorm"
 	"log"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -231,7 +230,7 @@ func AddRecordAsync(c *websocket.Conn) {
 				errChan       = make(chan error)
 				interruptChan = make(chan any)
 				duration      float64
-				outputBuilder strings.Builder
+				lastResponse  InferResponseModel
 			)
 
 			// async infer
@@ -273,10 +272,9 @@ func AddRecordAsync(c *websocket.Conn) {
 					if !ok {
 						break MainLoop
 					}
-					outputBuilder.WriteString(response.Output)
 
 					// output sensitive check
-					if IsSensitive(outputBuilder.String()) {
+					if IsSensitive(response.Output) {
 						record.ResponseSensitive = true
 						err = c.WriteJSON(InferResponseModel{
 							Status: -2, // sensitive
@@ -291,6 +289,8 @@ func AddRecordAsync(c *websocket.Conn) {
 					if err != nil {
 						return fmt.Errorf("write response error: %v", err)
 					}
+
+					lastResponse = response
 				case err = <-errChan:
 					return err
 				case <-interruptChan:
@@ -302,7 +302,7 @@ func AddRecordAsync(c *websocket.Conn) {
 			}
 
 			// record
-			record.Response = outputBuilder.String()
+			record.Response = lastResponse.Output
 			record.Duration = duration
 
 			// infer end

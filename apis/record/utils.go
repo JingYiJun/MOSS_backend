@@ -93,7 +93,6 @@ func InferAsync(
 type InferResponseModel struct {
 	Status     int    `json:"status"` // 1 for output, 0 for end, -1 for error, -2 for sensitive
 	StatusCode int    `json:"status_code,omitempty"`
-	Offset     int    `json:"offset,omitempty"` // 第几个字符
 	Output     string `json:"output"`
 }
 
@@ -135,12 +134,18 @@ func ReceiveInferResponse(c *websocket.Conn) {
 			continue
 		}
 
-		// process
+		// process end with 0xfffd
 		runeSlice := []rune(inferResponse.Output)
-		length := len(runeSlice)
-		if length > 0 {
-			inferResponse.Output = string(runeSlice[:length-1])
+		for len(runeSlice) > 0 && runeSlice[len(runeSlice)-1] == 0xfffd {
+			runeSlice = runeSlice[:len(runeSlice)-1]
 		}
+
+		// process output end
+		output := string(runeSlice)
+		output = strings.Trim(output, " ")
+		output, _ = strings.CutSuffix(output, "<eoa>")
+		output, _ = strings.CutSuffix(output, "<eoh>")
+		inferResponse.Output = output
 
 		if config.Config.Debug {
 			log.Printf("recieve output: %v\n", inferResponse.Output)
