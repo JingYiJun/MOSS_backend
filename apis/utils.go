@@ -6,7 +6,9 @@ import (
 )
 
 func infer(input string, records Records) (output string, duration float64, err error) {
-	return InferMosec(input, records.ToRecordModel())
+	var params []Param
+	DB.Find(&params)
+	return InferMosec(input, records.ToRecordModel(), params)
 	//timeNow := time.Now().Unix()
 	//if timeNow%2 == 0 {
 	//	// use triton

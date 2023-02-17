@@ -93,7 +93,7 @@ type Param struct {
 //	}
 //}
 
-func InferMosec(message string, records []RecordModel) (string, float64, error) {
+func InferMosec(message string, records []RecordModel, params []Param) (string, float64, error) {
 	const prefix = `MOSS is an AI assistant developed by the FudanNLP Lab and Shanghai AI Lab. Below is a conversation between MOSS and human.`
 
 	var builder strings.Builder
@@ -104,7 +104,11 @@ func InferMosec(message string, records []RecordModel) (string, float64, error) 
 	builder.WriteString(fmt.Sprintf(" [Human]: %s<eoh> [MOSS]:", message))
 	input := builder.String()
 
-	data, _ := json.Marshal(map[string]any{"x": input})
+	request := map[string]any{"x": input}
+	for _, param := range params {
+		request[param.Name] = param.Value
+	}
+	data, _ := json.Marshal(request)
 
 	startTime := time.Now()
 	rsp, err := http.Post(config.Config.InferenceUrl, "application/json", bytes.NewBuffer(data))
