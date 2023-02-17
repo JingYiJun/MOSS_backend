@@ -46,10 +46,13 @@ func GetUserID(c *fiber.Ctx) (int, error) {
 }
 
 func GetUserIDFromWs(c *websocket.Conn) (int, error) {
-	// get cookie named access
-	token := c.Cookies("access")
+	// get cookie named access or query jwt
+	token := c.Query("jwt")
 	if token == "" {
-		return 0, utils.Unauthorized()
+		token = c.Cookies("access")
+		if token == "" {
+			return 0, utils.Unauthorized()
+		}
 	}
 	// get data
 	data, err := parseJWT(token, false)
