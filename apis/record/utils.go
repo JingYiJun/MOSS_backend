@@ -53,6 +53,10 @@ func InferAsync(
 	}
 	data, _ := json.Marshal(request)
 
+	if config.Config.Debug {
+		log.Printf("send infer request: %v\n", string(data))
+	}
+
 	// send infer request
 	_, err = http.Post(config.Config.TestInferenceUrl, "application/json", bytes.NewBuffer(data))
 	if err != nil {
@@ -108,11 +112,15 @@ func ReceiveInferResponse(c *websocket.Conn) {
 			break
 		}
 
+		if config.Config.Debug {
+			log.Printf("receive message from inference: %s\n", string(message))
+		}
+
 		var inferResponse InferResponseModel
 		err = json.Unmarshal(message, &inferResponse)
 		if err != nil {
 			log.Printf("error message type: %s\n, error: %s", string(message), err)
-			return
+			continue
 		}
 
 		if ch, ok := InferResponseChannel.Load(inferResponse.UUID); ok {

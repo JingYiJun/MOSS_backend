@@ -7,6 +7,7 @@ import (
 
 var Config struct {
 	Mode     string `env:"MODE" envDefault:"dev"`
+	Debug    bool   `env:"DEBUG" envDefault:"false"`
 	DbUrl    string `env:"DB_URL,required"`
 	KongUrl  string `env:"KONG_URL,required"`
 	RedisUrl string `env:"REDIS_URL"`
