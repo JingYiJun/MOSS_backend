@@ -60,7 +60,7 @@ func GetUserIDFromWs(c *websocket.Conn) (int, error) {
 	if !ok {
 		return 0, utils.Unauthorized()
 	}
-	return id.(int), nil
+	return int(id.(float64)), nil
 }
 
 // parseJWT extracts and parse token
