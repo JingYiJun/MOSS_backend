@@ -135,10 +135,25 @@ func ReceiveInferResponse(c *websocket.Conn) {
 			continue
 		}
 
+		// process
+		runeSlice := []rune(inferResponse.Output)
+		length := len(runeSlice)
+		if length > 0 {
+			inferResponse.Output = string(runeSlice[:length-1])
+		}
+
+		if config.Config.Debug {
+			log.Printf("recieve output: %v\n", inferResponse.Output)
+		}
+
 		if ch, ok := InferResponseChannel.Load(uuidText); ok {
 			ch.(chan InferResponseModel) <- inferResponse
 		} else {
 			log.Printf("invalid uuid: %s\n", uuidText)
+		}
+
+		if inferResponse.Status == 0 {
+			return
 		}
 	}
 }
