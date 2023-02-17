@@ -123,6 +123,11 @@ func ReceiveInferResponse(c *websocket.Conn) {
 			continue
 		}
 
+		// continue if sending a heartbeat package
+		if inferResponse.Status == 2 {
+			continue
+		}
+
 		if ch, ok := InferResponseChannel.Load(inferResponse.UUID); ok {
 			ch.(chan InferResponseModel) <- inferResponse
 		} else {
