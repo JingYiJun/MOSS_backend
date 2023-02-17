@@ -109,6 +109,8 @@ func ReceiveInferResponse(c *websocket.Conn) {
 	if uuidText == "" {
 		_ = c.WriteJSON(InferResponseModel{Status: -1, StatusCode: 400, Output: "Bad Request"})
 		return
+	} else {
+		log.Printf("now uuid: %v", uuidText)
 	}
 
 	for {
@@ -118,7 +120,7 @@ func ReceiveInferResponse(c *websocket.Conn) {
 		}
 
 		if config.Config.Debug {
-			log.Printf("receive message from inference: %s\n", string(message))
+			log.Printf("receive message from inference, uuid: %v: %s\n", uuidText, string(message))
 		}
 
 		var inferResponse InferResponseModel
