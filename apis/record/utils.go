@@ -34,12 +34,12 @@ func InferAsync(
 	formattedText := InferPreprocess(input, records.ToRecordModel())
 
 	// make uuid, store channel into map
-	uuidText := uuid.New()
+	uuidText := strings.ReplaceAll(uuid.NewString(), "-", "")
 	ch := make(chan InferResponseModel, 0)
 	InferResponseChannel.Store(uuidText, ch)
 	defer InferResponseChannel.Delete(uuidText)
 
-	request := map[string]any{"x": formattedText, "uuid": uuidText}
+	request := map[string]any{"x": formattedText, "url": config.Config.CallbackUrl + "?uuid=" + uuidText}
 
 	// get params
 	var params []Param
@@ -93,7 +93,6 @@ func InferAsync(
 type InferResponseModel struct {
 	Status     int    `json:"status"` // 1 for output, 0 for end, -1 for error, -2 for sensitive
 	StatusCode int    `json:"status_code,omitempty"`
-	UUID       string `json:"uuid,omitempty"`   // uuid格式，36位
 	Offset     int    `json:"offset,omitempty"` // 第几个字符
 	Output     string `json:"output"`
 }
@@ -105,6 +104,12 @@ func ReceiveInferResponse(c *websocket.Conn) {
 		message []byte
 		err     error
 	)
+
+	uuidText := c.Query("uuid")
+	if uuidText == "" {
+		_ = c.WriteJSON(InferResponseModel{Status: -1, StatusCode: 400, Output: "Bad Request"})
+		return
+	}
 
 	for {
 		if _, message, err = c.ReadMessage(); err != nil {
@@ -128,10 +133,10 @@ func ReceiveInferResponse(c *websocket.Conn) {
 			continue
 		}
 
-		if ch, ok := InferResponseChannel.Load(inferResponse.UUID); ok {
+		if ch, ok := InferResponseChannel.Load(uuidText); ok {
 			ch.(chan InferResponseModel) <- inferResponse
 		} else {
-			log.Printf("invalid uuid: %s\n", inferResponse.UUID)
+			log.Printf("invalid uuid: %s\n", uuidText)
 		}
 	}
 }

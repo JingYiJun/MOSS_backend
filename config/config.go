@@ -31,6 +31,8 @@ var Config struct {
 
 	AccessExpireTime  int `env:"ACCESS_EXPIRE_TIME" envDefault:"30"`  // 30 minutes
 	RefreshExpireTime int `env:"REFRESH_EXPIRE_TIME" envDefault:"30"` // 30 days
+
+	CallbackUrl string `env:"CALLBACK_URL,required"` // async callback url
 }
 
 func InitConfig() {
