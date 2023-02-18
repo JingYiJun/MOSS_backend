@@ -35,7 +35,7 @@ func InferAsync(
 
 	// make uuid, store channel into map
 	uuidText := strings.ReplaceAll(uuid.NewString(), "-", "")
-	ch := make(chan InferResponseModel, 0)
+	ch := make(chan InferResponseModel, 100)
 	InferResponseChannel.Store(uuidText, ch)
 	defer InferResponseChannel.Delete(uuidText)
 
