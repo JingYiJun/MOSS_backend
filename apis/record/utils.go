@@ -13,6 +13,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -133,6 +134,7 @@ func ReceiveInferResponse(c *websocket.Conn) {
 
 		// continue if sending a heartbeat package
 		if inferResponse.Status == 2 {
+			runtime.Gosched()
 			continue
 		}
 
@@ -167,6 +169,8 @@ func ReceiveInferResponse(c *websocket.Conn) {
 		if inferResponse.Status == 0 {
 			return
 		}
+
+		runtime.Gosched()
 	}
 }
 
