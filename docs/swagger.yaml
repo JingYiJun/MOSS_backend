@@ -1,19 +1,6 @@
 basePath: /api
 definitions:
-  apis.ChatModifyModel:
-    properties:
-      name:
-        minLength: 1
-        type: string
-    type: object
-  apis.ConfigResponse:
-    properties:
-      invite_required:
-        type: boolean
-      region:
-        type: string
-    type: object
-  apis.LoginRequest:
+  account.LoginRequest:
     properties:
       email:
         type: string
@@ -24,7 +11,7 @@ definitions:
         description: phone number in e164 mode
         type: string
     type: object
-  apis.ModifyUserRequest:
+  account.ModifyUserRequest:
     properties:
       email:
         type: string
@@ -41,26 +28,7 @@ definitions:
         minLength: 6
         type: string
     type: object
-  apis.RecordCreateModel:
-    properties:
-      request:
-        type: string
-    required:
-    - request
-    type: object
-  apis.RecordModifyModel:
-    properties:
-      feedback:
-        type: string
-      like:
-        description: 1 like, -1 dislike, 0 reset
-        enum:
-        - 1
-        - 0
-        - -1
-        type: integer
-    type: object
-  apis.RegisterRequest:
+  account.RegisterRequest:
     properties:
       email:
         type: string
@@ -78,7 +46,7 @@ definitions:
         minLength: 6
         type: string
     type: object
-  apis.TokenResponse:
+  account.TokenResponse:
     properties:
       access:
         type: string
@@ -87,7 +55,7 @@ definitions:
       refresh:
         type: string
     type: object
-  apis.VerifyResponse:
+  account.VerifyResponse:
     properties:
       message:
         type: string
@@ -95,6 +63,19 @@ definitions:
         enum:
         - register
         - reset
+        type: string
+    type: object
+  chat.ModifyModel:
+    properties:
+      name:
+        minLength: 1
+        type: string
+    type: object
+  config.Response:
+    properties:
+      invite_required:
+        type: boolean
+      region:
         type: string
     type: object
   models.Chat:
@@ -138,8 +119,12 @@ definitions:
         type: integer
       request:
         type: string
+      request_sensitive:
+        type: boolean
       response:
         type: string
+      response_sensitive:
+        type: boolean
     type: object
   models.User:
     properties:
@@ -161,6 +146,25 @@ definitions:
         type: string
       share_consent:
         type: boolean
+    type: object
+  record.CreateModel:
+    properties:
+      request:
+        type: string
+    required:
+    - request
+    type: object
+  record.ModifyModel:
+    properties:
+      feedback:
+        type: string
+      like:
+        description: 1 like, -1 dislike, 0 reset
+        enum:
+        - 1
+        - 0
+        - -1
+        type: integer
     type: object
   utils.MessageResponse:
     properties:
@@ -237,7 +241,7 @@ paths:
         name: json
         required: true
         schema:
-          $ref: '#/definitions/apis.ChatModifyModel'
+          $ref: '#/definitions/chat.ModifyModel'
       responses:
         "200":
           description: OK
@@ -276,7 +280,7 @@ paths:
         name: json
         required: true
         schema:
-          $ref: '#/definitions/apis.RecordCreateModel'
+          $ref: '#/definitions/record.CreateModel'
       responses:
         "201":
           description: Created
@@ -309,7 +313,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/apis.ConfigResponse'
+            $ref: '#/definitions/config.Response'
       summary: get global config
       tags:
       - Config
@@ -324,14 +328,14 @@ paths:
         name: json
         required: true
         schema:
-          $ref: '#/definitions/apis.LoginRequest'
+          $ref: '#/definitions/account.LoginRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/apis.TokenResponse'
+            $ref: '#/definitions/account.TokenResponse'
         "400":
           description: Bad Request
           schema:
@@ -374,7 +378,7 @@ paths:
         name: json
         required: true
         schema:
-          $ref: '#/definitions/apis.RecordModifyModel'
+          $ref: '#/definitions/record.ModifyModel'
       responses:
         "201":
           description: Created
@@ -392,7 +396,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/apis.TokenResponse'
+            $ref: '#/definitions/account.TokenResponse'
       summary: Refresh jwt token
       tags:
       - token
@@ -407,14 +411,14 @@ paths:
         name: json
         required: true
         schema:
-          $ref: '#/definitions/apis.RegisterRequest'
+          $ref: '#/definitions/account.RegisterRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/apis.TokenResponse'
+            $ref: '#/definitions/account.TokenResponse'
         "400":
           description: 验证码错误、用户已注册
           schema:
@@ -436,14 +440,14 @@ paths:
         name: json
         required: true
         schema:
-          $ref: '#/definitions/apis.RegisterRequest'
+          $ref: '#/definitions/account.RegisterRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/apis.TokenResponse'
+            $ref: '#/definitions/account.TokenResponse'
         "400":
           description: 验证码错误
           schema:
@@ -464,7 +468,7 @@ paths:
         name: json
         required: true
         schema:
-          $ref: '#/definitions/apis.LoginRequest'
+          $ref: '#/definitions/account.LoginRequest'
       responses:
         "204":
           description: No Content
@@ -509,7 +513,7 @@ paths:
         name: json
         required: true
         schema:
-          $ref: '#/definitions/apis.ModifyUserRequest'
+          $ref: '#/definitions/account.ModifyUserRequest'
       produces:
       - application/json
       responses:
@@ -544,7 +548,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/apis.VerifyResponse'
+            $ref: '#/definitions/account.VerifyResponse'
         "400":
           description: 已注册“
           schema:
@@ -573,7 +577,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/apis.VerifyResponse'
+            $ref: '#/definitions/account.VerifyResponse'
         "400":
           description: 已注册“
           schema:
@@ -581,4 +585,42 @@ paths:
       summary: verify with phone in query
       tags:
       - account
+  /ws/chats/{chat_id}/records:
+    get:
+      parameters:
+      - description: chat id
+        in: path
+        name: chat_id
+        required: true
+        type: integer
+      - description: json
+        in: body
+        name: json
+        required: true
+        schema:
+          $ref: '#/definitions/record.CreateModel'
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Record'
+      summary: add a record
+      tags:
+      - Websocket
+  /ws/chats/{chat_id}/regenerate:
+    get:
+      parameters:
+      - description: chat id
+        in: path
+        name: chat_id
+        required: true
+        type: integer
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Record'
+      summary: regenerate a record
+      tags:
+      - Websocket
 swagger: "2.0"

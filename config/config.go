@@ -7,6 +7,7 @@ import (
 
 var Config struct {
 	Mode     string `env:"MODE" envDefault:"dev"`
+	Debug    bool   `env:"DEBUG" envDefault:"false"`
 	DbUrl    string `env:"DB_URL,required"`
 	KongUrl  string `env:"KONG_URL,required"`
 	RedisUrl string `env:"REDIS_URL"`
@@ -20,12 +21,16 @@ var Config struct {
 	UniSignature  string `env:"UNI_SIGNATURE" envDefault:"fastnlp"`
 	UniTemplateID string `env:"UNI_TEMPLATE_ID,required"`
 
-	InferenceUrl string `env:"INFERENCE_URL,required"`
-	//OldInferenceUrl     string `env:"OLD_INFERENCE_URL,required"`
+	InferenceUrl        string `env:"INFERENCE_URL,required"`
 	SensitiveCheckToken string `env:"SENSITIVE_CHECK_TOKEN,required"`
 
 	VerificationCodeExpires int `env:"VERIFICATION_CODE_EXPIRES" envDefault:"10"`
 	ChatNameLength          int `env:"CHAT_NAME_LENGTH" envDefault:"30"`
+
+	AccessExpireTime  int `env:"ACCESS_EXPIRE_TIME" envDefault:"30"`  // 30 minutes
+	RefreshExpireTime int `env:"REFRESH_EXPIRE_TIME" envDefault:"30"` // 30 days
+
+	CallbackUrl string `env:"CALLBACK_URL,required"` // async callback url
 }
 
 func InitConfig() {

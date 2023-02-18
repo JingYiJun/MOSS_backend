@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/websocket/v2"
 	"golang.org/x/exp/slices"
 	"gorm.io/gorm"
 	"strconv"
@@ -44,10 +45,35 @@ func GetUserID(c *fiber.Ctx) (int, error) {
 	return id, nil
 }
 
+func GetUserIDFromWs(c *websocket.Conn) (int, error) {
+	// get cookie named access or query jwt
+	token := c.Query("jwt")
+	if token == "" {
+		token = c.Cookies("access")
+		if token == "" {
+			return 0, utils.Unauthorized()
+		}
+	}
+	// get data
+	data, err := parseJWT(token, false)
+	if err != nil {
+		return 0, err
+	}
+	id, ok := data["id"] // get id
+	if !ok {
+		return 0, utils.Unauthorized()
+	}
+	return int(id.(float64)), nil
+}
+
 // parseJWT extracts and parse token
-func parseJWT(token string) (Map, error) {
+func parseJWT(token string, bearer bool) (Map, error) {
 	if len(token) < 7 {
 		return nil, errors.New("bearer token required")
+	}
+
+	if bearer {
+		token = token[7:]
 	}
 
 	payloads := strings.SplitN(token[7:], ".", 3) // extract "Bearer "
@@ -78,7 +104,7 @@ func GetUserByRefreshToken(c *fiber.Ctx) (*User, error) {
 		tokenString = c.Cookies("refresh")
 	}
 
-	payload, err := parseJWT(tokenString)
+	payload, err := parseJWT(tokenString, true)
 	if err != nil {
 		return nil, err
 	}

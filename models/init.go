@@ -2,7 +2,6 @@ package models
 
 import (
 	"MOSS_backend/config"
-	"MOSS_backend/utils"
 	"errors"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/sqlite"
@@ -84,9 +83,9 @@ func InitDB() {
 		Chat{},
 		Record{},
 		ActiveStatus{},
-		utils.Param{},
 		Config{},
 		InviteCode{},
+		Param{},
 	)
 	if err != nil {
 		panic(err)

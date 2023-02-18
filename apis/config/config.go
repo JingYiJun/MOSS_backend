@@ -1,4 +1,4 @@
-package apis
+package config
 
 import (
 	. "MOSS_backend/models"
@@ -11,7 +11,7 @@ import (
 // @Tags Config
 // @Produce json
 // @Router /config [get]
-// @Success 200 {object} ConfigResponse
+// @Success 200 {object} Response
 func GetConfig(c *fiber.Ctx) error {
 	var configObject Config
 	err := DB.First(&configObject).Error
@@ -30,7 +30,7 @@ func GetConfig(c *fiber.Ctx) error {
 		region = "global"
 	}
 
-	return c.JSON(ConfigResponse{
+	return c.JSON(Response{
 		Region:         region,
 		InviteRequired: configObject.InviteRequired,
 	})

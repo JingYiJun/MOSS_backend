@@ -1,0 +1,305 @@
+package record
+
+import (
+	"MOSS_backend/config"
+	. "MOSS_backend/models"
+	. "MOSS_backend/utils"
+	"encoding/json"
+	"fmt"
+	"github.com/gofiber/websocket/v2"
+	"gorm.io/gorm"
+	"log"
+	"strconv"
+)
+
+// AddRecordAsync
+// @Summary add a record
+// @Tags Websocket
+// @Router /ws/chats/{chat_id}/records [get]
+// @Param chat_id path int true "chat id"
+// @Param json body CreateModel true "json"
+// @Success 201 {object} models.Record
+func AddRecordAsync(c *websocket.Conn) {
+	var (
+		chatID  int
+		userID  int
+		message []byte
+		err     error
+	)
+
+	defer func() {
+		if err != nil {
+			log.Println(err)
+			response := InferResponseModel{Status: -1, Output: err.Error()}
+			if httpError, ok := err.(*HttpError); ok {
+				response.StatusCode = httpError.Code
+			}
+			_ = c.WriteJSON(response)
+		}
+	}()
+
+	procedure := func() error {
+		// get chatID
+		if chatID, err = strconv.Atoi(c.Params("id")); err != nil {
+			return BadRequest("invalid chat_id")
+		}
+
+		// read body
+		if _, message, err = c.ReadMessage(); err != nil {
+			return fmt.Errorf("error receive message: %s\n", err)
+		}
+
+		// unmarshal body
+		var body CreateModel
+		err = json.Unmarshal(message, &body)
+		if err != nil {
+			return fmt.Errorf("error unmarshal text: %s", err)
+		}
+
+		// get user id
+		userID, err = GetUserIDFromWs(c)
+		if err != nil {
+			return Unauthorized()
+		}
+
+		// load chat
+		var chat Chat
+		err = DB.Take(&chat, chatID).Error
+		if err != nil {
+			return err
+		}
+
+		// permission
+		if chat.UserID != userID {
+			return Forbidden()
+		}
+
+		record := Record{
+			ChatID:  chatID,
+			Request: body.Request,
+		}
+
+		// sensitive request check
+		if IsSensitive(record.Request) {
+			record.RequestSensitive = true
+			record.Response = DefaultResponse
+
+			err = c.WriteJSON(InferResponseModel{
+				Status: -2, // sensitive
+				Output: DefaultResponse,
+			})
+			if err != nil {
+				return fmt.Errorf("write sensitive error: %v", err)
+			}
+		} else {
+			/* infer */
+
+			// find all records to make dialogs, without sensitive content
+			var records Records
+			err = DB.Find(&records, "chat_id = ? and request_sensitive <> true and response_sensitive <> true", chatID).Error
+			if err != nil {
+				return InternalServerError()
+			}
+
+			var interruptChan = make(chan any)
+
+			// async interrupt & heart beat
+			go interrupt(c, interruptChan)
+
+			// async infer
+			err = InferAsync(c, record.Request, records, &record, interruptChan)
+			if err != nil {
+				return err
+			}
+		}
+
+		// store into database
+		err = DB.Transaction(func(tx *gorm.DB) error {
+			err = tx.Clauses(LockingClause).Take(&chat, chatID).Error
+			if err != nil {
+				return err
+			}
+
+			err = tx.Create(&record).Error
+			if err != nil {
+				return err
+			}
+
+			if chat.Count == 0 {
+				chat.Name = StripContent(record.Request, config.Config.ChatNameLength)
+			}
+			chat.Count += 1
+			return tx.Save(&chat).Error
+		})
+		if err != nil {
+			return err
+		}
+
+		// return a total record structure
+		err = c.WriteJSON(record)
+		if err != nil {
+			return fmt.Errorf("write record error: %v", err)
+		}
+
+		return nil
+	}
+
+	err = procedure()
+}
+
+// RegenerateAsync
+// @Summary regenerate a record
+// @Tags Websocket
+// @Router /ws/chats/{chat_id}/regenerate [get]
+// @Param chat_id path int true "chat id"
+// @Success 201 {object} models.Record
+func RegenerateAsync(c *websocket.Conn) {
+	var (
+		chatID int
+		userID int
+		err    error
+	)
+
+	defer func() {
+		if err != nil {
+			log.Println(err)
+			response := InferResponseModel{Status: -1, Output: err.Error()}
+			if httpError, ok := err.(*HttpError); ok {
+				response.StatusCode = httpError.Code
+			}
+			_ = c.WriteJSON(response)
+		}
+	}()
+
+	procedure := func() error {
+		// get chatID
+		if chatID, err = strconv.Atoi(c.Params("id")); err != nil {
+			return BadRequest("invalid chat_id")
+		}
+
+		// get user id
+		userID, err = GetUserIDFromWs(c)
+		if err != nil {
+			return Unauthorized()
+		}
+
+		// load chat
+		var chat Chat
+		err = DB.Take(&chat, chatID).Error
+		if err != nil {
+			return err
+		}
+
+		// permission
+		if chat.UserID != userID {
+			return Forbidden()
+		}
+
+		// get the latest record
+		var oldRecord Record
+		err = DB.Last(&oldRecord, "chat_id = ?", chatID).Error
+		if err != nil {
+			return err
+		}
+
+		if oldRecord.RequestSensitive {
+			err = c.WriteJSON(InferResponseModel{
+				Status: -2, // sensitive
+				Output: DefaultResponse,
+			})
+			if err != nil {
+				return fmt.Errorf("write sensitive error: %v", err)
+			}
+		}
+
+		record := Record{
+			ChatID:  chatID,
+			Request: oldRecord.Request,
+		}
+
+		/* infer */
+
+		// find all records to make dialogs, without sensitive content
+		var records Records
+		err = DB.Find(&records, "chat_id = ? and request_sensitive <> true and response_sensitive <> true", chatID).Error
+		if err != nil {
+			return InternalServerError()
+		}
+
+		// remove the latest record
+		if len(records) > 0 {
+			records = records[0 : len(records)-1]
+		}
+
+		var interruptChan = make(chan any)
+
+		// async interrupt & heart beat
+		go interrupt(c, interruptChan)
+
+		// async infer
+		err = InferAsync(c, record.Request, records, &record, interruptChan)
+		if err != nil {
+			return err
+		}
+
+		// store into database
+		err = DB.Transaction(func(tx *gorm.DB) error {
+			err = tx.Clauses(LockingClause).Take(&chat, chatID).Error
+			if err != nil {
+				return err
+			}
+
+			err = tx.Delete(&oldRecord).Error
+			if err != nil {
+				return err
+			}
+
+			err = tx.Create(&record).Error
+			if err != nil {
+				return err
+			}
+
+			return tx.Save(&chat).Error
+		})
+		if err != nil {
+			return err
+		}
+
+		// return a total record structure
+		err = c.WriteJSON(record)
+		if err != nil {
+			return fmt.Errorf("write record error: %v", err)
+		}
+
+		return nil
+	}
+
+	err = procedure()
+}
+
+func interrupt(c *websocket.Conn, interruptChan chan any) {
+	var message []byte
+	var err error
+	for {
+
+		if _, message, err = c.ReadMessage(); err != nil {
+			return
+		}
+
+		if config.Config.Debug {
+			log.Printf("receive from client: %v\n", string(message))
+		}
+
+		var interruptModel InterruptModel
+		err = json.Unmarshal(message, &interruptModel)
+		if err != nil {
+			log.Printf("error unmarshal interrupt: %v\n", string(message))
+			continue
+		}
+
+		if interruptModel.Interrupt {
+			close(interruptChan)
+			return
+		}
+	}
+}

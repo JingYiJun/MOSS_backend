@@ -1,4 +1,4 @@
-package apis
+package account
 
 import (
 	. "MOSS_backend/models"

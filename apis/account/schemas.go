@@ -1,4 +1,4 @@
-package apis
+package account
 
 /* account */
 
@@ -47,30 +47,10 @@ type VerifyResponse struct {
 	Scope   string `json:"scope" enums:"register,reset"`
 }
 
-/* user account */
-
 type ModifyUserRequest struct {
 	Nickname     *string `json:"nickname" validate:"omitempty,min=1"`
 	ShareConsent *bool   `json:"share_consent"`
 	*EmailModel  `validate:"omitempty"`
 	*PhoneModel  `validate:"omitempty"`
 	Verification string `json:"verification" minLength:"6" maxLength:"6" validate:"omitempty,len=6"`
-}
-
-type ChatModifyModel struct {
-	Name *string `json:"name" validate:"omitempty,min=1"`
-}
-
-type RecordCreateModel struct {
-	Request string `json:"request" validate:"required"`
-}
-
-type RecordModifyModel struct {
-	Feedback *string `json:"feedback"`
-	Like     *int    `json:"like" validate:"omitempty,oneof=1 0 -1"` // 1 like, -1 dislike, 0 reset
-}
-
-type ConfigResponse struct {
-	Region         string `json:"region"`
-	InviteRequired bool   `json:"invite_required"`
 }

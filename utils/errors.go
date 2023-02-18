@@ -21,6 +21,13 @@ func (e *HttpError) Error() string {
 	return e.Message
 }
 
+func NoStatus(message string) *HttpError {
+	return &HttpError{
+		Code:    0,
+		Message: message,
+	}
+}
+
 func BadRequest(messages ...string) *HttpError {
 	message := "Bad Request"
 	if len(messages) > 0 {
@@ -61,6 +68,17 @@ func NotFound(messages ...string) *HttpError {
 	}
 	return &HttpError{
 		Code:    404,
+		Message: message,
+	}
+}
+
+func InternalServerError(messages ...string) *HttpError {
+	message := "Internal Server Error"
+	if len(messages) > 0 {
+		message = messages[0]
+	}
+	return &HttpError{
+		Code:    500,
 		Message: message,
 	}
 }
