@@ -70,6 +70,10 @@ func InferAsync(
 	for {
 		select {
 		case response := <-ch:
+			if config.Config.Debug {
+				log.Println("receive response from uuid channel")
+				log.Println(response)
+			}
 			switch response.Status {
 			case 1: // ok
 				outputChan <- response
