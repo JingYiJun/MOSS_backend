@@ -51,7 +51,7 @@ func InferAsync(c *websocket.Conn, input string, records Records, newRecord *Rec
 	}
 
 	go func() {
-		_, _ = http.Post(config.Config.TestInferenceUrl, "application/json", bytes.NewBuffer(data))
+		_, _ = http.Post(config.Config.InferenceUrl, "application/json", bytes.NewBuffer(data))
 	}()
 
 	startTime := time.Now()
