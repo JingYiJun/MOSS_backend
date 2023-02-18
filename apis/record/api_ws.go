@@ -4,14 +4,12 @@ import (
 	"MOSS_backend/config"
 	. "MOSS_backend/models"
 	. "MOSS_backend/utils"
-	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/gofiber/websocket/v2"
 	"gorm.io/gorm"
 	"log"
 	"strconv"
-	"time"
 )
 
 // AddRecordAsync
@@ -103,107 +101,15 @@ func AddRecordAsync(c *websocket.Conn) {
 				return InternalServerError()
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-			defer cancel()
-
-			var (
-				outputChan    = make(chan InferResponseModel, 100)
-				errChan       = make(chan error)
-				interruptChan = make(chan any)
-				duration      float64
-				lastResponse  InferResponseModel
-			)
-
-			// async infer
-			go InferAsync(ctx, record.Request, records, outputChan, errChan, &duration)
+			var interruptChan = make(chan any)
 
 			// async interrupt & heart beat
-			go func() {
-				for {
-					var innerError error
-					if _, message, innerError = c.ReadMessage(); innerError != nil {
-						errChan <- innerError
-						return
-					}
+			go interrupt(c, interruptChan)
 
-					if config.Config.Debug {
-						log.Printf("receive from client: %v\n", string(message))
-					}
-
-					var interrupt InterruptModel
-					innerError = json.Unmarshal(message, &interrupt)
-					if innerError != nil {
-						log.Printf("error unmarshal interrupt: %v\n", string(message))
-						continue
-					}
-
-					if interrupt.Interrupt {
-						close(interruptChan)
-						return
-					}
-				}
-			}()
-
-		MainLoop:
-			for {
-				select {
-				case <-ctx.Done():
-					return InternalServerError("infer timeout")
-				case response, ok := <-outputChan:
-					if !ok {
-						// record
-						record.Response = lastResponse.Output
-						record.Duration = duration
-
-						// infer end
-						err = c.WriteJSON(InferResponseModel{Status: 0})
-						if err != nil {
-							return fmt.Errorf("write end status error: %v", err)
-						}
-						break MainLoop
-					}
-
-					if config.Config.Debug {
-						log.Printf("receive response from output channal: %v\nsensitive checking\n", response.Output)
-					}
-
-					if len(response.Output) == len(lastResponse.Output) {
-						continue
-					}
-					lastResponse = response
-
-					// output sensitive check
-					if IsSensitive(response.Output) {
-						record.ResponseSensitive = true
-						err = c.WriteJSON(InferResponseModel{
-							Status: -2, // sensitive
-							Output: DefaultResponse,
-						})
-						if err != nil {
-							return fmt.Errorf("write sensitive error: %v", err)
-						}
-
-						// if sensitive, jump out and record
-						break MainLoop
-					}
-
-					if config.Config.Debug {
-						log.Printf("not sensitive")
-					}
-
-					err = c.WriteJSON(response)
-					if err != nil {
-						return fmt.Errorf("write response error: %v", err)
-					}
-				case err = <-errChan:
-					return err
-				case <-interruptChan:
-					err = c.WriteJSON(InferResponseModel{Status: -1, Output: "client interrupt"})
-					if err != nil {
-						return fmt.Errorf("write response error: %v", err)
-					}
-					return nil
-				}
+			// async infer
+			err = InferAsync(c, record.Request, records, &record, interruptChan)
+			if err != nil {
+				return err
 			}
 		}
 
@@ -249,10 +155,9 @@ func AddRecordAsync(c *websocket.Conn) {
 // @Success 201 {object} models.Record
 func RegenerateAsync(c *websocket.Conn) {
 	var (
-		chatID  int
-		userID  int
-		message []byte
-		err     error
+		chatID int
+		userID int
+		err    error
 	)
 
 	defer func() {
@@ -326,107 +231,15 @@ func RegenerateAsync(c *websocket.Conn) {
 			records = records[0 : len(records)-1]
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-		defer cancel()
-
-		var (
-			outputChan    = make(chan InferResponseModel, 100)
-			errChan       = make(chan error)
-			interruptChan = make(chan any)
-			duration      float64
-			lastResponse  InferResponseModel
-		)
-
-		// async infer
-		go InferAsync(ctx, record.Request, records, outputChan, errChan, &duration)
+		var interruptChan = make(chan any)
 
 		// async interrupt & heart beat
-		go func() {
-			for {
-				var innerError error
-				if _, message, innerError = c.ReadMessage(); innerError != nil {
-					errChan <- innerError
-					return
-				}
+		go interrupt(c, interruptChan)
 
-				if config.Config.Debug {
-					log.Printf("receive from client: %v\n", string(message))
-				}
-
-				var interrupt InterruptModel
-				innerError = json.Unmarshal(message, &interrupt)
-				if innerError != nil {
-					log.Printf("error unmarshal interrupt: %v\n", string(message))
-					continue
-				}
-
-				if interrupt.Interrupt {
-					close(interruptChan)
-					return
-				}
-			}
-		}()
-
-	MainLoop:
-		for {
-			select {
-			case <-ctx.Done():
-				return InternalServerError("infer timeout")
-			case response, ok := <-outputChan:
-				if !ok {
-					// record
-					record.Response = lastResponse.Output
-					record.Duration = duration
-
-					// infer end
-					err = c.WriteJSON(InferResponseModel{Status: 0})
-					if err != nil {
-						return fmt.Errorf("write end status error: %v", err)
-					}
-					break MainLoop
-				}
-
-				if config.Config.Debug {
-					log.Printf("receive response from output channal: %v\nsensitive checking\n", response.Output)
-				}
-
-				if len(response.Output) == len(lastResponse.Output) {
-					continue
-				}
-				lastResponse = response
-
-				// output sensitive check
-				if IsSensitive(response.Output) {
-					record.ResponseSensitive = true
-					err = c.WriteJSON(InferResponseModel{
-						Status: -2, // sensitive
-						Output: DefaultResponse,
-					})
-					if err != nil {
-						return fmt.Errorf("write sensitive error: %v", err)
-					}
-
-					// if sensitive, jump out and record
-					break MainLoop
-				}
-
-				if config.Config.Debug {
-					log.Printf("not sensitive")
-				}
-
-				err = c.WriteJSON(response)
-				if err != nil {
-					return fmt.Errorf("write response error: %v", err)
-				}
-			case err = <-errChan:
-				return err
-			case <-interruptChan:
-				err = c.WriteJSON(InferResponseModel{Status: -1, Output: "client interrupt"})
-				if err != nil {
-					return fmt.Errorf("write response error: %v", err)
-				}
-				return nil
-			}
+		// async infer
+		err = InferAsync(c, record.Request, records, &record, interruptChan)
+		if err != nil {
+			return err
 		}
 
 		// store into database
@@ -462,4 +275,31 @@ func RegenerateAsync(c *websocket.Conn) {
 	}
 
 	err = procedure()
+}
+
+func interrupt(c *websocket.Conn, interruptChan chan any) {
+	var message []byte
+	var err error
+	for {
+
+		if _, message, err = c.ReadMessage(); err != nil {
+			return
+		}
+
+		if config.Config.Debug {
+			log.Printf("receive from client: %v\n", string(message))
+		}
+
+		var interrupt InterruptModel
+		err = json.Unmarshal(message, &interrupt)
+		if err != nil {
+			log.Printf("error unmarshal interrupt: %v\n", string(message))
+			continue
+		}
+
+		if interrupt.Interrupt {
+			close(interruptChan)
+			return
+		}
+	}
 }

@@ -21,6 +21,13 @@ func (e *HttpError) Error() string {
 	return e.Message
 }
 
+func NoStatus(message string) *HttpError {
+	return &HttpError{
+		Code:    0,
+		Message: message,
+	}
+}
+
 func BadRequest(messages ...string) *HttpError {
 	message := "Bad Request"
 	if len(messages) > 0 {

@@ -13,7 +13,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -23,31 +22,24 @@ func Infer(input string, records Records) (output string, duration float64, err 
 	return InferMosec(input, records.ToRecordModel())
 }
 
-func InferAsync(
-	ctx context.Context,
-	input string,
-	records Records,
-	outputChan chan<- InferResponseModel,
-	errChan chan<- error,
-	duration *float64) {
+func InferAsync(c *websocket.Conn, input string, records Records, newRecord *Record, interruptChan chan any) (err error) {
 
 	// get formatted text
 	formattedText := InferPreprocess(input, records.ToRecordModel())
 
 	// make uuid, store channel into map
 	uuidText := strings.ReplaceAll(uuid.NewString(), "-", "")
-	ch := make(chan InferResponseModel, 100)
-	InferResponseChannel.Store(uuidText, ch)
+	outputChan := make(chan InferResponseModel, 100)
+	InferResponseChannel.Store(uuidText, outputChan)
 	defer InferResponseChannel.Delete(uuidText)
 
 	request := map[string]any{"x": formattedText, "url": config.Config.CallbackUrl + "?uuid=" + uuidText}
 
 	// get params
 	var params []Param
-	err := DB.Find(&params).Error
+	err = DB.Find(&params).Error
 	if err != nil {
-		errChan <- err
-		return
+		return err
 	}
 	for _, param := range params {
 		request[param.Name] = param.Value
@@ -62,33 +54,74 @@ func InferAsync(
 	_, err = http.Post(config.Config.TestInferenceUrl, "application/json", bytes.NewBuffer(data))
 	if err != nil {
 		log.Println(err)
-		errChan <- InternalServerError()
-		return
+		return InternalServerError()
 	}
 
 	startTime := time.Now()
 
+	var (
+		lastResponse InferResponseModel
+		ctx, cancel  = context.WithTimeout(context.Background(), 5*time.Minute)
+	)
+	defer cancel()
+
 	for {
 		select {
-		case response := <-ch:
+		case response := <-outputChan:
 			if config.Config.Debug {
-				log.Println("receive response from uuid channel")
+				log.Println("receive response from output channel")
 				log.Println(response)
 			}
 			switch response.Status {
 			case 1: // ok
-				outputChan <- response
+				if config.Config.Debug {
+					log.Printf("receive response from output channal: %v\nsensitive checking\n", response.Output)
+				}
+
+				if len(response.Output) == len(lastResponse.Output) {
+					continue
+				}
+				lastResponse = response
+
+				// output sensitive check
+				if IsSensitive(response.Output) {
+					newRecord.ResponseSensitive = true
+					err = c.WriteJSON(InferResponseModel{
+						Status: -2, // sensitive
+						Output: DefaultResponse,
+					})
+					if err != nil {
+						return fmt.Errorf("write sensitive error: %v", err)
+					}
+
+					// if sensitive, jump out and record
+					return nil
+				}
+
+				if config.Config.Debug {
+					log.Printf("not sensitive")
+				}
+
+				err = c.WriteJSON(response)
+				if err != nil {
+					return fmt.Errorf("write response error: %v", err)
+				}
 			case 0: // end
-				*duration = float64(time.Since(startTime)) / 1000_000_000
-				close(outputChan)
-				return
+				err = c.WriteJSON(InferResponseModel{Status: 0})
+				if err != nil {
+					return fmt.Errorf("write end status error: %v", err)
+				}
+
+				newRecord.Response = lastResponse.Output
+				newRecord.Duration = float64(time.Since(startTime)) / 1000_000_000
+				return nil
 			case -1: // error
-				errChan <- InternalServerError(response.Output)
-				return
+				return InternalServerError(response.Output)
 			}
 		case <-ctx.Done():
-			errChan <- InternalServerError("Internal Server Timeout")
-			return
+			return InternalServerError("Internal Server Timeout")
+		case <-interruptChan:
+			return NoStatus("client interrupt")
 		}
 	}
 }
@@ -134,7 +167,6 @@ func ReceiveInferResponse(c *websocket.Conn) {
 
 		// continue if sending a heartbeat package
 		if inferResponse.Status == 2 {
-			runtime.Gosched()
 			continue
 		}
 
@@ -169,8 +201,6 @@ func ReceiveInferResponse(c *websocket.Conn) {
 		if inferResponse.Status == 0 {
 			return
 		}
-
-		runtime.Gosched()
 	}
 }
 
