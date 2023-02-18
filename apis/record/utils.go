@@ -66,9 +66,6 @@ func InferAsync(
 	}
 
 	startTime := time.Now()
-	defer func() {
-		*duration = float64(time.Since(startTime)) / 1000_000_000
-	}()
 
 	for {
 		select {
@@ -77,6 +74,7 @@ func InferAsync(
 			case 1: // ok
 				outputChan <- response
 			case 0: // end
+				*duration = float64(time.Since(startTime)) / 1000_000_000
 				close(outputChan)
 				return
 			case -1: // error
@@ -143,6 +141,11 @@ func ReceiveInferResponse(c *websocket.Conn) {
 		// process output end
 		output := string(runeSlice)
 		output = strings.Trim(output, " ")
+		output, _ = strings.CutSuffix(output, "<")
+		output, _ = strings.CutSuffix(output, "<e")
+		output, _ = strings.CutSuffix(output, "<eo")
+		output, _ = strings.CutSuffix(output, "<eoa")
+		output, _ = strings.CutSuffix(output, "<eoh")
 		output, _ = strings.CutSuffix(output, "<eoa>")
 		output, _ = strings.CutSuffix(output, "<eoh>")
 		inferResponse.Output = output

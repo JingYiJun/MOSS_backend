@@ -10,6 +10,7 @@ func RegisterRoutes(routes fiber.Router) {
 	routes.Get("/chats/:id/records", ListRecords)
 	routes.Post("/chats/:id/records", AddRecord)
 	routes.Get("/ws/chats/:id/records", websocket.New(AddRecordAsync))
+	routes.Get("/ws/chats/:id/regenerate", websocket.New(RegenerateAsync))
 	routes.Put("/records/:id", ModifyRecord)
 
 	// infer response
