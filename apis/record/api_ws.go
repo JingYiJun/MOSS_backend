@@ -290,14 +290,14 @@ func interrupt(c *websocket.Conn, interruptChan chan any) {
 			log.Printf("receive from client: %v\n", string(message))
 		}
 
-		var interrupt InterruptModel
-		err = json.Unmarshal(message, &interrupt)
+		var interruptModel InterruptModel
+		err = json.Unmarshal(message, &interruptModel)
 		if err != nil {
 			log.Printf("error unmarshal interrupt: %v\n", string(message))
 			continue
 		}
 
-		if interrupt.Interrupt {
+		if interruptModel.Interrupt {
 			close(interruptChan)
 			return
 		}

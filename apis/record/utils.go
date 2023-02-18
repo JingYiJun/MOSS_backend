@@ -50,12 +50,9 @@ func InferAsync(c *websocket.Conn, input string, records Records, newRecord *Rec
 		log.Printf("send infer request: %v\n", string(data))
 	}
 
-	// send infer request
-	_, err = http.Post(config.Config.TestInferenceUrl, "application/json", bytes.NewBuffer(data))
-	if err != nil {
-		log.Println(err)
-		return InternalServerError()
-	}
+	go func() {
+		_, _ = http.Post(config.Config.TestInferenceUrl, "application/json", bytes.NewBuffer(data))
+	}()
 
 	startTime := time.Now()
 
