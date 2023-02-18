@@ -151,6 +151,15 @@ func AddRecordAsync(c *websocket.Conn) {
 					return InternalServerError("infer timeout")
 				case response, ok := <-outputChan:
 					if !ok {
+						// record
+						record.Response = lastResponse.Output
+						record.Duration = duration
+
+						// infer end
+						err = c.WriteJSON(InferResponseModel{Status: 0})
+						if err != nil {
+							return fmt.Errorf("write end status error: %v", err)
+						}
 						break MainLoop
 					}
 
@@ -173,6 +182,9 @@ func AddRecordAsync(c *websocket.Conn) {
 						if err != nil {
 							return fmt.Errorf("write sensitive error: %v", err)
 						}
+
+						// if sensitive, jump out and record
+						break MainLoop
 					}
 
 					if config.Config.Debug {
@@ -192,16 +204,6 @@ func AddRecordAsync(c *websocket.Conn) {
 					}
 					return nil
 				}
-			}
-
-			// record
-			record.Response = lastResponse.Output
-			record.Duration = duration
-
-			// infer end
-			err = c.WriteJSON(InferResponseModel{Status: 0})
-			if err != nil {
-				return fmt.Errorf("write end status error: %v", err)
 			}
 		}
 
@@ -372,6 +374,15 @@ func RegenerateAsync(c *websocket.Conn) {
 				return InternalServerError("infer timeout")
 			case response, ok := <-outputChan:
 				if !ok {
+					// record
+					record.Response = lastResponse.Output
+					record.Duration = duration
+
+					// infer end
+					err = c.WriteJSON(InferResponseModel{Status: 0})
+					if err != nil {
+						return fmt.Errorf("write end status error: %v", err)
+					}
 					break MainLoop
 				}
 
@@ -394,6 +405,9 @@ func RegenerateAsync(c *websocket.Conn) {
 					if err != nil {
 						return fmt.Errorf("write sensitive error: %v", err)
 					}
+
+					// if sensitive, jump out and record
+					break MainLoop
 				}
 
 				if config.Config.Debug {
@@ -413,16 +427,6 @@ func RegenerateAsync(c *websocket.Conn) {
 				}
 				return nil
 			}
-		}
-
-		// record
-		record.Response = lastResponse.Output
-		record.Duration = duration
-
-		// infer end
-		err = c.WriteJSON(InferResponseModel{Status: 0})
-		if err != nil {
-			return fmt.Errorf("write end status error: %v", err)
 		}
 
 		// store into database

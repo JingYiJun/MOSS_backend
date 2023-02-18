@@ -672,6 +672,31 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/ws/chats/{chat_id}/regenerate": {
+            "get": {
+                "tags": [
+                    "Websocket"
+                ],
+                "summary": "regenerate a record",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "chat id",
+                        "name": "chat_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.Record"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {

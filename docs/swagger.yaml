@@ -607,4 +607,20 @@ paths:
       summary: add a record
       tags:
       - Websocket
+  /ws/chats/{chat_id}/regenerate:
+    get:
+      parameters:
+      - description: chat id
+        in: path
+        name: chat_id
+        required: true
+        type: integer
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Record'
+      summary: regenerate a record
+      tags:
+      - Websocket
 swagger: "2.0"
