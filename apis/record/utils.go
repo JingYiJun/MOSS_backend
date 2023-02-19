@@ -57,11 +57,11 @@ func InferAsync(c *websocket.Conn, input string, records Records, newRecord *Rec
 
 	startTime := time.Now()
 
-	var (
-		lastResponse InferResponseModel
-		ctx, cancel  = context.WithTimeout(context.Background(), 5*time.Minute)
-	)
+	var ctx, cancel = context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
+
+	var nowOutput string
+	var detectedOutput string
 
 	for {
 		select {
@@ -76,16 +76,18 @@ func InferAsync(c *websocket.Conn, input string, records Records, newRecord *Rec
 					log.Printf("receive response from output channal: %v\nsensitive checking\n", response.Output)
 				}
 
-				if len(response.Output) == len(lastResponse.Output) {
+				nowOutput = response.Output
+				before, _, found := CutLastAny(nowOutput, ",.，。？！")
+				if !found || before == detectedOutput {
 					continue
 				}
-				lastResponse = response
+				detectedOutput = before
 
 				// output sensitive check
-				if sensitive.IsSensitive(response.Output) {
+				if sensitive.IsSensitive(detectedOutput) {
 					newRecord.ResponseSensitive = true
 					// log new record
-					newRecord.Response = lastResponse.Output
+					newRecord.Response = detectedOutput
 					newRecord.Duration = float64(time.Since(startTime)) / 1000_000_000
 					err = c.WriteJSON(InferResponseModel{
 						Status: -2, // sensitive
@@ -99,21 +101,46 @@ func InferAsync(c *websocket.Conn, input string, records Records, newRecord *Rec
 					return nil
 				}
 
-				if config.Config.Debug {
-					log.Printf("not sensitive")
-				}
-
-				err = c.WriteJSON(response)
+				err = c.WriteJSON(InferResponseModel{
+					Status: 1,
+					Output: detectedOutput,
+				})
 				if err != nil {
 					return fmt.Errorf("write response error: %v", err)
 				}
 			case 0: // end
+				if nowOutput != detectedOutput {
+					if sensitive.IsSensitive(nowOutput) {
+						newRecord.ResponseSensitive = true
+						// log new record
+						newRecord.Response = nowOutput
+						newRecord.Duration = float64(time.Since(startTime)) / 1000_000_000
+						err = c.WriteJSON(InferResponseModel{
+							Status: -2, // sensitive
+							Output: DefaultResponse,
+						})
+						if err != nil {
+							return fmt.Errorf("write sensitive error: %v", err)
+						}
+
+						// if sensitive, jump out and record
+						return nil
+					}
+
+					err = c.WriteJSON(InferResponseModel{
+						Status: 1,
+						Output: nowOutput,
+					})
+					if err != nil {
+						return fmt.Errorf("write response error: %v", err)
+					}
+				}
 				err = c.WriteJSON(InferResponseModel{Status: 0})
 				if err != nil {
 					return fmt.Errorf("write end status error: %v", err)
 				}
 
-				newRecord.Response = lastResponse.Output
+				newRecord.Response = nowOutput
 				newRecord.Duration = float64(time.Since(startTime)) / 1000_000_000
 				return nil
 			case -1: // error
