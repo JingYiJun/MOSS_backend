@@ -21,6 +21,7 @@ import (
 	"MOSS_backend/middlewares"
 	"MOSS_backend/models"
 	"MOSS_backend/utils"
+	"MOSS_backend/utils/auth"
 	"MOSS_backend/utils/kong"
 	"github.com/gofiber/fiber/v2"
 	"github.com/robfig/cron/v3"
@@ -33,6 +34,7 @@ import (
 func main() {
 	config.InitConfig()
 	models.InitDB()
+	auth.InitCache()
 
 	// connect to kong
 	err := kong.Ping()
