@@ -84,6 +84,9 @@ func InferAsync(c *websocket.Conn, input string, records Records, newRecord *Rec
 				// output sensitive check
 				if sensitive.IsSensitive(response.Output) {
 					newRecord.ResponseSensitive = true
+					// log new record
+					newRecord.Response = lastResponse.Output
+					newRecord.Duration = float64(time.Since(startTime)) / 1000_000_000
 					err = c.WriteJSON(InferResponseModel{
 						Status: -2, // sensitive
 						Output: DefaultResponse,
@@ -174,8 +177,6 @@ func ReceiveInferResponse(c *websocket.Conn) {
 	if uuidText == "" {
 		_ = c.WriteJSON(InferResponseModel{Status: -1, StatusCode: 400, Output: "Bad Request"})
 		return
-	} else {
-		log.Printf("now uuid: %v", uuidText)
 	}
 
 	for {
@@ -226,6 +227,7 @@ func ReceiveInferResponse(c *websocket.Conn) {
 			ch.(chan InferResponseModel) <- inferResponse
 		} else {
 			log.Printf("invalid uuid: %s\n", uuidText)
+			return
 		}
 
 		if inferResponse.Status == 0 {
