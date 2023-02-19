@@ -4,6 +4,7 @@ import (
 	"MOSS_backend/config"
 	. "MOSS_backend/models"
 	. "MOSS_backend/utils"
+	"MOSS_backend/utils/sensitive"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -81,7 +82,7 @@ func InferAsync(c *websocket.Conn, input string, records Records, newRecord *Rec
 				lastResponse = response
 
 				// output sensitive check
-				if IsSensitive(response.Output) {
+				if sensitive.IsSensitive(response.Output) {
 					newRecord.ResponseSensitive = true
 					err = c.WriteJSON(InferResponseModel{
 						Status: -2, // sensitive

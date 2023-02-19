@@ -1,4 +1,4 @@
-package utils
+package diting
 
 import (
 	"MOSS_backend/config"
@@ -36,7 +36,7 @@ func IsSensitive(context string) bool {
 		DataID:      uuid.NewString(),
 		Context:     context,
 		ContextType: "chat",
-		Token:       config.Config.SensitiveCheckToken,
+		Token:       config.Config.DiTingToken,
 	})
 	if err != nil {
 		log.Println("marshal data err")

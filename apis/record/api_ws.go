@@ -4,6 +4,7 @@ import (
 	"MOSS_backend/config"
 	. "MOSS_backend/models"
 	. "MOSS_backend/utils"
+	"MOSS_backend/utils/sensitive"
 	"encoding/json"
 	"fmt"
 	"github.com/gofiber/websocket/v2"
@@ -80,7 +81,7 @@ func AddRecordAsync(c *websocket.Conn) {
 		}
 
 		// sensitive request check
-		if IsSensitive(record.Request) {
+		if sensitive.IsSensitive(record.Request) {
 			record.RequestSensitive = true
 			record.Response = DefaultResponse
 
