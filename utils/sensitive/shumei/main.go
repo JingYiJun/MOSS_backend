@@ -4,7 +4,6 @@ import (
 	"MOSS_backend/config"
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"github.com/google/uuid"
 	"io"
 	"log"
@@ -48,8 +47,6 @@ func IsSensitive(content string) bool {
 		},
 	})
 
-	fmt.Println(string(data))
-
 	rsp, err := client.Post(url, "application/json", bytes.NewBuffer(data))
 	if err != nil {
 		log.Println(err)
@@ -83,9 +80,9 @@ func IsSensitive(content string) bool {
 		return false
 	} else {
 		if response.RiskLevel == "PASS" {
-			return true
-		} else {
 			return false
+		} else {
+			return true
 		}
 	}
 }
