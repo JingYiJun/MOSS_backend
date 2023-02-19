@@ -50,9 +50,9 @@ func InferAsync(c *websocket.Conn, input string, records Records, newRecord *Rec
 		log.Printf("send infer request: %v\n", string(data))
 	}
 
-	go func() {
-		_, _ = http.Post(config.Config.InferenceUrl, "application/json", bytes.NewBuffer(data))
-	}()
+	errChan := make(chan error)
+
+	go inferTrigger(data, errChan)
 
 	startTime := time.Now()
 
@@ -119,7 +119,39 @@ func InferAsync(c *websocket.Conn, input string, records Records, newRecord *Rec
 			return InternalServerError("Internal Server Timeout")
 		case <-interruptChan:
 			return NoStatus("client interrupt")
+		case err = <-errChan:
+			return err
 		}
+	}
+}
+
+func inferTrigger(data []byte, errChan chan error) {
+	var (
+		err error
+		rsp *http.Response
+	)
+	defer func() {
+		if err != nil {
+			errChan <- err
+		}
+	}()
+	rsp, err = http.Post(config.Config.InferenceUrl, "application/json", bytes.NewBuffer(data))
+	if err != nil {
+		log.Println(err)
+		err = InternalServerError("inference server error")
+		return
+	}
+
+	defer func() {
+		_ = rsp.Body.Close()
+	}()
+
+	if rsp.StatusCode == 400 {
+		err = BadRequest("The maximum context length is exceeded")
+		return
+	} else if rsp.StatusCode >= 500 {
+		err = InternalServerError()
+		return
 	}
 }
 
