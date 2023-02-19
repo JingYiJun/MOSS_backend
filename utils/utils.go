@@ -37,3 +37,33 @@ func Min[T constraints.Ordered](x, y T) T {
 		return y
 	}
 }
+
+func Max[T constraints.Ordered](x, y T) T {
+	if x > y {
+		return x
+	} else {
+		return y
+	}
+}
+
+func CutLastAny(s string, chars string) (before, after string, found bool) {
+	sourceRunes := []rune(s)
+	charRunes := []rune(chars)
+	maxIndex := -1
+	for _, char := range charRunes {
+		index := -1
+		for i, sourceRune := range sourceRunes {
+			if char == sourceRune {
+				index = i
+			}
+		}
+		if index > 0 {
+			maxIndex = Max(maxIndex, index)
+		}
+	}
+	if maxIndex == -1 {
+		return s, "", false
+	} else {
+		return string(sourceRunes[:maxIndex+1]), string(sourceRunes[maxIndex+1:]), true
+	}
+}
