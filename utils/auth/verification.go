@@ -16,7 +16,7 @@ import (
 
 var verificationCodeCache *cache.Cache[string]
 
-func init() {
+func InitCache() {
 	if config.Config.RedisUrl != "" {
 		verificationCodeCache = cache.New[string](
 			redisStore.NewRedis(
@@ -27,6 +27,7 @@ func init() {
 				),
 			),
 		)
+		fmt.Println("using redis")
 	} else {
 		verificationCodeCache = cache.New[string](
 			gocacheStore.NewGoCache(
@@ -35,6 +36,7 @@ func init() {
 					20*time.Minute),
 			),
 		)
+		fmt.Println("using gocache")
 	}
 }
 
