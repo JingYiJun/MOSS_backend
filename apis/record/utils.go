@@ -77,7 +77,7 @@ func InferAsync(c *websocket.Conn, input string, records Records, newRecord *Rec
 				}
 
 				nowOutput = response.Output
-				before, _, found := CutLastAny(nowOutput, ",.，。？！")
+				before, _, found := CutLastAny(nowOutput, ",.?!\n，。？！")
 				if !found || before == detectedOutput {
 					continue
 				}
