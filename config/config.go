@@ -21,8 +21,19 @@ var Config struct {
 	UniSignature  string `env:"UNI_SIGNATURE" envDefault:"fastnlp"`
 	UniTemplateID string `env:"UNI_TEMPLATE_ID,required"`
 
-	InferenceUrl        string `env:"INFERENCE_URL,required"`
-	SensitiveCheckToken string `env:"SENSITIVE_CHECK_TOKEN,required"`
+	InferenceUrl string `env:"INFERENCE_URL,required"`
+
+	// 敏感信息检测
+	SensitiveCheckPlatform string `env:"SENSITIVE_CHECK_PLATFORM" envDefault:"ShuMei"` // one of ShuMei or DiTing
+
+	// 谛听平台
+	DiTingToken string `env:"SENSITIVE_CHECK_TOKEN"`
+
+	// 数美平台
+	ShuMeiAccessKey string `env:"SHU_MEI_ACCESS_KEY"`
+	ShuMeiAppID     string `env:"SHU_MEI_APP_ID"`
+	ShuMeiEventID   string `env:"SHU_MEI_EVENT_ID"`
+	ShuMeiType      string `env:"SHU_MEI_TYPE"`
 
 	VerificationCodeExpires int `env:"VERIFICATION_CODE_EXPIRES" envDefault:"10"`
 	ChatNameLength          int `env:"CHAT_NAME_LENGTH" envDefault:"30"`

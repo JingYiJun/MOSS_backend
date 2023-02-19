@@ -4,6 +4,7 @@ import (
 	"MOSS_backend/config"
 	. "MOSS_backend/models"
 	. "MOSS_backend/utils"
+	"MOSS_backend/utils/sensitive"
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 )
@@ -86,7 +87,7 @@ func AddRecord(c *fiber.Ctx) error {
 	}
 
 	// sensitive request check
-	if IsSensitive(record.Request) {
+	if sensitive.IsSensitive(record.Request) {
 		record.RequestSensitive = true
 		record.Response = DefaultResponse
 	} else {
@@ -105,7 +106,7 @@ func AddRecord(c *fiber.Ctx) error {
 			return err
 		}
 
-		if IsSensitive(record.Response) {
+		if sensitive.IsSensitive(record.Response) {
 			record.ResponseSensitive = true
 		}
 	}
@@ -199,7 +200,7 @@ func RetryRecord(c *fiber.Ctx) error {
 		return err
 	}
 
-	if IsSensitive(record.Response) {
+	if sensitive.IsSensitive(record.Response) {
 		record.ResponseSensitive = true
 	}
 
