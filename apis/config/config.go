@@ -33,5 +33,6 @@ func GetConfig(c *fiber.Ctx) error {
 	return c.JSON(Response{
 		Region:         region,
 		InviteRequired: configObject.InviteRequired,
+		Notice:         configObject.Notice,
 	})
 }

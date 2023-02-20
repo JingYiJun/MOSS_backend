@@ -821,6 +821,9 @@ const docTemplate = `{
                 "invite_required": {
                     "type": "boolean"
                 },
+                "notice": {
+                    "type": "string"
+                },
                 "region": {
                     "type": "string"
                 }
