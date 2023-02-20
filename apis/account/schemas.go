@@ -17,11 +17,13 @@ type PhoneModel struct {
 type VerifyEmailRequest struct {
 	EmailModel
 	ScopeModel
+	InviteCode *string `json:"invite_code" query:"invite_code" validate:"omitempty,min=1"`
 }
 
 type VerifyPhoneRequest struct {
 	PhoneModel
 	ScopeModel
+	InviteCode *string `json:"invite_code" query:"invite_code" validate:"omitempty,min=1"`
 }
 
 type LoginRequest struct {

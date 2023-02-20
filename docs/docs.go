@@ -569,6 +569,12 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "minLength": 1,
+                        "type": "string",
+                        "name": "invite_code",
+                        "in": "query"
+                    },
+                    {
                         "enum": [
                             "register",
                             "reset",
@@ -606,6 +612,12 @@ const docTemplate = `{
                 ],
                 "summary": "verify with phone in query",
                 "parameters": [
+                    {
+                        "minLength": 1,
+                        "type": "string",
+                        "name": "invite_code",
+                        "in": "query"
+                    },
                     {
                         "type": "string",
                         "description": "phone number in e164 mode",
@@ -808,6 +820,9 @@ const docTemplate = `{
             "properties": {
                 "invite_required": {
                     "type": "boolean"
+                },
+                "notice": {
+                    "type": "string"
                 },
                 "region": {
                     "type": "string"

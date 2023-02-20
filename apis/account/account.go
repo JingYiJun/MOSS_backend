@@ -55,6 +55,9 @@ func Register(c *fiber.Ctx) error {
 	if body.PhoneModel != nil {
 		ok = auth.CheckVerificationCode(body.Phone, scope, body.Verification)
 	} else if body.EmailModel != nil {
+		if IsEmailInBlacklist(body.Email) {
+			return errCollection.ErrEmailInBlacklist
+		}
 		ok = auth.CheckVerificationCode(body.Email, scope, body.Verification)
 	}
 	if !ok {
@@ -207,6 +210,9 @@ func ChangePassword(c *fiber.Ctx) error {
 	if body.PhoneModel != nil {
 		ok = auth.CheckVerificationCode(body.Phone, scope, body.Verification)
 	} else if body.EmailModel != nil {
+		if IsEmailInBlacklist(body.Email) {
+			return errCollection.ErrEmailInBlacklist
+		}
 		ok = auth.CheckVerificationCode(body.Email, scope, body.Verification)
 	}
 	if !ok {
@@ -282,14 +288,36 @@ func VerifyWithEmail(c *fiber.Ctx) error {
 	}
 
 	errCollection, messageCollection := GetInfoByIP(GetRealIP(c))
+	if IsEmailInBlacklist(query.Email) {
+		return errCollection.ErrEmailInBlacklist
+	}
 
 	var (
-		user  User
-		scope string
-		login bool
+		user       User
+		scope      string
+		login      bool
+		inviteCode InviteCode
 	)
 	userID, _ := GetUserID(c)
 	login = userID != 0
+
+	// check invite code config
+	var configObject Config
+	err = DB.First(&configObject).Error
+	if err != nil {
+		return err
+	}
+
+	// check Invite code
+	if configObject.InviteRequired {
+		if query.InviteCode == nil {
+			return errCollection.ErrNeedInviteCode
+		}
+		err = DB.Take(&inviteCode, "code = ?", query.InviteCode).Error
+		if err != nil || !inviteCode.IsSend || inviteCode.IsActivated {
+			return errCollection.ErrInviteCodeInvalid
+		}
+	}
 
 	err = DB.Take(&user, "email = ?", query.Email).Error
 	if err != nil {
@@ -373,10 +401,30 @@ func VerifyWithPhone(c *fiber.Ctx) error {
 	errCollection, messageCollection := GetInfoByIP(GetRealIP(c))
 
 	var (
-		user  User
-		scope string
-		login bool
+		user       User
+		scope      string
+		login      bool
+		inviteCode InviteCode
 	)
+
+	// check invite code config
+	var configObject Config
+	err = DB.First(&configObject).Error
+	if err != nil {
+		return err
+	}
+
+	// check Invite code
+	if configObject.InviteRequired {
+		if query.InviteCode == nil {
+			return errCollection.ErrNeedInviteCode
+		}
+		err = DB.Take(&inviteCode, "code = ?", query.InviteCode).Error
+		if err != nil || !inviteCode.IsSend || inviteCode.IsActivated {
+			return errCollection.ErrInviteCodeInvalid
+		}
+	}
+
 	userID, _ := GetUserID(c)
 	login = userID != 0
 	err = DB.Take(&user, "phone = ?", query.Phone).Error
