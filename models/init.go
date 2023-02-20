@@ -86,6 +86,7 @@ func InitDB() {
 		Config{},
 		InviteCode{},
 		Param{},
+		EmailBlacklist{},
 	)
 	if err != nil {
 		panic(err)

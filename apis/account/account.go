@@ -55,6 +55,9 @@ func Register(c *fiber.Ctx) error {
 	if body.PhoneModel != nil {
 		ok = auth.CheckVerificationCode(body.Phone, scope, body.Verification)
 	} else if body.EmailModel != nil {
+		if IsEmailInBlacklist(body.Email) {
+			return errCollection.ErrEmailInBlacklist
+		}
 		ok = auth.CheckVerificationCode(body.Email, scope, body.Verification)
 	}
 	if !ok {
@@ -207,6 +210,9 @@ func ChangePassword(c *fiber.Ctx) error {
 	if body.PhoneModel != nil {
 		ok = auth.CheckVerificationCode(body.Phone, scope, body.Verification)
 	} else if body.EmailModel != nil {
+		if IsEmailInBlacklist(body.Email) {
+			return errCollection.ErrEmailInBlacklist
+		}
 		ok = auth.CheckVerificationCode(body.Email, scope, body.Verification)
 	}
 	if !ok {
@@ -282,6 +288,9 @@ func VerifyWithEmail(c *fiber.Ctx) error {
 	}
 
 	errCollection, messageCollection := GetInfoByIP(GetRealIP(c))
+	if IsEmailInBlacklist(query.Email) {
+		return errCollection.ErrEmailInBlacklist
+	}
 
 	var (
 		user  User

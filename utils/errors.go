@@ -130,6 +130,7 @@ type ErrCollection struct {
 	ErrPhoneCannotModify       error
 	ErrPhoneCannotReset        error
 	ErrPasswordIncorrect       error
+	ErrEmailInBlacklist        error
 }
 
 var ErrCollectionCN = ErrCollection{
@@ -146,6 +147,7 @@ var ErrCollectionCN = ErrCollection{
 	ErrPhoneCannotModify:       BadRequest("未登录状态，禁止修改手机号"),
 	ErrPhoneCannotReset:        BadRequest("登录状态无法重置密码，请退出登录然后重试"),
 	ErrPasswordIncorrect:       Unauthorized("密码错误"),
+	ErrEmailInBlacklist:        BadRequest("该邮箱已被禁用"),
 }
 
 var ErrCollectionGlobal = ErrCollection{
@@ -162,6 +164,7 @@ var ErrCollectionGlobal = ErrCollection{
 	ErrPhoneCannotModify:       BadRequest("cannot modify phone number when not login"),
 	ErrPhoneCannotReset:        BadRequest("cannot reset password when login, please logout and retry"),
 	ErrPasswordIncorrect:       Unauthorized("password incorrect"),
+	ErrEmailInBlacklist:        BadRequest("banned email domain"),
 }
 
 type MessageCollection struct {
