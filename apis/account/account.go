@@ -293,12 +293,31 @@ func VerifyWithEmail(c *fiber.Ctx) error {
 	}
 
 	var (
-		user  User
-		scope string
-		login bool
+		user       User
+		scope      string
+		login      bool
+		inviteCode InviteCode
 	)
 	userID, _ := GetUserID(c)
 	login = userID != 0
+
+	// check invite code config
+	var configObject Config
+	err = DB.First(&configObject).Error
+	if err != nil {
+		return err
+	}
+
+	// check Invite code
+	if configObject.InviteRequired {
+		if query.InviteCode == nil {
+			return errCollection.ErrNeedInviteCode
+		}
+		err = DB.Take(&inviteCode, "code = ?", query.InviteCode).Error
+		if err != nil || !inviteCode.IsSend || inviteCode.IsActivated {
+			return errCollection.ErrInviteCodeInvalid
+		}
+	}
 
 	err = DB.Take(&user, "email = ?", query.Email).Error
 	if err != nil {
@@ -382,10 +401,30 @@ func VerifyWithPhone(c *fiber.Ctx) error {
 	errCollection, messageCollection := GetInfoByIP(GetRealIP(c))
 
 	var (
-		user  User
-		scope string
-		login bool
+		user       User
+		scope      string
+		login      bool
+		inviteCode InviteCode
 	)
+
+	// check invite code config
+	var configObject Config
+	err = DB.First(&configObject).Error
+	if err != nil {
+		return err
+	}
+
+	// check Invite code
+	if configObject.InviteRequired {
+		if query.InviteCode == nil {
+			return errCollection.ErrNeedInviteCode
+		}
+		err = DB.Take(&inviteCode, "code = ?", query.InviteCode).Error
+		if err != nil || !inviteCode.IsSend || inviteCode.IsActivated {
+			return errCollection.ErrInviteCodeInvalid
+		}
+	}
+
 	userID, _ := GetUserID(c)
 	login = userID != 0
 	err = DB.Take(&user, "phone = ?", query.Phone).Error
