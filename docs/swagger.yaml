@@ -535,6 +535,10 @@ paths:
       - in: query
         name: email
         type: string
+      - in: query
+        minLength: 1
+        name: invite_code
+        type: string
       - enum:
         - register
         - reset
@@ -560,6 +564,10 @@ paths:
     get:
       description: verify with phone in query, Send verification message
       parameters:
+      - in: query
+        minLength: 1
+        name: invite_code
+        type: string
       - description: phone number in e164 mode
         in: query
         name: phone

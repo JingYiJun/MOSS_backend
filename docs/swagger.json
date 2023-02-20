@@ -562,6 +562,12 @@
                         "in": "query"
                     },
                     {
+                        "minLength": 1,
+                        "type": "string",
+                        "name": "invite_code",
+                        "in": "query"
+                    },
+                    {
                         "enum": [
                             "register",
                             "reset",
@@ -599,6 +605,12 @@
                 ],
                 "summary": "verify with phone in query",
                 "parameters": [
+                    {
+                        "minLength": 1,
+                        "type": "string",
+                        "name": "invite_code",
+                        "in": "query"
+                    },
                     {
                         "type": "string",
                         "description": "phone number in e164 mode",
