@@ -49,7 +49,7 @@ func (records Records) Preprocess(c *fiber.Ctx) error {
 	return nil
 }
 
-const DefaultResponse = `Sorry, I have nothing to say. Try another topic :)`
+const DefaultResponse = `Sorry, I have nothing to say. Try another topic. I will block your account if we continue this topic :)`
 
 func (records Records) ToRecordModel() (recordModel []RecordModel) {
 	for _, record := range records {
