@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        .request {
+            float: right;
+            background: rgb(245, 245, 247);
+            padding: 24px;
+            border-radius: 20px 20px 0;
+            margin-bottom: 24px;
+            margin-left: 15%;
+        }
+
+        .response {
+            float: left;
+            background: rgb(67, 99, 178);
+            padding: 24px;
+            border-radius: 20px 20px 20px 0;
+            margin-bottom: 20px;
+            margin-right: 15%;
+            color: white;
+        }
+
+        body {
+            display: flex;
+            padding: 24px;
+            flex-direction: column;
+            background: white;
+            width: 800px;
+            font-size: 28px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div id="head" style="margin: auto auto 60px;">
+    <!--        <img src="" style="width: 200px; margin: auto;">-->
+    <span style="font-size: 20px; color: grey; margin: auto auto 60px;">v0.0.2</span>
+</div>
+<div id="records"></div>
+<div id="watermark" style="font-size:20px;color:grey;margin: 60px auto 60px;">@FudanNLP</div>
+
+<script>
+
+    const records = [{"request": "你好", "response": "你好，很高兴认识你，我是moss，一个聊天助手，巴拉巴拉巴拉巴拉，"}]
+    recordsElem = document.getElementById("records")
+
+    for (const record of records) {
+        for (const recordType of ["request", "response"]) {
+            let contentOuter = document.createElement("div")
+            contentOuter.style.overflow = "auto"
+
+            let content = document.createElement("div")
+            content.innerHTML = record[recordType]
+            content.className = recordType
+            contentOuter.appendChild(content)
+
+            recordsElem.appendChild(contentOuter)
+        }
+    }
+</script>
+
+</body>
+
+</html>
