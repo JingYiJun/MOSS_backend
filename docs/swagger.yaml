@@ -307,6 +307,22 @@ paths:
       summary: regenerate the last record of a chat
       tags:
       - record
+  /chats/{chat_id}/screenshot.png:
+    get:
+      parameters:
+      - description: chat id
+        in: path
+        name: chat_id
+        required: true
+        type: integer
+      produces:
+      - image/png
+      responses:
+        "200":
+          description: OK
+      summary: screenshot of a chat
+      tags:
+      - record
   /config:
     get:
       produces:

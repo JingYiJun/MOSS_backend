@@ -204,6 +204,31 @@
                 }
             }
         },
+        "/chats/{chat_id}/screenshot.png": {
+            "get": {
+                "produces": [
+                    "image/png"
+                ],
+                "tags": [
+                    "record"
+                ],
+                "summary": "screenshot of a chat",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "chat id",
+                        "name": "chat_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
         "/config": {
             "get": {
                 "produces": [
