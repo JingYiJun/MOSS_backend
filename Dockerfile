@@ -14,7 +14,7 @@ COPY . .
 
 RUN go build -ldflags "-s -w" -o auth
 
-FROM chromedp/headless-shell:latest
+FROM alpine
 
 WORKDIR /app
 
