@@ -138,3 +138,44 @@ func DeleteChat(c *fiber.Ctx) error {
 
 	return c.SendStatus(204)
 }
+
+// GenerateChatScreenshot
+// @Summary screenshot of a chat
+// @Tags record
+// @Produce png
+// @Router /chats/{chat_id}/screenshot.png [get]
+// @Param chat_id path int true "chat id"
+// @Success 200
+func GenerateChatScreenshot(c *fiber.Ctx) error {
+	chatID, err := c.ParamsInt("id")
+	if err != nil {
+		return err
+	}
+
+	userID, err := GetUserID(c)
+	if err != nil {
+		return err
+	}
+
+	var chat Chat
+	err = DB.Take(&chat, chatID).Error
+	if err != nil {
+		return err
+	}
+
+	if userID != chat.UserID {
+		return Forbidden()
+	}
+
+	var records Records
+	err = DB.Find(&records, "chat_id = ?", chatID).Error
+	if err != nil {
+		return err
+	}
+
+	buf, err := GenerateImage(records.ToRecordModel())
+	if err != nil {
+		return err
+	}
+	return c.Type("png").Send(buf)
+}

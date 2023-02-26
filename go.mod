@@ -5,6 +5,7 @@ go 1.20
 require (
 	github.com/apistd/uni-go-sdk v0.0.2
 	github.com/caarlos0/env/v6 v6.10.1
+	github.com/chromedp/chromedp v0.8.7
 	github.com/creasty/defaults v1.6.0
 	github.com/eko/gocache/lib/v4 v4.1.2
 	github.com/eko/gocache/store/go_cache/v4 v4.1.2
@@ -35,6 +36,8 @@ require (
 	github.com/andybalholm/brotli v1.0.4 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
+	github.com/chromedp/cdproto v0.0.0-20230220211738-2b1ec77315c9 // indirect
+	github.com/chromedp/sysutil v1.0.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/fasthttp/websocket v1.5.1 // indirect
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
@@ -44,6 +47,9 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-sql-driver/mysql v1.7.0 // indirect
+	github.com/gobwas/httphead v0.1.0 // indirect
+	github.com/gobwas/pool v0.2.1 // indirect
+	github.com/gobwas/ws v1.1.0 // indirect
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
