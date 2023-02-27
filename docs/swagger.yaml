@@ -307,7 +307,7 @@ paths:
       summary: regenerate the last record of a chat
       tags:
       - record
-  /chats/{chat_id}/screenshot.png:
+  /chats/{chat_id}/screenshots:
     get:
       parameters:
       - description: chat id

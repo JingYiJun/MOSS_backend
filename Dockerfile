@@ -38,6 +38,10 @@ ENV TZ=Asia/Shanghai
 
 ENV MODE=production
 
+RUN mkdir -p ./screenshots
+
+VOLUME ["/app/screenshots"]
+
 EXPOSE 8000
 
 ENTRYPOINT ["./auth"]

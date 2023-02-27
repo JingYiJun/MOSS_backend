@@ -3,8 +3,11 @@ package chat
 import (
 	. "MOSS_backend/models"
 	. "MOSS_backend/utils"
+	"fmt"
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"os"
 )
 
 // ListChats
@@ -143,7 +146,7 @@ func DeleteChat(c *fiber.Ctx) error {
 // @Summary screenshot of a chat
 // @Tags record
 // @Produce png
-// @Router /chats/{chat_id}/screenshot.png [get]
+// @Router /chats/{chat_id}/screenshots [get]
 // @Param chat_id path int true "chat id"
 // @Success 200
 func GenerateChatScreenshot(c *fiber.Ctx) error {
@@ -177,5 +180,13 @@ func GenerateChatScreenshot(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	return c.Type("png").Send(buf)
+
+	filename := uuid.NewString() + ".png"
+	err = os.WriteFile(fmt.Sprintf("./screenshots/%s", filename), buf, 0644)
+	if err != nil {
+		return err
+	}
+
+	url := fmt.Sprintf("https://%s/api/screenshots/%s", c.Get("Host"), filename)
+	return c.JSON(Map{"url": url})
 }
