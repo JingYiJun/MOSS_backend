@@ -14,7 +14,7 @@ COPY . .
 
 RUN go build -ldflags "-s -w" -o auth
 
-FROM alpine
+FROM zenika/alpine-chrome
 
 WORKDIR /app
 
