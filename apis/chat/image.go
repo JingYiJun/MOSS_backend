@@ -19,10 +19,8 @@ func GenerateImage(records []models.RecordModel) ([]byte, error) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		for i := range records {
-			records[i].Request = strings.ReplaceAll(records[i].Request, " ", "&nbsp")
-			records[i].Request = strings.ReplaceAll(records[i].Request, "\n", "<br>")
-			records[i].Response = strings.ReplaceAll(records[i].Response, " ", "&nbsp")
-			records[i].Response = strings.ReplaceAll(records[i].Response, "\n", "<br>")
+			records[i].Request = contentProcess(records[i].Request)
+			records[i].Response = contentProcess(records[i].Response)
 		}
 		recordsData, _ := json.Marshal(records)
 		_, _ = w.Write(bytes.Replace(
@@ -41,4 +39,29 @@ func GenerateImage(records []models.RecordModel) ([]byte, error) {
 		chromedp.FullScreenshot(&buf, 100),
 	)
 	return buf, err
+}
+
+func contentProcess(content string) string {
+	recordLines := strings.Split(content, "\n")
+	var builder strings.Builder
+	for i, recordLine := range recordLines {
+		prefixSpaceCount := 0
+		for _, character := range recordLine {
+			if character == ' ' {
+				prefixSpaceCount++
+			} else {
+				break
+			}
+		}
+
+		if prefixSpaceCount == 0 {
+			builder.WriteString(recordLine)
+		} else {
+			builder.WriteString(strings.Replace(recordLine, " ", "&nbsp;", prefixSpaceCount))
+		}
+		if i != len(recordLines)-1 {
+			builder.WriteString("<br>")
+		}
+	}
+	return builder.String()
 }
