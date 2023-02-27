@@ -14,7 +14,19 @@ COPY . .
 
 RUN go build -ldflags "-s -w" -o auth
 
-FROM zenika/alpine-chrome
+FROM alpine
+
+# Installs latest Chromium package.
+RUN apk upgrade --no-cache --available \
+    && apk add --no-cache \
+      chromium-swiftshader \
+      ttf-freefont \
+      font-noto-emoji \
+    && apk add --no-cache \
+      --repository=https://dl-cdn.alpinelinux.org/alpine/edge/testing \
+      font-wqy-zenhei
+
+COPY local.conf /etc/fonts/local.conf
 
 WORKDIR /app
 
