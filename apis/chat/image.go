@@ -19,7 +19,9 @@ func GenerateImage(records []models.RecordModel) ([]byte, error) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		for i := range records {
+			records[i].Request = strings.ReplaceAll(records[i].Request, " ", "&nbsp")
 			records[i].Request = strings.ReplaceAll(records[i].Request, "\n", "<br>")
+			records[i].Response = strings.ReplaceAll(records[i].Response, " ", "&nbsp")
 			records[i].Response = strings.ReplaceAll(records[i].Response, "\n", "<br>")
 		}
 		recordsData, _ := json.Marshal(records)

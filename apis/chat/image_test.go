@@ -8,7 +8,7 @@ import (
 
 func TestGenerateImage(t *testing.T) {
 	buf, err := GenerateImage([]models.RecordModel{
-		{"111", "```func\nfunc\nfunc\n```"},
+		{"111", "```func\n    func\n    func\n```"},
 		{"111", "```func\nfunc\nfunc\n```"},
 	})
 	if err != nil {
