@@ -294,10 +294,9 @@ func InferPostprocess(output string) (tidyOutput string) {
 func cutEndFlag(content string) string {
 	loc := endContentRegexp.FindIndex([]byte(content))
 	if loc != nil {
-		return content[:loc[0]]
-	} else {
-		return content
+		content = content[:loc[0]]
 	}
+	return strings.Trim(content, " ")
 }
 
 func InferMosec(input string, records []RecordModel) (string, float64, error) {
