@@ -108,7 +108,7 @@ func AddRecordAsync(c *websocket.Conn) {
 			go interrupt(c, interruptChan)
 
 			// async infer
-			err = InferAsync(c, record.Request, records, &record, interruptChan)
+			err = InferAsync(c, record.Request, records.ToRecordModel(), &record, interruptChan)
 			if err != nil {
 				return err
 			}
@@ -238,7 +238,7 @@ func RegenerateAsync(c *websocket.Conn) {
 		go interrupt(c, interruptChan)
 
 		// async infer
-		err = InferAsync(c, record.Request, records, &record, interruptChan)
+		err = InferAsync(c, record.Request, records.ToRecordModel(), &record, interruptChan)
 		if err != nil {
 			return err
 		}
@@ -303,4 +303,80 @@ func interrupt(c *websocket.Conn, interruptChan chan any) {
 			return
 		}
 	}
+}
+
+// InferWithoutLoginAsync
+// @Summary infer without login in websocket
+// @Tags Websocket
+// @Router /ws/inference [get]
+// @Param json body InferenceRequest true "json"
+// @Success 200 {object} InferenceResponse
+func InferWithoutLoginAsync(c *websocket.Conn) {
+	var (
+		message []byte
+		err     error
+		record  Record
+	)
+
+	defer func() {
+		if err != nil {
+			log.Println(err)
+			response := InferResponseModel{Status: -1, Output: err.Error()}
+			if httpError, ok := err.(*HttpError); ok {
+				response.StatusCode = httpError.Code
+			}
+			_ = c.WriteJSON(response)
+		}
+	}()
+
+	procedure := func() error {
+
+		// read body
+		if _, message, err = c.ReadMessage(); err != nil {
+			return fmt.Errorf("error receive message: %s\n", err)
+		}
+
+		// unmarshal body
+		var body InferenceRequest
+		err = json.Unmarshal(message, &body)
+		if err != nil {
+			return fmt.Errorf("error unmarshal text: %s", err)
+		}
+
+		// sensitive request check
+		if sensitive.IsSensitive(body.String()) {
+
+			err = c.WriteJSON(InferResponseModel{
+				Status: -2, // sensitive
+				Output: DefaultResponse,
+			})
+			if err != nil {
+				return fmt.Errorf("write sensitive error: %v", err)
+			}
+		} else {
+			/* infer */
+
+			var interruptChan = make(chan any)
+
+			// async interrupt & heart beat
+			go interrupt(c, interruptChan)
+
+			// async infer
+			err = InferAsync(c, body.Request, body.Records, &record, interruptChan)
+			if err != nil {
+				return err
+			}
+		}
+
+		// store into database
+		directRecord := DirectRecord{
+			Records:  append(body.Records, RecordModel{Request: body.Request, Response: record.Response}),
+			Duration: record.Duration,
+		}
+		_ = DB.Create(&directRecord).Error
+
+		return nil
+	}
+
+	err = procedure()
 }
