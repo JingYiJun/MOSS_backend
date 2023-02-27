@@ -12,7 +12,7 @@ func RegisterRoutes(routes fiber.Router) {
 	routes.Put("/chats/:id/regenerate", record.RetryRecord)
 	routes.Put("/chats/:id", ModifyChat)
 	routes.Delete("/chats/:id", DeleteChat)
-	routes.Get("/chats/:id/screenshot.png", GenerateChatScreenshot)
+	routes.Get("/chats/:id/screenshots", GenerateChatScreenshot)
 
 	routes.Static("/screenshots", "./screenshots")
 }
