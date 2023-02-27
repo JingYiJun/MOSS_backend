@@ -211,7 +211,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/chats/{chat_id}/screenshot.png": {
+        "/chats/{chat_id}/screenshots": {
             "get": {
                 "produces": [
                     "image/png"
