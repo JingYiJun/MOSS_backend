@@ -15,4 +15,8 @@ func RegisterRoutes(routes fiber.Router) {
 
 	// infer response
 	routes.Get("/ws/response", websocket.New(ReceiveInferResponse))
+
+	// infer without login
+	routes.Post("/inference", InferWithoutLogin)
+	routes.Get("/ws/inference", websocket.New(InferWithoutLoginAsync))
 }

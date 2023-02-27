@@ -71,3 +71,9 @@ type Param struct {
 	Name  string
 	Value float64
 }
+
+type DirectRecord struct {
+	ID       int
+	Records  []RecordModel `gorm:"serializer:json"`
+	Duration float64
+}

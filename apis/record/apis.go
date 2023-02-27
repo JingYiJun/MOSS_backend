@@ -291,3 +291,42 @@ func ModifyRecord(c *fiber.Ctx) error {
 
 	return Serialize(c, &record)
 }
+
+// InferWithoutLogin
+// @Summary infer without login
+// @Tags Inference
+// @Router /inference [post]
+// @Param json body InferenceRequest true "json"
+// @Success 200 {object} InferenceResponse
+func InferWithoutLogin(c *fiber.Ctx) error {
+	var (
+		body InferenceRequest
+		err  error
+	)
+	err = ValidateBody(c, &body)
+	if err != nil {
+		return err
+	}
+
+	if sensitive.IsSensitive(body.String()) {
+		return BadRequest(DefaultResponse)
+	}
+
+	output, duration, err := InferMosec(body.Request, body.Records)
+	if err != nil {
+		return err
+	}
+
+	if sensitive.IsSensitive(output) {
+		return BadRequest(DefaultResponse)
+	}
+
+	directRecord := DirectRecord{
+		Records:  append(body.Records, RecordModel{Request: body.Request, Response: output}),
+		Duration: duration,
+	}
+
+	_ = DB.Create(&directRecord).Error
+
+	return c.JSON(InferenceResponse{Response: output})
+}

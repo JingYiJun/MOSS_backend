@@ -255,6 +255,33 @@ const docTemplate = `{
                 }
             }
         },
+        "/inference": {
+            "post": {
+                "tags": [
+                    "Inference"
+                ],
+                "summary": "infer without login",
+                "parameters": [
+                    {
+                        "description": "json",
+                        "name": "json",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/record.InferenceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/record.InferenceResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/login": {
             "post": {
                 "description": "Login with email and password, return jwt token, not need jwt",
@@ -734,6 +761,33 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/ws/inference": {
+            "get": {
+                "tags": [
+                    "Websocket"
+                ],
+                "summary": "infer without login in websocket",
+                "parameters": [
+                    {
+                        "description": "json",
+                        "name": "json",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/record.InferenceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/record.InferenceResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -925,6 +979,17 @@ const docTemplate = `{
                 }
             }
         },
+        "models.RecordModel": {
+            "type": "object",
+            "properties": {
+                "request": {
+                    "type": "string"
+                },
+                "response": {
+                    "type": "string"
+                }
+            }
+        },
         "models.User": {
             "type": "object",
             "properties": {
@@ -964,6 +1029,29 @@ const docTemplate = `{
             ],
             "properties": {
                 "request": {
+                    "type": "string"
+                }
+            }
+        },
+        "record.InferenceRequest": {
+            "type": "object",
+            "properties": {
+                "records": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.RecordModel"
+                    }
+                },
+                "request": {
+                    "type": "string",
+                    "minLength": 1
+                }
+            }
+        },
+        "record.InferenceResponse": {
+            "type": "object",
+            "properties": {
+                "response": {
                     "type": "string"
                 }
             }

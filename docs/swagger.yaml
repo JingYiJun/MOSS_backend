@@ -128,6 +128,13 @@ definitions:
       response_sensitive:
         type: boolean
     type: object
+  models.RecordModel:
+    properties:
+      request:
+        type: string
+      response:
+        type: string
+    type: object
   models.User:
     properties:
       chats:
@@ -155,6 +162,21 @@ definitions:
         type: string
     required:
     - request
+    type: object
+  record.InferenceRequest:
+    properties:
+      records:
+        items:
+          $ref: '#/definitions/models.RecordModel'
+        type: array
+      request:
+        minLength: 1
+        type: string
+    type: object
+  record.InferenceResponse:
+    properties:
+      response:
+        type: string
     type: object
   record.ModifyModel:
     properties:
@@ -335,6 +357,23 @@ paths:
       summary: get global config
       tags:
       - Config
+  /inference:
+    post:
+      parameters:
+      - description: json
+        in: body
+        name: json
+        required: true
+        schema:
+          $ref: '#/definitions/record.InferenceRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/record.InferenceResponse'
+      summary: infer without login
+      tags:
+      - Inference
   /login:
     post:
       consumes:
@@ -647,6 +686,23 @@ paths:
           schema:
             $ref: '#/definitions/models.Record'
       summary: regenerate a record
+      tags:
+      - Websocket
+  /ws/inference:
+    get:
+      parameters:
+      - description: json
+        in: body
+        name: json
+        required: true
+        schema:
+          $ref: '#/definitions/record.InferenceRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/record.InferenceResponse'
+      summary: infer without login in websocket
       tags:
       - Websocket
 swagger: "2.0"

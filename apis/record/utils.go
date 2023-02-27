@@ -14,19 +14,22 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
 )
 
+var endContentRegexp = regexp.MustCompile(`<[es]o\w>`)
+
 func Infer(input string, records Records) (output string, duration float64, err error) {
 	return InferMosec(input, records.ToRecordModel())
 }
 
-func InferAsync(c *websocket.Conn, input string, records Records, newRecord *Record, interruptChan chan any) (err error) {
+func InferAsync(c *websocket.Conn, input string, records []RecordModel, newRecord *Record, interruptChan chan any) (err error) {
 
 	// get formatted text
-	formattedText := InferPreprocess(input, records.ToRecordModel())
+	formattedText := InferPreprocess(input, records)
 
 	// make uuid, store channel into map
 	uuidText := strings.ReplaceAll(uuid.NewString(), "-", "")
@@ -228,23 +231,8 @@ func ReceiveInferResponse(c *websocket.Conn) {
 			continue
 		}
 
-		// process end with 0xfffd
-		runeSlice := []rune(inferResponse.Output)
-		for len(runeSlice) > 0 && runeSlice[len(runeSlice)-1] == 0xfffd {
-			runeSlice = runeSlice[:len(runeSlice)-1]
-		}
-
-		// process output end
-		output := string(runeSlice)
-		output = strings.Trim(output, " ")
-		output, _ = strings.CutSuffix(output, "<")
-		output, _ = strings.CutSuffix(output, "<e")
-		output, _ = strings.CutSuffix(output, "<eo")
-		output, _ = strings.CutSuffix(output, "<eoa")
-		output, _ = strings.CutSuffix(output, "<eoh")
-		output, _ = strings.CutSuffix(output, "<eoa>")
-		output, _ = strings.CutSuffix(output, "<eoh>")
-		inferResponse.Output = output
+		// post process
+		inferResponse.Output = InferPostprocess(inferResponse.Output)
 
 		if config.Config.Debug {
 			log.Printf("recieve output: %v\n", inferResponse.Output)
@@ -266,13 +254,50 @@ func ReceiveInferResponse(c *websocket.Conn) {
 func InferPreprocess(input string, records []RecordModel) (formattedText string) {
 	const prefix = `MOSS is an AI assistant developed by the FudanNLP Lab and Shanghai AI Lab. Below is a conversation between MOSS and human.`
 
+	// cut end flag for special cases
+	for i := range records {
+		records[i].Request = cutEndFlag(records[i].Request)
+		records[i].Response = cutEndFlag(records[i].Response)
+	}
+
 	var builder strings.Builder
 	builder.WriteString(prefix)
 	for _, record := range records {
-		builder.WriteString(fmt.Sprintf(" [Human]: %s<eoh> [MOSS]: %s<eoa>", record.Request, record.Response))
+		if record.Request != "" && record.Response != "" {
+			builder.WriteString(fmt.Sprintf(" [Human]: %s<eoh> [MOSS]: %s<eoa>", record.Request, record.Response))
+		}
 	}
 	builder.WriteString(fmt.Sprintf(" [Human]: %s<eoh> [MOSS]:", input))
 	return builder.String()
+}
+
+func InferPostprocess(output string) (tidyOutput string) {
+	// process end with 0xfffd
+	runeSlice := []rune(output)
+	for len(runeSlice) > 0 && runeSlice[len(runeSlice)-1] == 0xfffd {
+		runeSlice = runeSlice[:len(runeSlice)-1]
+	}
+
+	// process output end
+	output = string(runeSlice)
+	output = strings.Trim(output, " ")
+	output, _ = strings.CutSuffix(output, "<")
+	output, _ = strings.CutSuffix(output, "<e")
+	output, _ = strings.CutSuffix(output, "<eo")
+	output, _ = strings.CutSuffix(output, "<eoa")
+	output, _ = strings.CutSuffix(output, "<eoh")
+
+	// cut end or <eo*> inside output
+	return cutEndFlag(output)
+}
+
+func cutEndFlag(content string) string {
+	loc := endContentRegexp.FindIndex([]byte(content))
+	if loc != nil {
+		return content[:loc[0]]
+	} else {
+		return content
+	}
 }
 
 func InferMosec(input string, records []RecordModel) (string, float64, error) {
@@ -310,29 +335,17 @@ func InferMosec(input string, records []RecordModel) (string, float64, error) {
 	if rsp.StatusCode != 200 {
 		log.Printf("error response from inference server, status code: %d, output: %v\n", rsp.StatusCode, output)
 		if rsp.StatusCode == 400 {
-			return "", 0, &HttpError{
-				Code:    400,
-				Message: "The maximum context length is exceeded",
-			}
-		}
-		return "", 0, &HttpError{
-			Message: "Internal Server Error",
-			Code:    rsp.StatusCode,
+			return "", 0, BadRequest("The maximum context length is exceeded")
+		} else {
+			return "", 0, InternalServerError()
 		}
 	}
 
 	index := strings.LastIndex(output, "[MOSS]:")
 	if index == -1 {
-		log.Printf("error find \"[MOSS]:\" from inference server, output: %v\n", output)
-		return "", 0, &HttpError{
-			Message: "Internal Server Error",
-			Code:    rsp.StatusCode,
-		}
+		log.Printf("error find \"[MOSS]:\" from inference server, output: \"%v\"\n", output)
+		return "", 0, InternalServerError()
 	}
 	output = output[index+7:]
-	output = strings.Trim(output, " ")
-	output, _ = strings.CutSuffix(output, "<eoa>")
-	output, _ = strings.CutSuffix(output, "<eoh>")
-	output = strings.Trim(output, " ")
-	return output, duration, nil
+	return cutEndFlag(output), duration, nil
 }
