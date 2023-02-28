@@ -319,10 +319,7 @@ func InferMosec(input string, records []RecordModel) (string, float64, error) {
 	rsp, err := http.Post(config.Config.InferenceUrl, "application/json", bytes.NewBuffer(data))
 	if err != nil {
 		log.Printf("error post to infer server: %s\n", err)
-		return "", 0, &HttpError{
-			Message: "Internal Server Error",
-			Code:    rsp.StatusCode,
-		}
+		return "", 0, InternalServerError()
 	}
 	duration := float64(time.Since(startTime)) / 1000_000_000
 
