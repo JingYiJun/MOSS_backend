@@ -75,6 +75,11 @@ func AddRecordAsync(c *websocket.Conn) {
 			return Forbidden()
 		}
 
+		// max length exceeded
+		if chat.MaxLengthExceeded {
+			return maxLengthExceededError
+		}
+
 		record := Record{
 			ChatID:  chatID,
 			Request: body.Request,
@@ -110,6 +115,9 @@ func AddRecordAsync(c *websocket.Conn) {
 			// async infer
 			err = InferAsync(c, record.Request, records.ToRecordModel(), &record, interruptChan)
 			if err != nil {
+				if httpError, ok := err.(*HttpError); ok && httpError.MessageType == MaxLength {
+					DB.Model(&chat).Update("max_length_exceeded", true)
+				}
 				return err
 			}
 		}
@@ -196,6 +204,11 @@ func RegenerateAsync(c *websocket.Conn) {
 			return Forbidden()
 		}
 
+		// max length exceeded
+		if chat.MaxLengthExceeded {
+			return maxLengthExceededError
+		}
+
 		// get the latest record
 		var oldRecord Record
 		err = DB.Last(&oldRecord, "chat_id = ?", chatID).Error
@@ -240,6 +253,9 @@ func RegenerateAsync(c *websocket.Conn) {
 		// async infer
 		err = InferAsync(c, record.Request, records.ToRecordModel(), &record, interruptChan)
 		if err != nil {
+			if httpError, ok := err.(*HttpError); ok && httpError.MessageType == MaxLength {
+				DB.Model(&chat).Update("max_length_exceeded", true)
+			}
 			return err
 		}
 

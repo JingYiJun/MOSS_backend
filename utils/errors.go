@@ -12,14 +12,27 @@ type MessageResponse struct {
 }
 
 type HttpError struct {
-	Code    int          `json:"code,omitempty"`
-	Message string       `json:"message,omitempty"`
-	Detail  *ErrorDetail `json:"detail,omitempty"`
+	Code        int          `json:"code,omitempty"`
+	Message     string       `json:"message,omitempty"`
+	MessageType MessageType  `json:"message_type,omitempty"`
+	Detail      *ErrorDetail `json:"detail,omitempty"`
 }
 
 func (e *HttpError) Error() string {
 	return e.Message
 }
+
+func (e *HttpError) WithMessageType(messageType MessageType) *HttpError {
+	e.MessageType = messageType
+	return e
+}
+
+type MessageType = string
+
+const (
+	MaxLength MessageType = "max_length"
+	Sensitive             = "sensitive"
+)
 
 func NoStatus(message string) *HttpError {
 	return &HttpError{

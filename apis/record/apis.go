@@ -309,7 +309,7 @@ func InferWithoutLogin(c *fiber.Ctx) error {
 	}
 
 	if sensitive.IsSensitive(body.String()) {
-		return BadRequest(DefaultResponse)
+		return BadRequest(DefaultResponse).WithMessageType(Sensitive)
 	}
 
 	output, duration, err := InferMosec(body.Request, body.Records)
@@ -318,7 +318,7 @@ func InferWithoutLogin(c *fiber.Ctx) error {
 	}
 
 	if sensitive.IsSensitive(output) {
-		return BadRequest(DefaultResponse)
+		return BadRequest(DefaultResponse).WithMessageType(Sensitive)
 	}
 
 	directRecord := DirectRecord{
