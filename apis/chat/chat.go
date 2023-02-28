@@ -187,6 +187,6 @@ func GenerateChatScreenshot(c *fiber.Ctx) error {
 		return err
 	}
 
-	url := fmt.Sprintf("https://%s/api/screenshots/%s", c.Get("Host"), filename)
+	url := fmt.Sprintf("http://%s/api/screenshots/%s", c.Get("Host"), filename)
 	return c.JSON(Map{"url": url})
 }
