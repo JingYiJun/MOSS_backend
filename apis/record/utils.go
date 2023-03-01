@@ -28,7 +28,7 @@ func Infer(input string, records Records) (output string, duration float64, err 
 	return InferMosec(input, records.ToRecordModel())
 }
 
-func InferAsync(c *websocket.Conn, input string, records []RecordModel, newRecord *Record, interruptChan chan any) (err error) {
+func InferAsync(c *websocket.Conn, input string, records []RecordModel, newRecord *Record, user *User, interruptChan chan any) (err error) {
 
 	// get formatted text
 	formattedText := InferPreprocess(input, records)
@@ -93,7 +93,7 @@ func InferAsync(c *websocket.Conn, input string, records []RecordModel, newRecor
 				detectedOutput = before
 
 				// output sensitive check
-				if sensitive.IsSensitive(detectedOutput) {
+				if sensitive.IsSensitive(detectedOutput, user) {
 					newRecord.ResponseSensitive = true
 					// log new record
 					newRecord.Response = detectedOutput
@@ -119,7 +119,7 @@ func InferAsync(c *websocket.Conn, input string, records []RecordModel, newRecor
 				}
 			case 0: // end
 				if nowOutput != detectedOutput {
-					if sensitive.IsSensitive(nowOutput) {
+					if sensitive.IsSensitive(nowOutput, user) {
 						newRecord.ResponseSensitive = true
 						// log new record
 						newRecord.Response = nowOutput

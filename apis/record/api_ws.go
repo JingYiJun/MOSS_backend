@@ -23,9 +23,9 @@ import (
 func AddRecordAsync(c *websocket.Conn) {
 	var (
 		chatID  int
-		userID  int
 		message []byte
 		err     error
+		user    *User
 	)
 
 	defer func() {
@@ -58,7 +58,7 @@ func AddRecordAsync(c *websocket.Conn) {
 		}
 
 		// get user id
-		userID, err = GetUserIDFromWs(c)
+		user, err = LoadUserFromWs(c)
 		if err != nil {
 			return Unauthorized()
 		}
@@ -71,7 +71,7 @@ func AddRecordAsync(c *websocket.Conn) {
 		}
 
 		// permission
-		if chat.UserID != userID {
+		if chat.UserID != user.ID {
 			return Forbidden()
 		}
 
@@ -86,7 +86,7 @@ func AddRecordAsync(c *websocket.Conn) {
 		}
 
 		// sensitive request check
-		if sensitive.IsSensitive(record.Request) {
+		if sensitive.IsSensitive(record.Request, user) {
 			record.RequestSensitive = true
 			record.Response = DefaultResponse
 
@@ -113,7 +113,7 @@ func AddRecordAsync(c *websocket.Conn) {
 			go interrupt(c, interruptChan)
 
 			// async infer
-			err = InferAsync(c, record.Request, records.ToRecordModel(), &record, interruptChan)
+			err = InferAsync(c, record.Request, records.ToRecordModel(), &record, user, interruptChan)
 			if err != nil {
 				if httpError, ok := err.(*HttpError); ok && httpError.MessageType == MaxLength {
 					DB.Model(&chat).Update("max_length_exceeded", true)
@@ -165,7 +165,7 @@ func AddRecordAsync(c *websocket.Conn) {
 func RegenerateAsync(c *websocket.Conn) {
 	var (
 		chatID int
-		userID int
+		user   *User
 		err    error
 	)
 
@@ -187,7 +187,7 @@ func RegenerateAsync(c *websocket.Conn) {
 		}
 
 		// get user id
-		userID, err = GetUserIDFromWs(c)
+		user, err = LoadUserFromWs(c)
 		if err != nil {
 			return Unauthorized()
 		}
@@ -200,7 +200,7 @@ func RegenerateAsync(c *websocket.Conn) {
 		}
 
 		// permission
-		if chat.UserID != userID {
+		if chat.UserID != user.ID {
 			return Forbidden()
 		}
 
@@ -251,7 +251,7 @@ func RegenerateAsync(c *websocket.Conn) {
 		go interrupt(c, interruptChan)
 
 		// async infer
-		err = InferAsync(c, record.Request, records.ToRecordModel(), &record, interruptChan)
+		err = InferAsync(c, record.Request, records.ToRecordModel(), &record, user, interruptChan)
 		if err != nil {
 			if httpError, ok := err.(*HttpError); ok && httpError.MessageType == MaxLength {
 				DB.Model(&chat).Update("max_length_exceeded", true)
@@ -360,7 +360,7 @@ func InferWithoutLoginAsync(c *websocket.Conn) {
 		}
 
 		// sensitive request check
-		if sensitive.IsSensitive(body.String()) {
+		if sensitive.IsSensitive(body.String(), &User{}) {
 
 			err = c.WriteJSON(InferResponseModel{
 				Status: -2, // sensitive
@@ -378,7 +378,7 @@ func InferWithoutLoginAsync(c *websocket.Conn) {
 			go interrupt(c, interruptChan)
 
 			// async infer
-			err = InferAsync(c, body.Request, body.Records, &record, interruptChan)
+			err = InferAsync(c, body.Request, body.Records, &record, &User{}, interruptChan)
 			if err != nil {
 				return err
 			}

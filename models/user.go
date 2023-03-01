@@ -16,20 +16,22 @@ import (
 )
 
 type User struct {
-	ID           int            `json:"id" gorm:"primaryKey"`
-	JoinedTime   time.Time      `json:"joined_time" gorm:"autoCreateTime"`
-	LastLogin    time.Time      `json:"last_login" gorm:"autoUpdateTime"`
-	DeletedAt    gorm.DeletedAt `json:"-" gorm:"index"`
-	Nickname     string         `json:"nickname" gorm:"size:128;default:'user'"`
-	Email        string         `json:"email" gorm:"size:128;index:,length:5"`
-	Phone        string         `json:"phone" gorm:"size:128;index:,length:5"`
-	Password     string         `json:"-" gorm:"size:128"`
-	RegisterIP   string         `json:"-" gorm:"size:32"`
-	LastLoginIP  string         `json:"-" gorm:"size:32"`
-	LoginIP      []string       `json:"-" gorm:"serializer:json"`
-	Chats        Chats          `json:"chats,omitempty"`
-	ShareConsent bool           `json:"share_consent" gorm:"default:true"`
-	InviteCode   string         `json:"-" gorm:"size:32"`
+	ID                    int            `json:"id" gorm:"primaryKey"`
+	JoinedTime            time.Time      `json:"joined_time" gorm:"autoCreateTime"`
+	LastLogin             time.Time      `json:"last_login" gorm:"autoUpdateTime"`
+	DeletedAt             gorm.DeletedAt `json:"-" gorm:"index"`
+	Nickname              string         `json:"nickname" gorm:"size:128;default:'user'"`
+	Email                 string         `json:"email" gorm:"size:128;index:,length:5"`
+	Phone                 string         `json:"phone" gorm:"size:128;index:,length:5"`
+	Password              string         `json:"-" gorm:"size:128"`
+	RegisterIP            string         `json:"-" gorm:"size:32"`
+	LastLoginIP           string         `json:"-" gorm:"size:32"`
+	LoginIP               []string       `json:"-" gorm:"serializer:json"`
+	Chats                 Chats          `json:"chats,omitempty"`
+	ShareConsent          bool           `json:"share_consent" gorm:"default:true"`
+	InviteCode            string         `json:"-" gorm:"size:32"`
+	IsAdmin               bool           `json:"is_admin"`
+	DisableSensitiveCheck bool           `json:"disable_sensitive_check"`
 }
 
 func GetUserID(c *fiber.Ctx) (int, error) {
@@ -43,6 +45,20 @@ func GetUserID(c *fiber.Ctx) (int, error) {
 	}
 
 	return id, nil
+}
+
+func LoadUserByID(userID int) (*User, error) {
+	var user User
+	err := DB.Take(&user, userID).Error
+	return &user, err
+}
+
+func LoadUser(c *fiber.Ctx) (*User, error) {
+	userID, err := GetUserID(c)
+	if err != nil {
+		return nil, err
+	}
+	return LoadUserByID(userID)
 }
 
 func GetUserIDFromWs(c *websocket.Conn) (int, error) {
@@ -64,6 +80,14 @@ func GetUserIDFromWs(c *websocket.Conn) (int, error) {
 		return 0, utils.Unauthorized()
 	}
 	return int(id.(float64)), nil
+}
+
+func LoadUserFromWs(c *websocket.Conn) (*User, error) {
+	userID, err := GetUserIDFromWs(c)
+	if err != nil {
+		return nil, err
+	}
+	return LoadUserByID(userID)
 }
 
 // parseJWT extracts and parse token
