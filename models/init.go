@@ -88,6 +88,7 @@ func InitDB() {
 		Param{},
 		EmailBlacklist{},
 		DirectRecord{},
+		UserOffense{},
 	)
 	if err != nil {
 		panic(err)
