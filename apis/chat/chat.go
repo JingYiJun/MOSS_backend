@@ -171,7 +171,7 @@ func GenerateChatScreenshot(c *fiber.Ctx) error {
 	}
 
 	var records Records
-	err = DB.Find(&records, "chat_id = ?", chatID).Error
+	err = DB.Find(&records, "chat_id = ? and request_sensitive <> true and response_sensitive <> true", chatID).Error
 	if err != nil {
 		return err
 	}
@@ -187,6 +187,6 @@ func GenerateChatScreenshot(c *fiber.Ctx) error {
 		return err
 	}
 
-	url := fmt.Sprintf("http://%s/api/screenshots/%s", c.Get("Host"), filename)
+	url := fmt.Sprintf("https://%s/api/screenshots/%s", c.Get("Host"), filename)
 	return c.JSON(Map{"url": url})
 }

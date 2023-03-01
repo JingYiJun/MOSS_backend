@@ -65,7 +65,7 @@ func AddRecord(c *fiber.Ctx) error {
 		return err
 	}
 
-	userID, err := GetUserID(c)
+	user, err := LoadUser(c)
 	if err != nil {
 		return err
 	}
@@ -77,7 +77,7 @@ func AddRecord(c *fiber.Ctx) error {
 	} // not exists
 
 	// permission
-	if chat.UserID != userID {
+	if chat.UserID != user.ID {
 		return Forbidden()
 	}
 
@@ -87,7 +87,7 @@ func AddRecord(c *fiber.Ctx) error {
 	}
 
 	// sensitive request check
-	if sensitive.IsSensitive(record.Request) {
+	if sensitive.IsSensitive(record.Request, user) {
 		record.RequestSensitive = true
 		record.Response = DefaultResponse
 	} else {
@@ -106,7 +106,7 @@ func AddRecord(c *fiber.Ctx) error {
 			return err
 		}
 
-		if sensitive.IsSensitive(record.Response) {
+		if sensitive.IsSensitive(record.Response, user) {
 			record.ResponseSensitive = true
 		}
 	}
@@ -147,7 +147,7 @@ func RetryRecord(c *fiber.Ctx) error {
 		return err
 	}
 
-	userID, err := GetUserID(c)
+	user, err := LoadUser(c)
 	if err != nil {
 		return err
 	}
@@ -159,7 +159,7 @@ func RetryRecord(c *fiber.Ctx) error {
 	}
 
 	// permission
-	if chat.UserID != userID {
+	if chat.UserID != user.ID {
 		return Forbidden()
 	}
 
@@ -170,9 +170,11 @@ func RetryRecord(c *fiber.Ctx) error {
 		return err
 	}
 
-	if oldRecord.RequestSensitive {
-		// old record request is sensitive
-		return Serialize(c, &oldRecord)
+	if !user.IsAdmin || !user.DisableSensitiveCheck {
+		if oldRecord.RequestSensitive {
+			// old record request is sensitive
+			return Serialize(c, &oldRecord)
+		}
 	}
 
 	record := Record{
@@ -200,7 +202,7 @@ func RetryRecord(c *fiber.Ctx) error {
 		return err
 	}
 
-	if sensitive.IsSensitive(record.Response) {
+	if sensitive.IsSensitive(record.Response, user) {
 		record.ResponseSensitive = true
 	}
 
@@ -308,7 +310,7 @@ func InferWithoutLogin(c *fiber.Ctx) error {
 		return err
 	}
 
-	if sensitive.IsSensitive(body.String()) {
+	if sensitive.IsSensitive(body.String(), &User{}) {
 		return BadRequest(DefaultResponse).WithMessageType(Sensitive)
 	}
 
@@ -317,7 +319,7 @@ func InferWithoutLogin(c *fiber.Ctx) error {
 		return err
 	}
 
-	if sensitive.IsSensitive(output) {
+	if sensitive.IsSensitive(output, &User{}) {
 		return BadRequest(DefaultResponse).WithMessageType(Sensitive)
 	}
 

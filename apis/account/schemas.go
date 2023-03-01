@@ -50,9 +50,10 @@ type VerifyResponse struct {
 }
 
 type ModifyUserRequest struct {
-	Nickname     *string `json:"nickname" validate:"omitempty,min=1"`
-	ShareConsent *bool   `json:"share_consent"`
-	*EmailModel  `validate:"omitempty"`
-	*PhoneModel  `validate:"omitempty"`
-	Verification string `json:"verification" minLength:"6" maxLength:"6" validate:"omitempty,len=6"`
+	Nickname              *string `json:"nickname" validate:"omitempty,min=1"`
+	ShareConsent          *bool   `json:"share_consent"`
+	*EmailModel           `validate:"omitempty"`
+	*PhoneModel           `validate:"omitempty"`
+	Verification          string `json:"verification" minLength:"6" maxLength:"6" validate:"omitempty,len=6"`
+	DisableSensitiveCheck *bool  `json:"disable_sensitive_check"`
 }
