@@ -85,6 +85,13 @@ func ModifyUser(c *fiber.Ctx) error {
 			user.Phone = body.Phone
 		}
 
+		if body.DisableSensitiveCheck != nil {
+			if !user.IsAdmin {
+				return Forbidden()
+			}
+			user.DisableSensitiveCheck = *body.DisableSensitiveCheck
+		}
+
 		return tx.Save(&user).Error
 	})
 	if err != nil {

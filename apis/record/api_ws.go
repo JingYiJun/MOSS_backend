@@ -216,13 +216,15 @@ func RegenerateAsync(c *websocket.Conn) {
 			return err
 		}
 
-		if oldRecord.RequestSensitive {
-			err = c.WriteJSON(InferResponseModel{
-				Status: -2, // sensitive
-				Output: DefaultResponse,
-			})
-			if err != nil {
-				return fmt.Errorf("write sensitive error: %v", err)
+		if !user.IsAdmin || !user.DisableSensitiveCheck {
+			if oldRecord.RequestSensitive {
+				err = c.WriteJSON(InferResponseModel{
+					Status: -2, // sensitive
+					Output: DefaultResponse,
+				})
+				if err != nil {
+					return fmt.Errorf("write sensitive error: %v", err)
+				}
 			}
 		}
 

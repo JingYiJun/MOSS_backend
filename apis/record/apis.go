@@ -170,9 +170,11 @@ func RetryRecord(c *fiber.Ctx) error {
 		return err
 	}
 
-	if oldRecord.RequestSensitive {
-		// old record request is sensitive
-		return Serialize(c, &oldRecord)
+	if !user.IsAdmin || !user.DisableSensitiveCheck {
+		if oldRecord.RequestSensitive {
+			// old record request is sensitive
+			return Serialize(c, &oldRecord)
+		}
 	}
 
 	record := Record{
