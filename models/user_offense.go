@@ -39,7 +39,11 @@ func (user *User) CheckUserOffense() (bool, error) {
 		err   error
 	)
 	err = DB.Model(&UserOffense{}).
-		Where("created_at between ? and ? and type = ?", time.Now().Add(-5*time.Minute), time.Now(), UserOffensePrompt).
+		Where("created_at between ? and ? and type = ? and user_id = ?",
+			time.Now().Add(-5*time.Minute),
+			time.Now(),
+			UserOffensePrompt,
+			user.ID).
 		Count(&count).Error
 	if err != nil {
 		return false, err
@@ -54,7 +58,11 @@ func (user *User) CheckUserOffense() (bool, error) {
 	}
 
 	err = DB.Model(&UserOffense{}).
-		Where("created_at between ? and ? and type = ?", time.Now().Add(-5*time.Minute), time.Now(), UserOffenseMoss).
+		Where("created_at between ? and ? and type = ? and user_id = ?",
+			time.Now().Add(-5*time.Minute),
+			time.Now(),
+			UserOffenseMoss,
+			user.ID).
 		Count(&count).Error
 	if err != nil {
 		return false, err
