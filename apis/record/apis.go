@@ -70,6 +70,14 @@ func AddRecord(c *fiber.Ctx) error {
 		return err
 	}
 
+	banned, err := user.CheckUserOffense()
+	if err != nil {
+		return err
+	}
+	if banned {
+		return Forbidden(OffenseMessage)
+	}
+
 	var chat Chat
 	err = DB.Take(&chat, chatID).Error
 	if err != nil {
@@ -90,6 +98,14 @@ func AddRecord(c *fiber.Ctx) error {
 	if sensitive.IsSensitive(record.Request, user) {
 		record.RequestSensitive = true
 		record.Response = DefaultResponse
+
+		banned, err = user.AddUserOffense(UserOffensePrompt)
+		if err != nil {
+			return err
+		}
+		if banned {
+			return Forbidden(OffenseMessage)
+		}
 	} else {
 		/* infer */
 
@@ -108,6 +124,14 @@ func AddRecord(c *fiber.Ctx) error {
 
 		if sensitive.IsSensitive(record.Response, user) {
 			record.ResponseSensitive = true
+
+			banned, err = user.AddUserOffense(UserOffenseMoss)
+			if err != nil {
+				return err
+			}
+			if banned {
+				return Forbidden(OffenseMessage)
+			}
 		}
 	}
 
@@ -158,6 +182,14 @@ func RetryRecord(c *fiber.Ctx) error {
 		return err
 	}
 
+	banned, err := user.CheckUserOffense()
+	if err != nil {
+		return err
+	}
+	if banned {
+		return Forbidden(OffenseMessage)
+	}
+
 	// permission
 	if chat.UserID != user.ID {
 		return Forbidden()
@@ -172,6 +204,14 @@ func RetryRecord(c *fiber.Ctx) error {
 
 	if !user.IsAdmin || !user.DisableSensitiveCheck {
 		if oldRecord.RequestSensitive {
+			banned, err = user.AddUserOffense(UserOffensePrompt)
+			if err != nil {
+				return err
+			}
+			if banned {
+				return Forbidden(OffenseMessage)
+			}
+
 			// old record request is sensitive
 			return Serialize(c, &oldRecord)
 		}
@@ -204,6 +244,14 @@ func RetryRecord(c *fiber.Ctx) error {
 
 	if sensitive.IsSensitive(record.Response, user) {
 		record.ResponseSensitive = true
+
+		banned, err = user.AddUserOffense(UserOffenseMoss)
+		if err != nil {
+			return err
+		}
+		if banned {
+			return Forbidden(OffenseMessage)
+		}
 	}
 
 	err = DB.Transaction(func(tx *gorm.DB) error {
