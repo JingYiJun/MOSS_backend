@@ -32,6 +32,7 @@ type User struct {
 	InviteCode            string         `json:"-" gorm:"size:32"`
 	IsAdmin               bool           `json:"is_admin"`
 	DisableSensitiveCheck bool           `json:"disable_sensitive_check"`
+	Banned                bool           `json:"banned"`
 }
 
 func GetUserID(c *fiber.Ctx) (int, error) {

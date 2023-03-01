@@ -98,10 +98,22 @@ func InferAsync(c *websocket.Conn, input string, records []RecordModel, newRecor
 					// log new record
 					newRecord.Response = detectedOutput
 					newRecord.Duration = float64(time.Since(startTime)) / 1000_000_000
-					err = c.WriteJSON(InferResponseModel{
-						Status: -2, // sensitive
-						Output: DefaultResponse,
-					})
+					var banned bool
+					banned, err = user.AddUserOffense(UserOffenseMoss)
+					if err != nil {
+						return err
+					}
+					if banned {
+						err = c.WriteJSON(InferResponseModel{
+							Status: -2, // banned
+							Output: OffenseMessage,
+						})
+					} else {
+						err = c.WriteJSON(InferResponseModel{
+							Status: -2, // sensitive
+							Output: DefaultResponse,
+						})
+					}
 					if err != nil {
 						return fmt.Errorf("write sensitive error: %v", err)
 					}

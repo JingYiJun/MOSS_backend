@@ -26,6 +26,7 @@ func AddRecordAsync(c *websocket.Conn) {
 		message []byte
 		err     error
 		user    *User
+		banned  bool
 	)
 
 	defer func() {
@@ -63,6 +64,14 @@ func AddRecordAsync(c *websocket.Conn) {
 			return Unauthorized()
 		}
 
+		banned, err = user.CheckUserOffense()
+		if err != nil {
+			return err
+		}
+		if banned {
+			return Forbidden(OffenseMessage)
+		}
+
 		// load chat
 		var chat Chat
 		err = DB.Take(&chat, chatID).Error
@@ -90,10 +99,21 @@ func AddRecordAsync(c *websocket.Conn) {
 			record.RequestSensitive = true
 			record.Response = DefaultResponse
 
-			err = c.WriteJSON(InferResponseModel{
-				Status: -2, // sensitive
-				Output: DefaultResponse,
-			})
+			banned, err = user.AddUserOffense(UserOffensePrompt)
+			if err != nil {
+				return err
+			}
+			if banned {
+				err = c.WriteJSON(InferResponseModel{
+					Status: -2, // banned
+					Output: OffenseMessage,
+				})
+			} else {
+				err = c.WriteJSON(InferResponseModel{
+					Status: -2, // sensitive
+					Output: DefaultResponse,
+				})
+			}
 			if err != nil {
 				return fmt.Errorf("write sensitive error: %v", err)
 			}
@@ -167,6 +187,7 @@ func RegenerateAsync(c *websocket.Conn) {
 		chatID int
 		user   *User
 		err    error
+		banned bool
 	)
 
 	defer func() {
@@ -190,6 +211,14 @@ func RegenerateAsync(c *websocket.Conn) {
 		user, err = LoadUserFromWs(c)
 		if err != nil {
 			return Unauthorized()
+		}
+
+		banned, err = user.CheckUserOffense()
+		if err != nil {
+			return err
+		}
+		if banned {
+			return Forbidden(OffenseMessage)
 		}
 
 		// load chat
@@ -218,10 +247,21 @@ func RegenerateAsync(c *websocket.Conn) {
 
 		if !user.IsAdmin || !user.DisableSensitiveCheck {
 			if oldRecord.RequestSensitive {
-				err = c.WriteJSON(InferResponseModel{
-					Status: -2, // sensitive
-					Output: DefaultResponse,
-				})
+				banned, err = user.AddUserOffense(UserOffensePrompt)
+				if err != nil {
+					return err
+				}
+				if banned {
+					err = c.WriteJSON(InferResponseModel{
+						Status: -2, // banned
+						Output: OffenseMessage,
+					})
+				} else {
+					err = c.WriteJSON(InferResponseModel{
+						Status: -2, // sensitive
+						Output: DefaultResponse,
+					})
+				}
 				if err != nil {
 					return fmt.Errorf("write sensitive error: %v", err)
 				}
