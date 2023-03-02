@@ -31,13 +31,23 @@ func (user *User) AddUserOffense(offenseType UserOffenseType) (bool, error) {
 }
 
 func (user *User) CheckUserOffense() (bool, error) {
-	if user.Banned {
-		return true, nil
-	}
 	var (
 		count int64
 		err   error
 	)
+
+	var configObject Config
+	err = DB.First(&configObject).Error
+	if err != nil {
+		return false, err
+	}
+	if !configObject.OffenseCheck {
+		return false, nil
+	}
+	if user.Banned {
+		return true, nil
+	}
+
 	err = DB.Model(&UserOffense{}).
 		Where("created_at between ? and ? and type = ? and user_id = ?",
 			time.Now().Add(-5*time.Minute),

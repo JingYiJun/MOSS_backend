@@ -6,6 +6,7 @@ import (
 	. "MOSS_backend/utils"
 	"MOSS_backend/utils/sensitive"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/gofiber/websocket/v2"
 	"gorm.io/gorm"
@@ -27,6 +28,7 @@ func AddRecordAsync(c *websocket.Conn) {
 		err     error
 		user    *User
 		banned  bool
+		chat    Chat
 	)
 
 	defer func() {
@@ -35,6 +37,10 @@ func AddRecordAsync(c *websocket.Conn) {
 			response := InferResponseModel{Status: -1, Output: err.Error()}
 			if httpError, ok := err.(*HttpError); ok {
 				response.StatusCode = httpError.Code
+			}
+			if errors.Is(err, maxLengthExceededError) {
+				chat.MaxLengthExceeded = true
+				DB.Save(&chat)
 			}
 			_ = c.WriteJSON(response)
 		}
@@ -73,7 +79,6 @@ func AddRecordAsync(c *websocket.Conn) {
 		}
 
 		// load chat
-		var chat Chat
 		err = DB.Take(&chat, chatID).Error
 		if err != nil {
 			return err
@@ -188,6 +193,7 @@ func RegenerateAsync(c *websocket.Conn) {
 		user   *User
 		err    error
 		banned bool
+		chat   Chat
 	)
 
 	defer func() {
@@ -196,6 +202,10 @@ func RegenerateAsync(c *websocket.Conn) {
 			response := InferResponseModel{Status: -1, Output: err.Error()}
 			if httpError, ok := err.(*HttpError); ok {
 				response.StatusCode = httpError.Code
+			}
+			if errors.Is(err, maxLengthExceededError) {
+				chat.MaxLengthExceeded = true
+				DB.Save(&chat)
 			}
 			_ = c.WriteJSON(response)
 		}
@@ -222,7 +232,6 @@ func RegenerateAsync(c *websocket.Conn) {
 		}
 
 		// load chat
-		var chat Chat
 		err = DB.Take(&chat, chatID).Error
 		if err != nil {
 			return err
