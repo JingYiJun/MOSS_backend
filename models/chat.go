@@ -68,7 +68,7 @@ type RecordModel struct {
 }
 
 type Param struct {
-	ID    string
+	ID    int
 	Name  string
 	Value float64
 }
