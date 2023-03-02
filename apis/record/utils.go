@@ -235,7 +235,7 @@ func ReceiveInferResponse(c *websocket.Conn) {
 
 	for {
 		if _, message, err = c.ReadMessage(); err != nil {
-			log.Printf("receive error: %s\n", err)
+			log.Printf("receive from infer error: %s\n", err)
 			break
 		}
 
@@ -246,7 +246,7 @@ func ReceiveInferResponse(c *websocket.Conn) {
 		var inferResponse InferResponseModel
 		err = json.Unmarshal(message, &inferResponse)
 		if err != nil {
-			log.Printf("error message type: %s\n, error: %s", string(message), err)
+			log.Printf("receive from infer error message type: %s\n, error: %s", string(message), err)
 			continue
 		}
 
@@ -265,7 +265,7 @@ func ReceiveInferResponse(c *websocket.Conn) {
 		if ch, ok := InferResponseChannel.Load(uuidText); ok {
 			ch.(chan InferResponseModel) <- inferResponse
 		} else {
-			log.Printf("invalid uuid: %s\n", uuidText)
+			log.Printf("receive from infer invalid uuid: %s\n", uuidText)
 			return
 		}
 

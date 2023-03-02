@@ -207,7 +207,10 @@ func RegenerateAsync(c *websocket.Conn) {
 				chat.MaxLengthExceeded = true
 				DB.Save(&chat)
 			}
-			_ = c.WriteJSON(response)
+			err = c.WriteJSON(response)
+			if err != nil {
+				log.Println("write err error: ", err)
+			}
 		}
 	}()
 
@@ -351,6 +354,8 @@ func interrupt(c *websocket.Conn, interruptChan chan any) {
 	for {
 
 		if _, message, err = c.ReadMessage(); err != nil {
+			log.Println("receive from client error: ", err)
+			close(interruptChan)
 			return
 		}
 
