@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm"
 	"log"
 	"strconv"
+	"sync/atomic"
 )
 
 // AddRecordAsync
@@ -132,13 +133,8 @@ func AddRecordAsync(c *websocket.Conn) {
 				return err
 			}
 
-			var interruptChan = make(chan any)
-
-			// async interrupt & heart beat
-			go interrupt(c, interruptChan)
-
 			// async infer
-			err = InferAsync(c, record.Request, records.ToRecordModel(), &record, user, interruptChan)
+			err = InferAsync(c, record.Request, records.ToRecordModel(), &record, user)
 			if err != nil {
 				if httpError, ok := err.(*HttpError); ok && httpError.MessageType == MaxLength {
 					DB.Model(&chat).Update("max_length_exceeded", true)
@@ -299,13 +295,8 @@ func RegenerateAsync(c *websocket.Conn) {
 			records = records[0 : len(records)-1]
 		}
 
-		var interruptChan = make(chan any)
-
-		// async interrupt & heart beat
-		go interrupt(c, interruptChan)
-
 		// async infer
-		err = InferAsync(c, record.Request, records.ToRecordModel(), &record, user, interruptChan)
+		err = InferAsync(c, record.Request, records.ToRecordModel(), &record, user)
 		if err != nil {
 			if httpError, ok := err.(*HttpError); ok && httpError.MessageType == MaxLength {
 				DB.Model(&chat).Update("max_length_exceeded", true)
@@ -348,11 +339,14 @@ func RegenerateAsync(c *websocket.Conn) {
 	err = procedure()
 }
 
-func interrupt(c *websocket.Conn, interruptChan chan any) {
+func interrupt(c *websocket.Conn, interruptChan chan any, connectionClosed *atomic.Bool) {
 	var message []byte
 	var err error
+	defer connectionClosed.Store(true)
 	for {
-
+		if connectionClosed.Load() {
+			return
+		}
 		if _, message, err = c.ReadMessage(); err != nil {
 			log.Println("receive from client error: ", err)
 			close(interruptChan)
@@ -428,13 +422,8 @@ func InferWithoutLoginAsync(c *websocket.Conn) {
 		} else {
 			/* infer */
 
-			var interruptChan = make(chan any)
-
-			// async interrupt & heart beat
-			go interrupt(c, interruptChan)
-
 			// async infer
-			err = InferAsync(c, body.Request, body.Records, &record, &User{}, interruptChan)
+			err = InferAsync(c, body.Request, body.Records, &record, &User{})
 			if err != nil {
 				return err
 			}
