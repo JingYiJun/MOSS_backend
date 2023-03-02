@@ -17,7 +17,6 @@ import (
 	"regexp"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
@@ -31,24 +30,7 @@ func Infer(input string, records Records) (output string, duration float64, err 
 	return InferMosec(input, records.ToRecordModel())
 }
 
-func InferAsync(
-	c *websocket.Conn,
-	input string,
-	records []RecordModel,
-	newRecord *Record,
-	user *User,
-) (
-	err error,
-) {
-	var (
-		interruptChan    = make(chan any)
-		connectionClosed = new(atomic.Bool)
-	)
-	connectionClosed.Store(false)
-
-	go interrupt(c, interruptChan, connectionClosed)
-
-	defer connectionClosed.Store(true)
+func InferAsync(c *websocket.Conn, input string, records []RecordModel, newRecord *Record, user *User, interruptChan chan any) (err error) {
 
 	// get formatted text
 	formattedText := InferPreprocess(input, records)
@@ -89,12 +71,6 @@ func InferAsync(
 	var detectedOutput string
 
 	for {
-		if connectionClosed.Load() {
-			if _, ok := <-interruptChan; !ok {
-				return NoStatus("client interrupt")
-			}
-			return nil
-		}
 		select {
 		case response := <-outputChan:
 			if config.Config.Debug {
