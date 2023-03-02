@@ -24,6 +24,8 @@ var endContentRegexp = regexp.MustCompile(`<[es]o\w>`)
 
 var maxLengthExceededError = BadRequest("The maximum context length is exceeded").WithMessageType(MaxLength)
 
+var unknownError = InternalServerError("unknown error, please try again")
+
 func Infer(input string, records Records) (output string, duration float64, err error) {
 	return InferMosec(input, records.ToRecordModel())
 }
@@ -32,10 +34,6 @@ func InferAsync(c *websocket.Conn, input string, records []RecordModel, newRecor
 
 	// get formatted text
 	formattedText := InferPreprocess(input, records)
-
-	if len([]rune(formattedText)) > 1024 {
-		return maxLengthExceededError
-	}
 
 	// make uuid, store channel into map
 	uuidText := strings.ReplaceAll(uuid.NewString(), "-", "")
@@ -201,7 +199,10 @@ func inferTrigger(data []byte, errChan chan error) {
 	if rsp.StatusCode == 400 {
 		err = maxLengthExceededError
 		return
-	} else if rsp.StatusCode >= 500 {
+	} else if rsp.StatusCode == 560 {
+		err = unknownError
+		return
+	} else {
 		err = InternalServerError()
 		return
 	}
@@ -320,10 +321,6 @@ func cutEndFlag(content string) string {
 func InferMosec(input string, records []RecordModel) (string, float64, error) {
 	formattedText := InferPreprocess(input, records)
 
-	if len([]rune(formattedText)) > 1024 {
-		return "", 0, maxLengthExceededError
-	}
-
 	request := map[string]any{"x": formattedText}
 
 	// get params
@@ -354,6 +351,8 @@ func InferMosec(input string, records []RecordModel) (string, float64, error) {
 		log.Printf("error response from inference server, status code: %d, output: %v\n", rsp.StatusCode, output)
 		if rsp.StatusCode == 400 {
 			return "", 0, maxLengthExceededError
+		} else if rsp.StatusCode == 560 {
+			return "", 0, unknownError
 		} else {
 			return "", 0, InternalServerError()
 		}

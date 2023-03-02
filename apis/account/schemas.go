@@ -3,7 +3,7 @@ package account
 /* account */
 
 type EmailModel struct {
-	Email string `json:"email" query:"email" validate:"omitempty,email"`
+	Email string `json:"email" query:"email" validate:"required,email"`
 }
 
 type ScopeModel struct {
@@ -11,7 +11,7 @@ type ScopeModel struct {
 }
 
 type PhoneModel struct {
-	Phone string `json:"phone" query:"phone" validate:"omitempty"` // phone number in e164 mode
+	Phone string `json:"phone" query:"phone" validate:"required"` // phone number in e164 mode
 }
 
 type VerifyEmailRequest struct {

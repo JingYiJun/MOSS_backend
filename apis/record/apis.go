@@ -5,6 +5,7 @@ import (
 	. "MOSS_backend/models"
 	. "MOSS_backend/utils"
 	"MOSS_backend/utils/sensitive"
+	"errors"
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 )
@@ -119,6 +120,10 @@ func AddRecord(c *fiber.Ctx) error {
 		// infer request
 		record.Response, record.Duration, err = Infer(record.Request, records)
 		if err != nil {
+			if errors.Is(err, maxLengthExceededError) {
+				chat.MaxLengthExceeded = true
+				DB.Save(&chat)
+			}
 			return err
 		}
 
@@ -239,6 +244,10 @@ func RetryRecord(c *fiber.Ctx) error {
 	// infer request
 	record.Response, record.Duration, err = Infer(record.Request, records)
 	if err != nil {
+		if errors.Is(err, maxLengthExceededError) {
+			chat.MaxLengthExceeded = true
+			DB.Save(&chat)
+		}
 		return err
 	}
 
