@@ -129,7 +129,7 @@ func AddRecordAsync(c *websocket.Conn) {
 			var records Records
 			err = DB.Find(&records, "chat_id = ? and request_sensitive <> true and response_sensitive <> true", chatID).Error
 			if err != nil {
-				return InternalServerError()
+				return err
 			}
 
 			var interruptChan = make(chan any)
@@ -288,7 +288,7 @@ func RegenerateAsync(c *websocket.Conn) {
 		var records Records
 		err = DB.Find(&records, "chat_id = ? and request_sensitive <> true and response_sensitive <> true", chatID).Error
 		if err != nil {
-			return InternalServerError()
+			return err
 		}
 
 		// remove the latest record

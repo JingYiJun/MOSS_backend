@@ -196,6 +196,14 @@ func inferTrigger(data []byte, errChan chan error) {
 		_ = rsp.Body.Close()
 	}()
 
+	data, err = io.ReadAll(rsp.Body)
+	if err != nil {
+		return
+	}
+
+	if rsp.StatusCode != 200 {
+		log.Println("inference error: ", string(data))
+	}
 	if rsp.StatusCode == 400 {
 		err = maxLengthExceededError
 		return
