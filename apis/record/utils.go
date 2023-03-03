@@ -28,7 +28,7 @@ var maxLengthExceededError = BadRequest("The maximum context length is exceeded"
 var unknownError = InternalServerError("unknown error, please try again")
 
 func Infer(input string, records Records) (output string, duration float64, err error) {
-	return InferMosec(input, records.ToRecordModel())
+	return InferMosec(InferPreprocess(input, records.ToRecordModel()))
 }
 
 func InferAsync(
@@ -347,9 +347,7 @@ func cutEndFlag(content string) string {
 	return strings.Trim(content, " ")
 }
 
-func InferMosec(input string, records []RecordModel) (string, float64, error) {
-	formattedText := InferPreprocess(input, records)
-
+func InferMosec(formattedText string) (string, float64, error) {
 	request := map[string]any{"x": formattedText}
 
 	// get params

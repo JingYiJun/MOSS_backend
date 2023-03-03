@@ -359,8 +359,9 @@ func ModifyRecord(c *fiber.Ctx) error {
 // @Success 200 {object} InferenceResponse
 func InferWithoutLogin(c *fiber.Ctx) error {
 	var (
-		body InferenceRequest
-		err  error
+		body          InferenceRequest
+		formattedText string
+		err           error
 	)
 	err = ValidateBody(c, &body)
 	if err != nil {
@@ -371,7 +372,11 @@ func InferWithoutLogin(c *fiber.Ctx) error {
 		return BadRequest(DefaultResponse).WithMessageType(Sensitive)
 	}
 
-	output, duration, err := InferMosec(body.Request, body.Records)
+	formattedText = InferPreprocess(body.Request, body.Records)
+	if len([]rune(formattedText)) > 1024 {
+		return maxLengthExceededError
+	}
+	output, duration, err := InferMosec(formattedText)
 	if err != nil {
 		return err
 	}

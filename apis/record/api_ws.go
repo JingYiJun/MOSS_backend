@@ -348,6 +348,9 @@ func interrupt(c *websocket.Conn, interruptChan chan any, connectionClosed *atom
 			return
 		}
 		if _, message, err = c.ReadMessage(); err != nil {
+			if connectionClosed.Load() {
+				return
+			}
 			log.Println("receive from client error: ", err)
 			close(interruptChan)
 			return
