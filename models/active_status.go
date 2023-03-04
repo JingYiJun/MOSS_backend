@@ -21,7 +21,7 @@ func ActiveStatusTask() {
 		log.Println("load dau err")
 	}
 	err = DB.Model(&User{}).
-		Where("last_login between ? and ?", time.Now().AddDate(0, 0, -1), time.Now()).
+		Where("last_login between ? and ?", time.Now().AddDate(0, -1, 0), time.Now()).
 		Count(&mau).Error
 	if err != nil {
 		log.Println("load mau err")
