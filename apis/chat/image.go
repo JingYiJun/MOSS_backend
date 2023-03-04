@@ -1,11 +1,13 @@
 package chat
 
 import (
+	"MOSS_backend/config"
 	"MOSS_backend/data"
 	"MOSS_backend/models"
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"github.com/chromedp/chromedp"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +15,9 @@ import (
 )
 
 func GenerateImage(records []models.RecordModel) ([]byte, error) {
+	if !config.Config.OpenScreenshot {
+		return nil, errors.New("截图功能暂缓开放")
+	}
 	ctx, cancel := chromedp.NewContext(context.Background())
 	defer cancel()
 

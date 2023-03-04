@@ -42,6 +42,8 @@ var Config struct {
 	RefreshExpireTime int `env:"REFRESH_EXPIRE_TIME" envDefault:"30"` // 30 days
 
 	CallbackUrl string `env:"CALLBACK_URL,required"` // async callback url
+
+	OpenScreenshot bool `env:"OPEN_SCREENSHOT" envDefault:"true"`
 }
 
 func InitConfig() {
