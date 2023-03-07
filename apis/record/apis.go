@@ -368,6 +368,8 @@ func InferWithoutLogin(c *fiber.Ctx) error {
 		return err
 	}
 
+	consumerUsername := c.Get("X-Consumer-Username")
+
 	if sensitive.IsSensitive(body.String(), &User{}) {
 		return BadRequest(DefaultResponse).WithMessageType(Sensitive)
 	}
@@ -386,8 +388,9 @@ func InferWithoutLogin(c *fiber.Ctx) error {
 	}
 
 	directRecord := DirectRecord{
-		Records:  append(body.Records, RecordModel{Request: body.Request, Response: output}),
-		Duration: duration,
+		Records:          append(body.Records, RecordModel{Request: body.Request, Response: output}),
+		Duration:         duration,
+		ConsumerUsername: consumerUsername,
 	}
 
 	_ = DB.Create(&directRecord).Error
