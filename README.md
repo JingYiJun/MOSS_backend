@@ -2,11 +2,9 @@
 
 backend for fastnlp MOSS project
 
-## Usage
+Only open source here. Don't host this project yourself. No inference model is included
 
-To be done...
-
-For documentation, please open http://localhost:8000/docs after running app
+仅开源，不建议自部署，不包含推断模型。
 
 ### Powered by
 
