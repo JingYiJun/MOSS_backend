@@ -74,7 +74,9 @@ type Param struct {
 }
 
 type DirectRecord struct {
-	ID       int
-	Records  []RecordModel `gorm:"serializer:json"`
-	Duration float64
+	ID               int
+	CreatedAt        time.Time
+	Records          []RecordModel `gorm:"serializer:json"`
+	Duration         float64
+	ConsumerUsername string
 }
