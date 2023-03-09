@@ -57,8 +57,13 @@ func InferAsync(
 	// make uuid, store channel into map
 	uuidText := strings.ReplaceAll(uuid.NewString(), "-", "")
 	outputChan := make(chan InferResponseModel, 100)
-	InferResponseChannel.Store(uuidText, outputChan)
-	defer InferResponseChannel.Delete(uuidText)
+	responseCh := &responseChannel{ch: outputChan}
+	responseCh.closed.Store(false)
+	InferResponseChannel.Store(uuidText, responseCh)
+	defer func() {
+		responseCh.closed.Store(true)
+		InferResponseChannel.Delete(uuidText)
+	}()
 
 	request := map[string]any{"x": formattedText, "url": config.Config.CallbackUrl + "?uuid=" + uuidText}
 
@@ -258,6 +263,11 @@ type InferResponseModel struct {
 	Output     string `json:"output"`
 }
 
+type responseChannel struct {
+	ch     chan InferResponseModel
+	closed atomic.Bool
+}
+
 var InferResponseChannel sync.Map
 
 func ReceiveInferResponse(c *websocket.Conn) {
@@ -266,16 +276,39 @@ func ReceiveInferResponse(c *websocket.Conn) {
 		err     error
 	)
 
+	defer func() {
+		if something := recover(); something != nil {
+			Logger.Error("receive infer response panicked", zap.Any("error", something))
+		}
+	}()
+
 	uuidText := c.Query("uuid")
 	if uuidText == "" {
 		_ = c.WriteJSON(InferResponseModel{Status: -1, StatusCode: 400, Output: "Bad Request"})
 		return
 	}
 
+	value, ok := InferResponseChannel.Load(uuidText)
+	if !ok {
+		Logger.Error("receive from infer invalid uuid", zap.String("uuid", uuidText))
+		_ = c.WriteJSON(InferResponseModel{Status: -1, StatusCode: 400, Output: "Bad Request"})
+		return
+	}
+	ch := value.(*responseChannel)
+
 	for {
 		if _, message, err = c.ReadMessage(); err != nil {
-			log.Printf("receive from infer error: %s\n", err)
-			break
+			if ch.closed.Load() {
+				_ = c.WriteJSON(InferResponseModel{Status: 0})
+				return
+			} else {
+				Logger.Error("receive from infer error", zap.Error(err))
+			}
+			return
+		}
+		if ch.closed.Load() {
+			_ = c.WriteJSON(InferResponseModel{Status: 0})
+			return
 		}
 
 		if config.Config.Debug {
@@ -301,14 +334,11 @@ func ReceiveInferResponse(c *websocket.Conn) {
 			log.Printf("recieve output: %v\n", inferResponse.Output)
 		}
 
-		if ch, ok := InferResponseChannel.Load(uuidText); ok {
-			ch.(chan InferResponseModel) <- inferResponse
-		} else {
-			log.Printf("receive from infer invalid uuid: %s\n", uuidText)
-			return
-		}
+		// may panic
+		ch.ch <- inferResponse
 
 		if inferResponse.Status == 0 {
+			_ = c.WriteJSON(InferResponseModel{Status: 0})
 			return
 		}
 	}
