@@ -68,6 +68,8 @@ func main() {
 	if err != nil {
 		log.Println(err)
 	}
+
+	_ = utils.Logger.Sync()
 }
 
 func startTasks() {
