@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"github.com/gofiber/websocket/v2"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 	"io"
 	"log"
 	"net/http"
@@ -204,6 +205,7 @@ func inferTrigger(data []byte, errChan chan error) {
 		err error
 		rsp *http.Response
 	)
+	startTime := time.Now()
 	defer func() {
 		if err != nil {
 			errChan <- err
@@ -211,7 +213,10 @@ func inferTrigger(data []byte, errChan chan error) {
 	}()
 	rsp, err = http.Post(config.Config.InferenceUrl, "application/json", bytes.NewBuffer(data))
 	if err != nil {
-		log.Println(err)
+		Logger.Error(
+			"post inference error",
+			zap.Error(err),
+		)
 		err = InternalServerError("inference server error")
 		return
 	}
@@ -226,7 +231,12 @@ func inferTrigger(data []byte, errChan chan error) {
 	}
 
 	if rsp.StatusCode != 200 {
-		log.Println("inference error: ", string(data))
+		Logger.Error(
+			"inference error",
+			zap.Int("duration", int(time.Since(startTime))),
+			zap.Int("status code", rsp.StatusCode),
+			zap.ByteString("body", data),
+		)
 		if rsp.StatusCode == 400 {
 			err = maxLengthExceededError
 		} else if rsp.StatusCode == 560 {
@@ -234,6 +244,11 @@ func inferTrigger(data []byte, errChan chan error) {
 		} else if rsp.StatusCode >= 500 {
 			err = InternalServerError()
 		}
+	} else {
+		Logger.Info(
+			"inference success",
+			zap.Int("duration", int(time.Since(startTime))),
+		)
 	}
 }
 
@@ -364,7 +379,10 @@ func InferMosec(formattedText string) (string, float64, error) {
 	startTime := time.Now()
 	rsp, err := http.Post(config.Config.InferenceUrl, "application/json", bytes.NewBuffer(data))
 	if err != nil {
-		log.Printf("error post to infer server: %s\n", err)
+		Logger.Error(
+			"post inference error",
+			zap.Error(err),
+		)
 		return "", 0, InternalServerError()
 	}
 	duration := float64(time.Since(startTime)) / 1000_000_000
@@ -375,7 +393,12 @@ func InferMosec(formattedText string) (string, float64, error) {
 	data, _ = io.ReadAll(rsp.Body)
 	output := string(data)
 	if rsp.StatusCode != 200 {
-		log.Printf("error response from inference server, status code: %d, output: %v\n", rsp.StatusCode, output)
+		Logger.Error(
+			"inference error",
+			zap.Int("duration", int(time.Since(startTime))),
+			zap.Int("status code", rsp.StatusCode),
+			zap.ByteString("body", data),
+		)
 		if rsp.StatusCode == 400 {
 			return "", 0, maxLengthExceededError
 		} else if rsp.StatusCode == 560 {
