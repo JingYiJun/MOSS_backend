@@ -229,7 +229,7 @@ func inferTrigger(data []byte, errChan chan error) {
 		_ = rsp.Body.Close()
 	}()
 
-	data, err = io.ReadAll(rsp.Body)
+	response, err := io.ReadAll(rsp.Body)
 	if err != nil {
 		return
 	}
@@ -241,7 +241,7 @@ func inferTrigger(data []byte, errChan chan error) {
 			"inference error",
 			zap.Int("duration", duration),
 			zap.Int("status code", rsp.StatusCode),
-			zap.ByteString("body", data),
+			zap.ByteString("body", response),
 		)
 		if rsp.StatusCode == 400 {
 			err = maxLengthExceededError
@@ -251,25 +251,14 @@ func inferTrigger(data []byte, errChan chan error) {
 			err = InternalServerError()
 		}
 	} else {
-		var response struct {
-			X string `json:"x"`
-		}
-		err = json.Unmarshal(data, &response)
-		if err != nil {
-			Logger.Error("unable to unmarshal response",
-				zap.Int("duration", duration),
-				zap.Error(err),
-				zap.ByteString("body", data),
-			)
-		} else {
-			characterLength := len([]rune(response.X))
-			Logger.Info(
-				"inference success",
-				zap.Int("duration", duration),
-				zap.Int("length", characterLength),
-				zap.Float64("average", float64(duration)/float64(characterLength)),
-			)
-		}
+		characterLength := len([]rune(string(response))) - len([]rune(string(data)))
+		Logger.Info(
+			"inference success",
+			zap.Int("duration", duration),
+			zap.ByteString("response", response),
+			zap.Int("length", characterLength),
+			zap.Float64("average", float64(duration)/float64(characterLength)),
+		)
 	}
 }
 
