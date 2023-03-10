@@ -235,10 +235,12 @@ func inferTrigger(data []byte, errChan chan error) {
 		return
 	}
 
+	duration := int(time.Since(startTime))
+
 	if rsp.StatusCode != 200 {
 		Logger.Error(
 			"inference error",
-			zap.Int("duration", int(time.Since(startTime))),
+			zap.Int("duration", duration),
 			zap.Int("status code", rsp.StatusCode),
 			zap.ByteString("body", data),
 		)
@@ -250,10 +252,25 @@ func inferTrigger(data []byte, errChan chan error) {
 			err = InternalServerError()
 		}
 	} else {
-		Logger.Info(
-			"inference success",
-			zap.Int("duration", int(time.Since(startTime))),
-		)
+		var response struct {
+			X string `json:"x"`
+		}
+		err = json.Unmarshal(data, &response)
+		if err != nil {
+			Logger.Error("unable to unmarshal response",
+				zap.Int("duration", duration),
+				zap.Error(err),
+				zap.ByteString("body", data),
+			)
+		} else {
+			characterLength := len([]rune(response.X))
+			Logger.Info(
+				"inference success",
+				zap.Int("duration", duration),
+				zap.Int("length", characterLength),
+				zap.Float64("average", float64(duration)/float64(characterLength)),
+			)
+		}
 	}
 }
 
