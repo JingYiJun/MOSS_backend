@@ -215,7 +215,8 @@ func inferTrigger(data []byte, errChan chan error) {
 			errChan <- err
 		}
 	}()
-	rsp, err = http.Post(config.Config.InferenceUrl, "application/json", bytes.NewBuffer(data))
+	request := string(data)
+	rsp, err = http.Post(config.Config.InferenceUrl, "application/json", bytes.NewBuffer(data)) // take the ownership of data
 	if err != nil {
 		Logger.Error(
 			"post inference error",
@@ -251,7 +252,7 @@ func inferTrigger(data []byte, errChan chan error) {
 			err = InternalServerError()
 		}
 	} else {
-		characterLength := len([]rune(string(response))) - len([]rune(string(data)))
+		characterLength := len([]rune(string(response))) - len([]rune(request))
 		Logger.Info(
 			"inference success",
 			zap.Int("duration", duration),
