@@ -49,8 +49,6 @@ func InferAsync(
 
 	go interrupt(c, interruptChan, connectionClosed)
 
-	defer connectionClosed.Store(true)
-
 	// get formatted text
 	formattedText := InferPreprocess(input, records)
 
@@ -63,6 +61,7 @@ func InferAsync(
 	defer func() {
 		responseCh.closed.Store(true)
 		InferResponseChannel.Delete(uuidText)
+		connectionClosed.Store(true)
 	}()
 
 	request := map[string]any{"x": formattedText, "url": config.Config.CallbackUrl + "?uuid=" + uuidText}
@@ -84,11 +83,11 @@ func InferAsync(
 
 	errChan := make(chan error)
 
-	go inferTrigger(data, errChan)
+	go inferTrigger(formattedText, data, errChan)
 
 	startTime := time.Now()
 
-	var ctx, cancel = context.WithTimeout(context.Background(), 5*time.Minute)
+	var ctx, cancel = context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 
 	var nowOutput string
@@ -205,7 +204,7 @@ func InferAsync(
 	}
 }
 
-func inferTrigger(data []byte, errChan chan error) {
+func inferTrigger(formattedText string, data []byte, errChan chan error) {
 	var (
 		err error
 		rsp *http.Response
@@ -216,7 +215,7 @@ func inferTrigger(data []byte, errChan chan error) {
 			errChan <- err
 		}
 	}()
-	rsp, err = http.Post(config.Config.InferenceUrl, "application/json", bytes.NewBuffer(data))
+	rsp, err = http.Post(config.Config.InferenceUrl, "application/json", bytes.NewBuffer(data)) // take the ownership of data
 	if err != nil {
 		Logger.Error(
 			"post inference error",
@@ -230,17 +229,19 @@ func inferTrigger(data []byte, errChan chan error) {
 		_ = rsp.Body.Close()
 	}()
 
-	data, err = io.ReadAll(rsp.Body)
+	response, err := io.ReadAll(rsp.Body)
 	if err != nil {
 		return
 	}
 
+	duration := int(time.Since(startTime))
+
 	if rsp.StatusCode != 200 {
 		Logger.Error(
 			"inference error",
-			zap.Int("duration", int(time.Since(startTime))),
+			zap.Int("duration", duration),
 			zap.Int("status code", rsp.StatusCode),
-			zap.ByteString("body", data),
+			zap.ByteString("body", response),
 		)
 		if rsp.StatusCode == 400 {
 			err = maxLengthExceededError
@@ -250,9 +251,13 @@ func inferTrigger(data []byte, errChan chan error) {
 			err = InternalServerError()
 		}
 	} else {
+		characterLength := len([]rune(string(response))) - len([]rune(formattedText))
 		Logger.Info(
 			"inference success",
-			zap.Int("duration", int(time.Since(startTime))),
+			zap.Int("duration", duration),
+			zap.ByteString("response", response),
+			zap.Int("length", characterLength),
+			zap.Float64("average", float64(duration)/float64(characterLength)),
 		)
 	}
 }

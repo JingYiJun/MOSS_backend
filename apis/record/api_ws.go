@@ -355,7 +355,7 @@ func interrupt(c *websocket.Conn, interruptChan chan any, connectionClosed *atom
 			if connectionClosed.Load() {
 				return
 			}
-			log.Println("receive from client error: ", err)
+			Logger.Error("receive from client error", zap.Error(err))
 			close(interruptChan)
 			return
 		}
@@ -367,7 +367,7 @@ func interrupt(c *websocket.Conn, interruptChan chan any, connectionClosed *atom
 		var interruptModel InterruptModel
 		err = json.Unmarshal(message, &interruptModel)
 		if err != nil {
-			log.Printf("error unmarshal interrupt: %v\n", string(message))
+			Logger.Error("fail to unmarshal interrupt", zap.ByteString("request", message))
 			continue
 		}
 
