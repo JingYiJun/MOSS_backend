@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"github.com/gofiber/websocket/v2"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 	"io"
 	"log"
 	"net/http"
@@ -56,8 +57,13 @@ func InferAsync(
 	// make uuid, store channel into map
 	uuidText := strings.ReplaceAll(uuid.NewString(), "-", "")
 	outputChan := make(chan InferResponseModel, 100)
-	InferResponseChannel.Store(uuidText, outputChan)
-	defer InferResponseChannel.Delete(uuidText)
+	responseCh := &responseChannel{ch: outputChan}
+	responseCh.closed.Store(false)
+	InferResponseChannel.Store(uuidText, responseCh)
+	defer func() {
+		responseCh.closed.Store(true)
+		InferResponseChannel.Delete(uuidText)
+	}()
 
 	request := map[string]any{"x": formattedText, "url": config.Config.CallbackUrl + "?uuid=" + uuidText}
 
@@ -204,6 +210,7 @@ func inferTrigger(data []byte, errChan chan error) {
 		err error
 		rsp *http.Response
 	)
+	startTime := time.Now()
 	defer func() {
 		if err != nil {
 			errChan <- err
@@ -211,7 +218,10 @@ func inferTrigger(data []byte, errChan chan error) {
 	}()
 	rsp, err = http.Post(config.Config.InferenceUrl, "application/json", bytes.NewBuffer(data))
 	if err != nil {
-		log.Println(err)
+		Logger.Error(
+			"post inference error",
+			zap.Error(err),
+		)
 		err = InternalServerError("inference server error")
 		return
 	}
@@ -226,7 +236,12 @@ func inferTrigger(data []byte, errChan chan error) {
 	}
 
 	if rsp.StatusCode != 200 {
-		log.Println("inference error: ", string(data))
+		Logger.Error(
+			"inference error",
+			zap.Int("duration", int(time.Since(startTime))),
+			zap.Int("status code", rsp.StatusCode),
+			zap.ByteString("body", data),
+		)
 		if rsp.StatusCode == 400 {
 			err = maxLengthExceededError
 		} else if rsp.StatusCode == 560 {
@@ -234,6 +249,11 @@ func inferTrigger(data []byte, errChan chan error) {
 		} else if rsp.StatusCode >= 500 {
 			err = InternalServerError()
 		}
+	} else {
+		Logger.Info(
+			"inference success",
+			zap.Int("duration", int(time.Since(startTime))),
+		)
 	}
 }
 
@@ -241,6 +261,11 @@ type InferResponseModel struct {
 	Status     int    `json:"status"` // 1 for output, 0 for end, -1 for error, -2 for sensitive
 	StatusCode int    `json:"status_code,omitempty"`
 	Output     string `json:"output"`
+}
+
+type responseChannel struct {
+	ch     chan InferResponseModel
+	closed atomic.Bool
 }
 
 var InferResponseChannel sync.Map
@@ -251,16 +276,39 @@ func ReceiveInferResponse(c *websocket.Conn) {
 		err     error
 	)
 
+	defer func() {
+		if something := recover(); something != nil {
+			Logger.Error("receive infer response panicked", zap.Any("error", something))
+		}
+	}()
+
 	uuidText := c.Query("uuid")
 	if uuidText == "" {
 		_ = c.WriteJSON(InferResponseModel{Status: -1, StatusCode: 400, Output: "Bad Request"})
 		return
 	}
 
+	value, ok := InferResponseChannel.Load(uuidText)
+	if !ok {
+		Logger.Error("receive from infer invalid uuid", zap.String("uuid", uuidText))
+		_ = c.WriteJSON(InferResponseModel{Status: -1, StatusCode: 400, Output: "Bad Request"})
+		return
+	}
+	ch := value.(*responseChannel)
+
 	for {
 		if _, message, err = c.ReadMessage(); err != nil {
-			log.Printf("receive from infer error: %s\n", err)
-			break
+			if ch.closed.Load() {
+				_ = c.WriteJSON(InferResponseModel{Status: 0})
+				return
+			} else {
+				Logger.Error("receive from infer error", zap.Error(err))
+			}
+			return
+		}
+		if ch.closed.Load() {
+			_ = c.WriteJSON(InferResponseModel{Status: 0})
+			return
 		}
 
 		if config.Config.Debug {
@@ -286,14 +334,11 @@ func ReceiveInferResponse(c *websocket.Conn) {
 			log.Printf("recieve output: %v\n", inferResponse.Output)
 		}
 
-		if ch, ok := InferResponseChannel.Load(uuidText); ok {
-			ch.(chan InferResponseModel) <- inferResponse
-		} else {
-			log.Printf("receive from infer invalid uuid: %s\n", uuidText)
-			return
-		}
+		// may panic
+		ch.ch <- inferResponse
 
 		if inferResponse.Status == 0 {
+			_ = c.WriteJSON(InferResponseModel{Status: 0})
 			return
 		}
 	}
@@ -364,7 +409,10 @@ func InferMosec(formattedText string) (string, float64, error) {
 	startTime := time.Now()
 	rsp, err := http.Post(config.Config.InferenceUrl, "application/json", bytes.NewBuffer(data))
 	if err != nil {
-		log.Printf("error post to infer server: %s\n", err)
+		Logger.Error(
+			"post inference error",
+			zap.Error(err),
+		)
 		return "", 0, InternalServerError()
 	}
 	duration := float64(time.Since(startTime)) / 1000_000_000
@@ -375,7 +423,12 @@ func InferMosec(formattedText string) (string, float64, error) {
 	data, _ = io.ReadAll(rsp.Body)
 	output := string(data)
 	if rsp.StatusCode != 200 {
-		log.Printf("error response from inference server, status code: %d, output: %v\n", rsp.StatusCode, output)
+		Logger.Error(
+			"inference error",
+			zap.Int("duration", int(time.Since(startTime))),
+			zap.Int("status code", rsp.StatusCode),
+			zap.ByteString("body", data),
+		)
 		if rsp.StatusCode == 400 {
 			return "", 0, maxLengthExceededError
 		} else if rsp.StatusCode == 560 {
