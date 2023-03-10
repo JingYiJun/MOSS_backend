@@ -49,8 +49,6 @@ func InferAsync(
 
 	go interrupt(c, interruptChan, connectionClosed)
 
-	defer connectionClosed.Store(true)
-
 	// get formatted text
 	formattedText := InferPreprocess(input, records)
 
@@ -63,6 +61,7 @@ func InferAsync(
 	defer func() {
 		responseCh.closed.Store(true)
 		InferResponseChannel.Delete(uuidText)
+		connectionClosed.Store(true)
 	}()
 
 	request := map[string]any{"x": formattedText, "url": config.Config.CallbackUrl + "?uuid=" + uuidText}
@@ -88,7 +87,7 @@ func InferAsync(
 
 	startTime := time.Now()
 
-	var ctx, cancel = context.WithTimeout(context.Background(), 5*time.Minute)
+	var ctx, cancel = context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 
 	var nowOutput string
