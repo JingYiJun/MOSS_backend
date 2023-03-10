@@ -14,7 +14,6 @@ var Logger, _ = zap.Config{
 		LevelKey:       "level",
 		NameKey:        "logger",
 		MessageKey:     "msg",
-		StacktraceKey:  "stacktrace",
 		EncodeLevel:    zapcore.LowercaseLevelEncoder,
 		EncodeTime:     zapcore.RFC3339NanoTimeEncoder,
 		EncodeDuration: zapcore.SecondsDurationEncoder,
