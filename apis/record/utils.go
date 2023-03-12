@@ -234,12 +234,12 @@ func inferTrigger(formattedText string, data []byte, errChan chan error) {
 		return
 	}
 
-	duration := int(time.Since(startTime))
+	latency := int(time.Since(startTime))
 
 	if rsp.StatusCode != 200 {
 		Logger.Error(
 			"inference error",
-			zap.Int("duration", duration),
+			zap.Int("latency", latency),
 			zap.Int("status code", rsp.StatusCode),
 			zap.ByteString("body", response),
 		)
@@ -251,14 +251,28 @@ func inferTrigger(formattedText string, data []byte, errChan chan error) {
 			err = InternalServerError()
 		}
 	} else {
-		characterLength := len([]rune(string(response))) - len([]rune(formattedText))
-		Logger.Info(
-			"inference success",
-			zap.Int("duration", duration),
-			zap.ByteString("response", response),
-			zap.Int("length", characterLength),
-			zap.Float64("average", float64(duration)/float64(characterLength)),
-		)
+		var responseStruct struct {
+			Pred                   string `json:"pred"`
+			InputTokenNum          int    `json:"input_token_num"`
+			NewGenerationsTokenNum int    `json:"new_generations_token_num"`
+		}
+		err = json.Unmarshal(response, &responseStruct)
+		if err != nil {
+			Logger.Error(
+				"unable to unmarshal response from infer",
+				zap.Error(err),
+			)
+			err = InternalServerError()
+		} else {
+			Logger.Info(
+				"inference success",
+				zap.Int("latency", latency),
+				zap.String("pred", responseStruct.Pred),
+				zap.Int("input_token_num", responseStruct.InputTokenNum),
+				zap.Int("new_generations_token_num", responseStruct.NewGenerationsTokenNum),
+				zap.Float64("average", float64(latency)/float64(responseStruct.NewGenerationsTokenNum)),
+			)
+		}
 	}
 }
 
