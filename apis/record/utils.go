@@ -83,7 +83,11 @@ func InferAsync(
 
 	errChan := make(chan error)
 
-	go inferTrigger(formattedText, data, errChan)
+	go func() {
+		if _, _, innerErr := inferTrigger(data); innerErr != nil {
+			errChan <- innerErr
+		}
+	}()
 
 	startTime := time.Now()
 
@@ -204,25 +208,15 @@ func InferAsync(
 	}
 }
 
-func inferTrigger(formattedText string, data []byte, errChan chan error) {
-	var (
-		err error
-		rsp *http.Response
-	)
+func inferTrigger(data []byte) (string, float64, error) {
 	startTime := time.Now()
-	defer func() {
-		if err != nil {
-			errChan <- err
-		}
-	}()
-	rsp, err = http.Post(config.Config.InferenceUrl, "application/json", bytes.NewBuffer(data)) // take the ownership of data
+	rsp, err := http.Post(config.Config.InferenceUrl, "application/json", bytes.NewBuffer(data)) // take the ownership of data
 	if err != nil {
 		Logger.Error(
 			"post inference error",
 			zap.Error(err),
 		)
-		err = InternalServerError("inference server error")
-		return
+		return "", 0, InternalServerError("inference server error")
 	}
 
 	defer func() {
@@ -231,10 +225,12 @@ func inferTrigger(formattedText string, data []byte, errChan chan error) {
 
 	response, err := io.ReadAll(rsp.Body)
 	if err != nil {
-		return
+		Logger.Error("fail to read response body", zap.Error(err))
+		return "", 0, InternalServerError()
 	}
 
 	latency := int(time.Since(startTime))
+	duration := float64(latency) / 1000_000_000
 
 	if rsp.StatusCode != 200 {
 		Logger.Error(
@@ -244,11 +240,13 @@ func inferTrigger(formattedText string, data []byte, errChan chan error) {
 			zap.ByteString("body", response),
 		)
 		if rsp.StatusCode == 400 {
-			err = maxLengthExceededError
+			return "", duration, maxLengthExceededError
 		} else if rsp.StatusCode == 560 {
-			err = unknownError
+			return "", duration, unknownError
 		} else if rsp.StatusCode >= 500 {
-			err = InternalServerError()
+			return "", duration, InternalServerError()
+		} else {
+			return "", duration, unknownError
 		}
 	} else {
 		var responseStruct struct {
@@ -260,9 +258,10 @@ func inferTrigger(formattedText string, data []byte, errChan chan error) {
 		if err != nil {
 			Logger.Error(
 				"unable to unmarshal response from infer",
+				zap.ByteString("response", response),
 				zap.Error(err),
 			)
-			err = InternalServerError()
+			return "", duration, InternalServerError()
 		} else {
 			Logger.Info(
 				"inference success",
@@ -272,6 +271,7 @@ func inferTrigger(formattedText string, data []byte, errChan chan error) {
 				zap.Int("new_generations_token_num", responseStruct.NewGenerationsTokenNum),
 				zap.Float64("average", float64(latency)/float64(responseStruct.NewGenerationsTokenNum)),
 			)
+			return responseStruct.Pred, duration, nil
 		}
 	}
 }
@@ -412,7 +412,7 @@ func cutEndFlag(content string) string {
 }
 
 func InferMosec(formattedText string) (string, float64, error) {
-	request := map[string]any{"x": formattedText}
+	request := Map{"x": formattedText}
 
 	// get params
 	var params []Param
@@ -425,36 +425,9 @@ func InferMosec(formattedText string) (string, float64, error) {
 	}
 	data, _ := json.Marshal(request)
 
-	startTime := time.Now()
-	rsp, err := http.Post(config.Config.InferenceUrl, "application/json", bytes.NewBuffer(data))
+	output, duration, err := inferTrigger(data)
 	if err != nil {
-		Logger.Error(
-			"post inference error",
-			zap.Error(err),
-		)
-		return "", 0, InternalServerError()
-	}
-	duration := float64(time.Since(startTime)) / 1000_000_000
-
-	defer func() {
-		_ = rsp.Body.Close()
-	}()
-	data, _ = io.ReadAll(rsp.Body)
-	output := string(data)
-	if rsp.StatusCode != 200 {
-		Logger.Error(
-			"inference error",
-			zap.Int("duration", int(time.Since(startTime))),
-			zap.Int("status code", rsp.StatusCode),
-			zap.ByteString("body", data),
-		)
-		if rsp.StatusCode == 400 {
-			return "", 0, maxLengthExceededError
-		} else if rsp.StatusCode == 560 {
-			return "", 0, unknownError
-		} else {
-			return "", 0, InternalServerError()
-		}
+		return "", 0, err
 	}
 
 	index := strings.LastIndex(output, "[MOSS]:")

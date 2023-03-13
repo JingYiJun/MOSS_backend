@@ -198,7 +198,10 @@ func RegenerateAsync(c *websocket.Conn) {
 
 	defer func() {
 		if err != nil {
-			log.Println(err)
+			Logger.Error(
+				"client websocket return with error",
+				zap.Error(err),
+			)
 			response := InferResponseModel{Status: -1, Output: err.Error()}
 			if httpError, ok := err.(*HttpError); ok {
 				response.StatusCode = httpError.Code
