@@ -256,11 +256,18 @@ func inferTrigger(data []byte) (string, float64, error) {
 		}
 		err = json.Unmarshal(response, &responseStruct)
 		if err != nil {
-			Logger.Error(
-				"unable to unmarshal response from infer",
-				zap.ByteString("response", response),
-				zap.Error(err),
-			)
+			responseString := string(response)
+			if responseString == "400" {
+				return "", duration, maxLengthExceededError
+			} else if responseString == "560" {
+				return "", duration, unknownError
+			} else {
+				Logger.Error(
+					"unable to unmarshal response from infer",
+					zap.ByteString("response", response),
+					zap.Error(err),
+				)
+			}
 			return "", duration, InternalServerError()
 		} else {
 			Logger.Info(
