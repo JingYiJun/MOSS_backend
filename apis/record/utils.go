@@ -83,7 +83,7 @@ func InferAsync(
 
 	errChan := make(chan error)
 
-	go inferTrigger(formattedText, data, errChan)
+	go inferTrigger(data, errChan)
 
 	startTime := time.Now()
 
@@ -204,7 +204,7 @@ func InferAsync(
 	}
 }
 
-func inferTrigger(formattedText string, data []byte, errChan chan error) {
+func inferTrigger(data []byte, errChan chan error) {
 	var (
 		err error
 		rsp *http.Response
@@ -260,6 +260,7 @@ func inferTrigger(formattedText string, data []byte, errChan chan error) {
 		if err != nil {
 			Logger.Error(
 				"unable to unmarshal response from infer",
+				zap.ByteString("response", response),
 				zap.Error(err),
 			)
 			err = InternalServerError()
