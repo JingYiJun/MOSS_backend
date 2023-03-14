@@ -7,6 +7,7 @@ import (
 	"MOSS_backend/utils/sensitive"
 	"errors"
 	"github.com/gofiber/fiber/v2"
+	"golang.org/x/exp/slices"
 	"gorm.io/gorm"
 )
 
@@ -369,8 +370,9 @@ func InferWithoutLogin(c *fiber.Ctx) error {
 	}
 
 	consumerUsername := c.Get("X-Consumer-Username")
+	passSensitiveCheck := slices.Contains(config.Config.PassSensitiveCheckUsername, consumerUsername)
 
-	if sensitive.IsSensitive(body.String(), &User{}) {
+	if !passSensitiveCheck && sensitive.IsSensitive(body.String(), &User{}) {
 		return BadRequest(DefaultResponse).WithMessageType(Sensitive)
 	}
 
@@ -383,7 +385,7 @@ func InferWithoutLogin(c *fiber.Ctx) error {
 		return err
 	}
 
-	if sensitive.IsSensitive(output, &User{}) {
+	if !passSensitiveCheck && sensitive.IsSensitive(output, &User{}) {
 		return BadRequest(DefaultResponse).WithMessageType(Sensitive)
 	}
 

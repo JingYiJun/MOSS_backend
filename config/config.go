@@ -44,6 +44,8 @@ var Config struct {
 	CallbackUrl string `env:"CALLBACK_URL,required"` // async callback url
 
 	OpenScreenshot bool `env:"OPEN_SCREENSHOT" envDefault:"true"`
+
+	PassSensitiveCheckUsername []string `env:"PASS_SENSITIVE_CHECK_USERNAME"`
 }
 
 func InitConfig() {
