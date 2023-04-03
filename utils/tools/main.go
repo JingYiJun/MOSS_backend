@@ -1,6 +1,8 @@
 package tools
 
 import (
+	"MOSS_backend/config"
+	"fmt"
 	"strings"
 	"sync"
 )
@@ -40,10 +42,13 @@ func Post(command string) (results string) {
 
 		wg.Wait()
 	}
-	return results
+	return resultsBuilder.String()
 }
 
 func postOnce(command string) (result string) {
+	if config.Config.Debug {
+		fmt.Println(command)
+	}
 	action, args := cutCommand(command)
 	switch action {
 	case "Search":
