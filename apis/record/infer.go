@@ -5,6 +5,7 @@ import (
 	. "MOSS_backend/models"
 	. "MOSS_backend/utils"
 	"MOSS_backend/utils/sensitive"
+	"MOSS_backend/utils/tools"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -28,29 +29,80 @@ var maxLengthExceededError = BadRequest("The maximum context length is exceeded"
 
 var unknownError = InternalServerError("unknown error, please try again")
 
-func Infer(input string, records Records) (output string, duration float64, err error) {
-	return InferMosec(InferPreprocess(input, records.ToRecordModel()))
+func Infer(record *Record, prefix string) (err error) {
+	formattedText := InferPreprocess(record.Request, prefix)
+	request := Map{"x": formattedText}
+
+	// get params
+	err = LoadParamToMap(request)
+	if err != nil {
+		return err
+	}
+	data, _ := json.Marshal(request)
+
+	output, duration, err := inferTrigger(data)
+	if err != nil {
+		return err
+	}
+
+	output = strings.Trim(output, " \t\n")
+	if strings.HasSuffix(output, "<eoc>") {
+		// output end with <|Command|>:xxx<eoc>
+
+		outputCommand := strings.TrimSuffix(output, "<eoc>")
+		index := strings.LastIndex(output, "<|Commands|>:")
+		if index == -1 {
+			log.Printf("error find \"<|Commands|>:\" from inference server, output: \"%v\"\n", output)
+			return InternalServerError()
+		}
+		outputCommand = strings.Trim(outputCommand[index+13:], " ")
+
+		// get results from tools
+		results := tools.Post(outputCommand)
+
+		// generate new formatted text
+		formattedText = InferWriteResult(results, output+"\n")
+		request["x"] = formattedText
+		data, _ = json.Marshal(request)
+
+		output, duration, err = inferTrigger(data)
+		if err != nil {
+			return err
+		}
+	}
+	// save record prefix for next inference
+	record.Prefix = output
+	// output end with others
+	index := strings.LastIndex(output, "<|MOSS|>:")
+	if index == -1 {
+		log.Printf("error find \"<|MOSS|>:\" from inference server, output: \"%v\"\n", output)
+		return InternalServerError()
+	}
+	output = output[index+9:]
+	record.Response = cutEndFlag(output)
+	record.Duration = duration
+	return nil
 }
 
 func InferAsync(
 	c *websocket.Conn,
-	input string,
-	records []RecordModel,
-	newRecord *Record,
+	prefix string,
+	record *Record,
 	user *User,
 ) (
 	err error,
 ) {
 	var (
-		interruptChan    = make(chan any)
-		connectionClosed = new(atomic.Bool)
+		interruptChan    = make(chan any)   // frontend interrupt channel
+		connectionClosed = new(atomic.Bool) // connection closed flag
+		errChan          = make(chan error) // error transmission channel
 	)
-	connectionClosed.Store(false)
+	connectionClosed.Store(false) // initialize
 
-	go interrupt(c, interruptChan, connectionClosed)
+	go interrupt(c, interruptChan, connectionClosed) // wait for interrupt
 
 	// get formatted text
-	formattedText := InferPreprocess(input, records)
+	formattedText := InferPreprocess(record.Request, prefix)
 
 	// make uuid, store channel into map
 	uuidText := strings.ReplaceAll(uuid.NewString(), "-", "")
@@ -67,21 +119,15 @@ func InferAsync(
 	request := map[string]any{"x": formattedText, "url": config.Config.CallbackUrl + "?uuid=" + uuidText}
 
 	// get params
-	var params []Param
-	err = DB.Find(&params).Error
+	err = LoadParamToMap(request)
 	if err != nil {
 		return err
-	}
-	for _, param := range params {
-		request[param.Name] = param.Value
 	}
 	data, _ := json.Marshal(request)
 
 	if config.Config.Debug {
 		log.Printf("send infer request: %v\n", string(data))
 	}
-
-	errChan := make(chan error)
 
 	go func() {
 		if _, _, innerErr := inferTrigger(data); innerErr != nil {
@@ -125,10 +171,10 @@ func InferAsync(
 
 				// output sensitive check
 				if sensitive.IsSensitive(detectedOutput, user) {
-					newRecord.ResponseSensitive = true
+					record.ResponseSensitive = true
 					// log new record
-					newRecord.Response = detectedOutput
-					newRecord.Duration = float64(time.Since(startTime)) / 1000_000_000
+					record.Response = detectedOutput
+					record.Duration = float64(time.Since(startTime)) / 1000_000_000
 					var banned bool
 					banned, err = user.AddUserOffense(UserOffenseMoss)
 					if err != nil {
@@ -163,10 +209,10 @@ func InferAsync(
 			case 0: // end
 				if nowOutput != detectedOutput {
 					if sensitive.IsSensitive(nowOutput, user) {
-						newRecord.ResponseSensitive = true
+						record.ResponseSensitive = true
 						// log new record
-						newRecord.Response = nowOutput
-						newRecord.Duration = float64(time.Since(startTime)) / 1000_000_000
+						record.Response = nowOutput
+						record.Duration = float64(time.Since(startTime)) / 1000_000_000
 						err = c.WriteJSON(InferResponseModel{
 							Status: -2, // sensitive
 							Output: DefaultResponse,
@@ -192,8 +238,8 @@ func InferAsync(
 					return fmt.Errorf("write end status error: %v", err)
 				}
 
-				newRecord.Response = nowOutput
-				newRecord.Duration = float64(time.Since(startTime)) / 1000_000_000
+				record.Response = nowOutput
+				record.Duration = float64(time.Since(startTime)) / 1000_000_000
 				return nil
 			case -1: // error
 				return InternalServerError(response.Output)
@@ -370,24 +416,12 @@ func ReceiveInferResponse(c *websocket.Conn) {
 	}
 }
 
-func InferPreprocess(input string, records []RecordModel) (formattedText string) {
-	const prefix = `MOSS is an AI assistant developed by the FudanNLP Lab and Shanghai AI Lab. Below is a conversation between MOSS and human.`
+func InferPreprocess(input, prefix string) (formattedText string) {
+	return prefix + fmt.Sprintf("<|Human|>: %s<eoh>\n", input)
+}
 
-	// cut end flag for special cases
-	for i := range records {
-		records[i].Request = cutEndFlag(records[i].Request)
-		records[i].Response = cutEndFlag(records[i].Response)
-	}
-
-	var builder strings.Builder
-	builder.WriteString(prefix)
-	for _, record := range records {
-		if record.Request != "" && record.Response != "" {
-			builder.WriteString(fmt.Sprintf(" [Human]: %s<eoh> [MOSS]: %s<eoa>", record.Request, record.Response))
-		}
-	}
-	builder.WriteString(fmt.Sprintf(" [Human]: %s<eoh> [MOSS]:", input))
-	return builder.String()
+func InferWriteResult(results, prefix string) string {
+	return prefix + fmt.Sprintf("<|Results|>: %s<eor>\n", results)
 }
 
 func InferPostprocess(output string) (tidyOutput string) {
@@ -416,32 +450,4 @@ func cutEndFlag(content string) string {
 		content = content[:loc[0]]
 	}
 	return strings.Trim(content, " ")
-}
-
-func InferMosec(formattedText string) (string, float64, error) {
-	request := Map{"x": formattedText}
-
-	// get params
-	var params []Param
-	err := DB.Find(&params).Error
-	if err != nil {
-		return "", 0, err
-	}
-	for _, param := range params {
-		request[param.Name] = param.Value
-	}
-	data, _ := json.Marshal(request)
-
-	output, duration, err := inferTrigger(data)
-	if err != nil {
-		return "", 0, err
-	}
-
-	index := strings.LastIndex(output, "[MOSS]:")
-	if index == -1 {
-		log.Printf("error find \"[MOSS]:\" from inference server, output: \"%v\"\n", output)
-		return "", 0, InternalServerError()
-	}
-	output = output[index+7:]
-	return cutEndFlag(output), duration, nil
 }

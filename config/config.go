@@ -46,6 +46,10 @@ var Config struct {
 	OpenScreenshot bool `env:"OPEN_SCREENSHOT" envDefault:"true"`
 
 	PassSensitiveCheckUsername []string `env:"PASS_SENSITIVE_CHECK_USERNAME"`
+
+	// tools
+	ToolsSearchUrl    string `env:"TOOLS_SEARCH_URL,required"`
+	ToolsCalculateUrl string `env:"TOOLS_CALCULATE_URL,required"`
 }
 
 func InitConfig() {

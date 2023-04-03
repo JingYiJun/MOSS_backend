@@ -28,6 +28,7 @@ type Record struct {
 	ChatID            int            `json:"chat_id" gorm:"index:idx_record_chat_deleted,priority:1"`
 	Request           string         `json:"request"`
 	Response          string         `json:"response"`
+	Prefix            string         `json:"prefix"`
 	LikeData          int            `json:"like_data"` // 1 like, -1 dislike
 	Feedback          string         `json:"feedback"`
 	RequestSensitive  bool           `json:"request_sensitive"`
@@ -71,6 +72,21 @@ type Param struct {
 	ID    int
 	Name  string
 	Value float64
+}
+
+func LoadParamToMap(m map[string]any) error {
+	if DB == nil {
+		return nil
+	}
+	var params []Param
+	err := DB.Find(&params).Error
+	if err != nil {
+		return err
+	}
+	for _, param := range params {
+		m[param.Name] = param.Value
+	}
+	return nil
 }
 
 type DirectRecord struct {

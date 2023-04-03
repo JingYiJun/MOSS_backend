@@ -111,15 +111,15 @@ func AddRecord(c *fiber.Ctx) error {
 	} else {
 		/* infer */
 
-		// find all records to make dialogs, without sensitive content
-		var records Records
-		err = DB.Find(&records, "chat_id = ? and request_sensitive <> true and response_sensitive <> true", chatID).Error
-		if err != nil {
+		// find last record prefix to make dialogs, without sensitive content
+		var oldRecord Record
+		err = DB.Last(&oldRecord, "chat_id = ? AND request_sensitive = ? AND response_sensitive = ?", chatID, false, false).Error
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
 
 		// infer request
-		record.Response, record.Duration, err = Infer(record.Request, records)
+		err = Infer(&record, oldRecord.Prefix)
 		if err != nil {
 			if errors.Is(err, maxLengthExceededError) {
 				chat.MaxLengthExceeded = true
@@ -230,20 +230,15 @@ func RetryRecord(c *fiber.Ctx) error {
 
 	/* infer */
 
-	// find all records to make dialogs, without sensitive content
-	var records Records
-	err = DB.Find(&records, "chat_id = ? and request_sensitive <> true and response_sensitive <> true", chatID).Error
-	if err != nil {
+	// find last record prefix to make dialogs, without sensitive content
+	var prefixRecord Record
+	err = DB.Last(&prefixRecord, "chat_id = ? AND request_sensitive = false AND response_sensitive = false AND id < ?", chatID, oldRecord.ID).Error
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return err
 	}
 
-	// remove the latest record
-	if len(records) > 0 {
-		records = records[0 : len(records)-1]
-	}
-
 	// infer request
-	record.Response, record.Duration, err = Infer(record.Request, records)
+	err = Infer(&record, prefixRecord.Prefix)
 	if err != nil {
 		if errors.Is(err, maxLengthExceededError) {
 			chat.MaxLengthExceeded = true
@@ -376,26 +371,28 @@ func InferWithoutLogin(c *fiber.Ctx) error {
 		return BadRequest(DefaultResponse).WithMessageType(Sensitive)
 	}
 
-	formattedText = InferPreprocess(body.Request, body.Records)
+	record := Record{Request: body.Request}
+
+	formattedText = InferPreprocess(body.Request, "")
 	if len([]rune(formattedText)) > 1024 {
 		return maxLengthExceededError
 	}
-	output, duration, err := InferMosec(formattedText)
+	err = Infer(&record, "")
 	if err != nil {
 		return err
 	}
 
-	if !passSensitiveCheck && sensitive.IsSensitive(output, &User{}) {
+	if !passSensitiveCheck && sensitive.IsSensitive(record.Response, &User{}) {
 		return BadRequest(DefaultResponse).WithMessageType(Sensitive)
 	}
 
 	directRecord := DirectRecord{
-		Records:          append(body.Records, RecordModel{Request: body.Request, Response: output}),
-		Duration:         duration,
+		Records:          append(body.Records, RecordModel{Request: body.Request, Response: record.Response}),
+		Duration:         record.Duration,
 		ConsumerUsername: consumerUsername,
 	}
 
 	_ = DB.Create(&directRecord).Error
 
-	return c.JSON(InferenceResponse{Response: output})
+	return c.JSON(InferenceResponse{Response: record.Response})
 }

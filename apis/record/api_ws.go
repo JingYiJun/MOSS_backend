@@ -130,15 +130,15 @@ func AddRecordAsync(c *websocket.Conn) {
 		} else {
 			/* infer */
 
-			// find all records to make dialogs, without sensitive content
-			var records Records
-			err = DB.Find(&records, "chat_id = ? and request_sensitive <> true and response_sensitive <> true", chatID).Error
-			if err != nil {
+			// find last record prefix to make dialogs, without sensitive content
+			var oldRecord Record
+			err = DB.Last(&oldRecord, "chat_id = ? AND request_sensitive = ? AND response_sensitive = ?", chatID, false, false).Error
+			if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 				return err
 			}
 
 			// async infer
-			err = InferAsync(c, record.Request, records.ToRecordModel(), &record, user)
+			err = InferAsync(c, oldRecord.Prefix, &record, user)
 			if err != nil {
 				if httpError, ok := err.(*HttpError); ok && httpError.MessageType == MaxLength {
 					DB.Model(&chat).Update("max_length_exceeded", true)
@@ -290,20 +290,15 @@ func RegenerateAsync(c *websocket.Conn) {
 
 		/* infer */
 
-		// find all records to make dialogs, without sensitive content
-		var records Records
-		err = DB.Find(&records, "chat_id = ? and request_sensitive <> true and response_sensitive <> true", chatID).Error
-		if err != nil {
+		// find last record prefix to make dialogs, without sensitive content
+		var prefixRecord Record
+		err = DB.Last(&prefixRecord, "chat_id = ? AND request_sensitive = false AND response_sensitive = false AND id < ?", chatID, oldRecord.ID).Error
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
 
-		// remove the latest record
-		if len(records) > 0 {
-			records = records[0 : len(records)-1]
-		}
-
 		// async infer
-		err = InferAsync(c, record.Request, records.ToRecordModel(), &record, user)
+		err = InferAsync(c, prefixRecord.Prefix, &record, user)
 		if err != nil {
 			if httpError, ok := err.(*HttpError); ok && httpError.MessageType == MaxLength {
 				DB.Model(&chat).Update("max_length_exceeded", true)
@@ -432,8 +427,9 @@ func InferWithoutLoginAsync(c *websocket.Conn) {
 		} else {
 			/* infer */
 
+			record.Request = body.Request
 			// async infer
-			err = InferAsync(c, body.Request, body.Records, &record, &User{})
+			err = InferAsync(c, "", &record, &User{})
 			if err != nil {
 				return err
 			}
