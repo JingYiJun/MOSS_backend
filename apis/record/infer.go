@@ -394,14 +394,13 @@ func inferListener(
 						// if sensitive, jump out and record
 						return sensitiveError
 					}
-
-					err = c.WriteJSON(InferResponseModel{
-						Status: 1,
-						Output: nowOutput,
-					})
-					if err != nil {
-						return fmt.Errorf("write response error: %v", err)
-					}
+				}
+				err = c.WriteJSON(InferResponseModel{
+					Status: 1,
+					Output: nowOutput,
+				})
+				if err != nil {
+					return fmt.Errorf("write response error: %v", err)
 				}
 				return nil
 			case -1: // error
@@ -576,15 +575,6 @@ func InferPostprocess(output string) (tidyOutput string) {
 	for len(runeSlice) > 0 && runeSlice[len(runeSlice)-1] == 0xfffd {
 		runeSlice = runeSlice[:len(runeSlice)-1]
 	}
-
-	// process output end
-	output = string(runeSlice)
-	output = strings.Trim(output, " ")
-	output, _ = strings.CutSuffix(output, "<")
-	output, _ = strings.CutSuffix(output, "<e")
-	output, _ = strings.CutSuffix(output, "<eo")
-	output, _ = strings.CutSuffix(output, "<eoa")
-	output, _ = strings.CutSuffix(output, "<eoh")
 
 	// not cut
 	return output

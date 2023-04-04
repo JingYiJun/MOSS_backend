@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-	"sync"
 )
 
 var commandRegexp = regexp.MustCompile(`\w+\(".+"\)`)
@@ -32,10 +31,6 @@ func Execute(rawCommand string) string {
 			return "None"
 		}
 	} else {
-
-		// search concurrently
-		var wg sync.WaitGroup
-
 		for i := range commands {
 			if i > 1 {
 				break
@@ -45,8 +40,6 @@ func Execute(rawCommand string) string {
 				_, _ = resultsBuilder.WriteString(commands[i] + "=>\n" + results + "\n")
 			}
 		}
-
-		wg.Wait()
 	}
 	if resultsBuilder.String() == "" {
 		return "None"
