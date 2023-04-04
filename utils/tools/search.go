@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 /*
@@ -58,6 +59,8 @@ def convert(res):
 */
 
 type Map = map[string]interface{}
+
+var searchHttpClient = http.Client{Timeout: 20 * time.Second}
 
 func clean(tmpAnswer string) string {
 	tmpAnswer = strings.ReplaceAll(tmpAnswer, "\n", " ")
@@ -106,7 +109,7 @@ func convert(lineDict map[string]any) (results string) {
 
 func search(request string) string {
 	data, _ := json.Marshal(map[string]any{"query": request, "topk": "3"})
-	res, err := http.Post(config.Config.ToolsSearchUrl, "application/json", bytes.NewBuffer(data))
+	res, err := searchHttpClient.Post(config.Config.ToolsSearchUrl, "application/json", bytes.NewBuffer(data))
 	if err != nil {
 		utils.Logger.Error("post search error: ", zap.Error(err))
 		return "None"
