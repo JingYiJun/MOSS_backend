@@ -107,30 +107,30 @@ func convert(lineDict map[string]any) (results string) {
 	return strings.Join(tmpSample, "\n")
 }
 
-func search(request string) string {
+func search(request string) (string, map[string]any) {
 	data, _ := json.Marshal(map[string]any{"query": request, "topk": "3"})
 	res, err := searchHttpClient.Post(config.Config.ToolsSearchUrl, "application/json", bytes.NewBuffer(data))
 	if err != nil {
 		utils.Logger.Error("post search error: ", zap.Error(err))
-		return "None"
+		return "None", nil
 	}
 
 	if res.StatusCode != 200 {
 		utils.Logger.Error("post search status code error: " + strconv.Itoa(res.StatusCode))
-		return "None"
+		return "None", nil
 	}
 
 	var results map[string]any
 	responseData, err := io.ReadAll(res.Body)
 	if err != nil {
 		utils.Logger.Error("post search response read error: ", zap.Error(err))
-		return "None"
+		return "None", nil
 	}
 	err = json.Unmarshal(responseData, &results)
 	if err != nil {
 		utils.Logger.Error("post search response unmarshal error: ", zap.Error(err))
-		return "None"
+		return "None", nil
 	}
 
-	return convert(results)
+	return convert(results), map[string]any{"type": "search", "data": results}
 }

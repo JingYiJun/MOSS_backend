@@ -48,6 +48,7 @@ var InferResponseChannel sync.Map
 var inferHttpClient = http.Client{Timeout: 1 * time.Minute}
 
 func Infer(record *Record, prefix string) (err error) {
+	var extraData any
 	formattedText := InferPreprocess(record.Request, prefix)
 	request := Map{"x": formattedText}
 
@@ -75,8 +76,9 @@ func Infer(record *Record, prefix string) (err error) {
 		}
 		outputCommand = strings.Trim(outputCommand[index+13:], " ")
 
+		var results string
 		// get results from tools
-		results := tools.Execute(outputCommand)
+		results, extraData = tools.Execute(outputCommand)
 
 		// generate new formatted text
 		formattedText = InferWriteResult(results, output+"\n")
@@ -99,6 +101,8 @@ func Infer(record *Record, prefix string) (err error) {
 	output = output[index+9:]
 	record.Response = cutEndFlag(output)
 	record.Duration = duration
+	record.ExtraData = extraData
+	record.RawContent = output[len(prefix):]
 	return nil
 }
 
@@ -165,9 +169,10 @@ func inferLogicPath(
 	errChan chan error,
 ) error {
 	var (
-		err      error
-		request  = map[string]any{}
-		uuidText = strings.ReplaceAll(uuid.NewString(), "-", "")
+		err       error
+		request   = map[string]any{}
+		uuidText  = strings.ReplaceAll(uuid.NewString(), "-", "")
+		extraData any
 	)
 
 	// load params from db
@@ -223,8 +228,9 @@ func inferLogicPath(
 		}
 		outputCommand = strings.Trim(outputCommand[index+13:], " ")
 
+		var results string
 		// get results from tools
-		results := tools.Execute(outputCommand)
+		results, extraData = tools.Execute(outputCommand)
 
 		if connectionClosed.Load() {
 			return nil
@@ -271,6 +277,8 @@ func inferLogicPath(
 	output = output[index+9:]
 	record.Response = cutEndFlag(output)
 	record.Duration = duration
+	record.ExtraData = extraData
+	record.RawContent = output[len(prefix):]
 	err = c.WriteJSON(InferResponseModel{Status: 0})
 	if err != nil {
 		return fmt.Errorf("write end status error: %v", err)

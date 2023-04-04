@@ -29,6 +29,8 @@ type Record struct {
 	Request           string         `json:"request"`
 	Response          string         `json:"response"`
 	Prefix            string         `json:"-"`
+	RawContent        string         `json:"raw_content"`
+	ExtraData         any            `json:"extra_data" gorm:"serializer:json"`
 	LikeData          int            `json:"like_data"` // 1 like, -1 dislike
 	Feedback          string         `json:"feedback"`
 	RequestSensitive  bool           `json:"request_sensitive"`
