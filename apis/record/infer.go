@@ -140,7 +140,6 @@ func InferAsync(
 			prefix,
 			user,
 			connectionClosed,
-			errChan,
 		)
 		if innerErr != nil {
 			errChan <- innerErr
@@ -168,10 +167,10 @@ func inferLogicPath(
 	prefix string,
 	user *User,
 	connectionClosed *atomic.Bool,
-	errChan chan error,
 ) error {
 	var (
 		err       error
+		innerErr  error
 		request   = map[string]any{}
 		uuidText  = strings.ReplaceAll(uuid.NewString(), "-", "")
 		extraData any
@@ -193,16 +192,13 @@ func inferLogicPath(
 	// start a listener
 	go func() {
 		defer wg1.Done()
-		innerErr := inferListener(
+		innerErr = inferListener(
 			c,
 			record,
 			user,
 			uuidText,
 			connectionClosed,
 		)
-		if innerErr != nil {
-			errChan <- innerErr
-		}
 	}()
 
 	// get formatted text
@@ -219,6 +215,9 @@ func inferLogicPath(
 	output, duration, err := inferTrigger(data)
 
 	wg1.Wait()
+	if innerErr != nil {
+		return innerErr
+	}
 
 	if connectionClosed.Load() {
 		return nil
@@ -258,16 +257,13 @@ func inferLogicPath(
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			innerErr := inferListener(
+			innerErr = inferListener(
 				c,
 				record,
 				user,
 				uuidText,
 				connectionClosed,
 			)
-			if innerErr != nil {
-				errChan <- innerErr
-			}
 		}()
 
 		output, duration, err = inferTrigger(data)
@@ -276,6 +272,10 @@ func inferLogicPath(
 		}
 
 		wg.Wait()
+
+		if innerErr != nil {
+			return innerErr
+		}
 	}
 
 	if connectionClosed.Load() {
