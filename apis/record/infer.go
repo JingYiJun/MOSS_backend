@@ -7,7 +7,6 @@ import (
 	"MOSS_backend/utils/sensitive"
 	"MOSS_backend/utils/tools"
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -324,8 +323,7 @@ func inferListener(
 
 	startTime := time.Now()
 
-	var ctx, cancel = context.WithTimeout(context.Background(), 1*time.Minute)
-	defer cancel()
+	var timer = time.NewTimer(11 * time.Second)
 
 	var nowOutput string
 	var detectedOutput string
@@ -336,6 +334,7 @@ func inferListener(
 		}
 		select {
 		case response := <-outputChan:
+			timer.Reset(11 * time.Second)
 			if config.Config.Debug {
 				log.Println("receive response from output channel")
 				log.Println(response)
@@ -432,7 +431,7 @@ func inferListener(
 			case -1: // error
 				return InternalServerError(response.Output)
 			}
-		case <-ctx.Done():
+		case <-timer.C:
 			return InternalServerError("Internal Server Timeout")
 		}
 	}
