@@ -26,7 +26,7 @@ import (
 
 var endContentRegexp = regexp.MustCompile(`<[es]o\w>`)
 
-var resultsRegexp = regexp.MustCompile(`<[|]Results[|]>[\s\S]+<eo\w>`)
+var resultsRegexp = regexp.MustCompile(`<[|]Results[|]>[\s\S]+<eor>`)
 
 var maxLengthExceededError = BadRequest("The maximum context length is exceeded").WithMessageType(MaxLength)
 
