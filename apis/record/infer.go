@@ -102,7 +102,7 @@ func Infer(record *Record, prefix string) (err error) {
 	record.Response = cutEndFlag(output)
 	record.Duration = duration
 	record.ExtraData = extraData
-	record.RawContent = output[len(prefix):]
+	record.RawContent = record.Prefix[len(prefix):]
 	return nil
 }
 
@@ -183,8 +183,12 @@ func inferLogicPath(
 
 	/* first infer */
 
+	var wg1 sync.WaitGroup
+
+	wg1.Add(1)
 	// start a listener
 	go func() {
+		defer wg1.Done()
 		innerErr := inferListener(
 			c,
 			record,
@@ -209,6 +213,8 @@ func inferLogicPath(
 
 	// block here
 	output, duration, err := inferTrigger(data)
+
+	wg1.Wait()
 
 	if connectionClosed.Load() {
 		return nil
@@ -243,7 +249,11 @@ func inferLogicPath(
 		request["url"] = config.Config.CallbackUrl + "?uuid=" + uuidText
 		data, _ = json.Marshal(request)
 
+		var wg sync.WaitGroup
+
+		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			innerErr := inferListener(
 				c,
 				record,
@@ -260,6 +270,8 @@ func inferLogicPath(
 		if err != nil {
 			return err
 		}
+
+		wg.Wait()
 	}
 
 	if connectionClosed.Load() {
@@ -278,7 +290,12 @@ func inferLogicPath(
 	record.Response = cutEndFlag(output)
 	record.Duration = duration
 	record.ExtraData = extraData
-	record.RawContent = output[len(prefix):]
+	record.RawContent = record.Prefix[len(prefix):]
+
+	// send a total sample
+	err = c.WriteJSON(InferResponseModel{Status: 1, Output: strings.Trim(record.Prefix[len(formattedText):], " ")})
+
+	// end
 	err = c.WriteJSON(InferResponseModel{Status: 0})
 	if err != nil {
 		return fmt.Errorf("write end status error: %v", err)

@@ -132,5 +132,5 @@ func search(request string) (string, map[string]any) {
 		return "None", nil
 	}
 
-	return convert(results), map[string]any{"type": "search", "data": results}
+	return convert(results), map[string]any{"type": "search", "data": results, "request": request}
 }
