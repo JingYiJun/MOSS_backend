@@ -292,9 +292,6 @@ func inferLogicPath(
 	record.ExtraData = extraData
 	record.RawContent = record.Prefix[len(prefix):]
 
-	// send a total sample
-	err = c.WriteJSON(InferResponseModel{Status: 1, Output: strings.Trim(record.Prefix[len(formattedText):], " ")})
-
 	// end
 	err = c.WriteJSON(InferResponseModel{Status: 0})
 	if err != nil {
