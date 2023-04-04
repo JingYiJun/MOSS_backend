@@ -76,7 +76,7 @@ func Infer(record *Record, prefix string) (err error) {
 		outputCommand = strings.Trim(outputCommand[index+13:], " ")
 
 		// get results from tools
-		results := tools.Post(outputCommand)
+		results := tools.Execute(outputCommand)
 
 		// generate new formatted text
 		formattedText = InferWriteResult(results, output+"\n")
@@ -224,7 +224,7 @@ func inferLogicPath(
 		outputCommand = strings.Trim(outputCommand[index+13:], " ")
 
 		// get results from tools
-		results := tools.Post(outputCommand)
+		results := tools.Execute(outputCommand)
 
 		if connectionClosed.Load() {
 			return nil
@@ -586,8 +586,8 @@ func InferPostprocess(output string) (tidyOutput string) {
 	output, _ = strings.CutSuffix(output, "<eoa")
 	output, _ = strings.CutSuffix(output, "<eoh")
 
-	// cut end or <eo*> inside output
-	return cutEndFlag(output)
+	// not cut
+	return output
 }
 
 func cutEndFlag(content string) string {

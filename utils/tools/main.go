@@ -7,7 +7,7 @@ import (
 	"sync"
 )
 
-func Post(command string) (results string) {
+func Execute(command string) (results string) {
 	if command == "None" || command == "none" {
 		return "None"
 	}
@@ -24,7 +24,7 @@ func Post(command string) (results string) {
 
 	if len(commands) == 1 {
 		_, _ = resultsBuilder.WriteString(commands[0])
-		_, _ = resultsBuilder.WriteString(postOnce(commands[0]))
+		_, _ = resultsBuilder.WriteString(executeOnce(commands[0]))
 	} else {
 
 		// search concurrently
@@ -35,7 +35,7 @@ func Post(command string) (results string) {
 			go func(i int) {
 				defer wg.Done()
 				resultsBuilder.Lock()
-				_, _ = resultsBuilder.WriteString(commands[i] + "=>\n" + postOnce(commands[i]))
+				_, _ = resultsBuilder.WriteString(commands[i] + "=>\n" + executeOnce(commands[i]))
 				resultsBuilder.Unlock()
 			}(i)
 		}
@@ -45,7 +45,7 @@ func Post(command string) (results string) {
 	return resultsBuilder.String()
 }
 
-func postOnce(command string) (result string) {
+func executeOnce(command string) (result string) {
 	if config.Config.Debug {
 		fmt.Println(command)
 	}
