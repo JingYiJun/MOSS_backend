@@ -26,6 +26,8 @@ import (
 
 var endContentRegexp = regexp.MustCompile(`<[es]o\w>`)
 
+var resultsRegexp = regexp.MustCompile(`<\|Results\|>.+<\|eo\w\|>`)
+
 var maxLengthExceededError = BadRequest("The maximum context length is exceeded").WithMessageType(MaxLength)
 
 var unknownError = InternalServerError("unknown error, please try again")
@@ -181,6 +183,8 @@ func inferLogicPath(
 		return err
 	}
 
+	cleanedPrefix := resultsRegexp.ReplaceAllString(prefix, "<|Results|>: None<eor>")
+
 	/* first infer */
 
 	var wg1 sync.WaitGroup
@@ -202,7 +206,7 @@ func inferLogicPath(
 	}()
 
 	// get formatted text
-	formattedText := InferPreprocess(record.Request, prefix)
+	formattedText := InferPreprocess(record.Request, cleanedPrefix)
 
 	// construct infer trigger data
 	request["x"] = formattedText
@@ -290,7 +294,7 @@ func inferLogicPath(
 	record.Response = cutEndFlag(output)
 	record.Duration = duration
 	record.ExtraData = extraData
-	record.RawContent = record.Prefix[len(prefix):]
+	record.RawContent = strings.Trim(record.Prefix[len(cleanedPrefix):], "")
 
 	// end
 	err = c.WriteJSON(InferResponseModel{Status: 0})
