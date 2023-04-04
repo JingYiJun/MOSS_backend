@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-var commandRegexp = regexp.MustCompile(`\w+\(".+"\)`)
+var commandRegexp = regexp.MustCompile(`\w+\("[\s\S]+"\)`)
 
 func Execute(rawCommand string) (string, any) {
 	if rawCommand == "None" || rawCommand == "none" {
