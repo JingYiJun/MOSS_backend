@@ -332,6 +332,9 @@ func inferListener(
 		if connectionClosed.Load() {
 			return nil
 		}
+		if responseCh.closed.Load() {
+			return InternalServerError()
+		}
 		select {
 		case response := <-outputChan:
 			timer.Reset(11 * time.Second)
@@ -545,6 +548,7 @@ func ReceiveInferResponse(c *websocket.Conn) {
 				return
 			} else {
 				Logger.Error("receive from infer error", zap.Error(err))
+				ch.closed.Store(true)
 			}
 			return
 		}
