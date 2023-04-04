@@ -28,7 +28,7 @@ type Record struct {
 	ChatID            int            `json:"chat_id" gorm:"index:idx_record_chat_deleted,priority:1"`
 	Request           string         `json:"request"`
 	Response          string         `json:"response"`
-	Prefix            string         `json:"prefix"`
+	Prefix            string         `json:"-"`
 	LikeData          int            `json:"like_data"` // 1 like, -1 dislike
 	Feedback          string         `json:"feedback"`
 	RequestSensitive  bool           `json:"request_sensitive"`
