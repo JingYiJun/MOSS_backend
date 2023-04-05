@@ -9,46 +9,36 @@ import (
 
 type Map = map[string]any
 
-var commandRegexp = regexp.MustCompile(`\w+\("[\s\S]+"\)`)
+var commandSplitRegexp = regexp.MustCompile(`\w+\("[\s\S][\s\S]*?"\)`)
 
 func Execute(rawCommand string) (string, any) {
 	if rawCommand == "None" || rawCommand == "none" {
 		return "None", nil
 	}
 
-	commands := strings.Split(rawCommand, ",")
+	commands := commandSplitRegexp.FindAllString(rawCommand, -1)
+
+	var extraDataSlice = make([]map[string]any, 0)
+	if len(commands) == 0 {
+		return "None", extraDataSlice
+	}
 	for i := range commands {
 		commands[i] = strings.Trim(commands[i], " ")
 	}
-
 	var resultsBuilder strings.Builder
-	var extraDataSlice = make([]map[string]any, 0)
-
-	if len(commands) == 1 {
-		command := commands[0]
-		if commandRegexp.MatchString(command) {
-			results, extraData := executeOnce(commands[0])
-			_, _ = resultsBuilder.WriteString(command)
-			_, _ = resultsBuilder.WriteString(" =>\n")
-			_, _ = resultsBuilder.WriteString(results)
-			if extraData != nil {
-				extraDataSlice = append(extraDataSlice, extraData)
-			}
-		} else {
-			return "None", extraDataSlice
+	for i := range commands {
+		if i > 1 {
+			break
 		}
-	} else {
-		for i := range commands {
-			if i > 1 {
-				break
-			}
-			if commandRegexp.MatchString(commands[i]) {
-				results, extraData := executeOnce(commands[i])
-				_, _ = resultsBuilder.WriteString(commands[i] + "=>\n" + results + "\n")
-				if extraData != nil {
-					extraDataSlice = append(extraDataSlice, extraData)
-				}
-			}
+		if i > 0 { // separator is '\n'
+			resultsBuilder.WriteString("\n")
+		}
+		results, extraData := executeOnce(commands[i])
+		resultsBuilder.WriteString(commands[i])
+		resultsBuilder.WriteString(" =>\n")
+		resultsBuilder.WriteString(results)
+		if extraData != nil {
+			extraDataSlice = append(extraDataSlice, extraData)
 		}
 	}
 	if resultsBuilder.String() == "" {

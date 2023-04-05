@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"github.com/vmihailenco/msgpack/v5"
 	"go.uber.org/zap"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -58,14 +59,19 @@ func draw(request string) (string, map[string]any) {
 	}
 
 	if res.StatusCode != 200 {
-		utils.Logger.Error("post calculate(tools) status code error: " + strconv.Itoa(res.StatusCode))
+		utils.Logger.Error("post draw(tools) status code error: " + strconv.Itoa(res.StatusCode))
 		return "None", nil
 	}
-	data := make([]byte, res.ContentLength)
-	if _, err := res.Body.Read(data); err != nil {
-		utils.Logger.Error("post calculate(tools) response body data cannot read error: ", zap.Error(err))
+	data, err := io.ReadAll(res.Body)
+	if err != nil {
+		utils.Logger.Error("post draw(tools) response body data cannot read error: ", zap.Error(err))
 		return "None", nil
 	}
-	resultsString := base64.StdEncoding.EncodeToString(data)
-	return resultsString, map[string]any{"type": "calculate", "data": data, "request": request}
+	var resultsByte []byte
+	if err = msgpack.Unmarshal(data, &resultsByte); err != nil {
+		utils.Logger.Error("post draw(tools) response body data cannot Unmarshal error: ", zap.Error(err))
+		return "None", nil
+	}
+	resultsString := base64.StdEncoding.EncodeToString(resultsByte)
+	return resultsString, map[string]any{"type": "draw", "data": data, "request": request}
 }

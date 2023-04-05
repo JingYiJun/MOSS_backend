@@ -65,7 +65,7 @@ func calculate(request string) (string, map[string]any) {
 		utils.Logger.Error("post calculate(tools) response format error: ", zap.Error(resultNotStringError{Results: results}))
 		return "None", nil
 	}
-	if _, err := strconv.Atoi(resultsString); err != nil {
+	if _, err := strconv.ParseFloat(resultsString, 32); err != nil {
 		utils.Logger.Error("post calculate(tools) response not number error: ", zap.Error(err))
 		return "None", nil
 	}

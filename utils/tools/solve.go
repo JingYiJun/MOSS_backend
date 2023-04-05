@@ -48,5 +48,9 @@ func solve(request string) (string, map[string]any) {
 		utils.Logger.Error("post solve(tools) response format error: ", zap.Error(resultNotStringError{Results: results}))
 		return "None", nil
 	}
+	if resultsString == `[ERROR]` {
+		utils.Logger.Warn("post solve(tools) request no solution")
+		return "None", nil
+	}
 	return resultsString, map[string]any{"type": "solve", "data": results, "request": request}
 }
