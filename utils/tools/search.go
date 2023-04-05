@@ -58,7 +58,7 @@ def convert(res):
     return tmp_sample
 */
 
-type Map = map[string]interface{}
+
 
 var searchHttpClient = http.Client{Timeout: 20 * time.Second}
 

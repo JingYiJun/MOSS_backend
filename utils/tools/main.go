@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+type Map = map[string]any
+
 var commandRegexp = regexp.MustCompile(`\w+\("[\s\S]+"\)`)
 
 func Execute(rawCommand string) (string, any) {
@@ -63,6 +65,12 @@ func executeOnce(command string) (result string, extraData map[string]any) {
 	switch action {
 	case "Search":
 		return search(args)
+	case "Calculate":
+		return calculate(args)
+	case "Solve":
+		return solve(args)
+	//case "Draw":
+	//	return draw(args)
 	default:
 		return "None", nil
 	}
