@@ -50,6 +50,8 @@ var Config struct {
 	// tools
 	ToolsSearchUrl    string `env:"TOOLS_SEARCH_URL,required"`
 	ToolsCalculateUrl string `env:"TOOLS_CALCULATE_URL,required"`
+	ToolsSolveUrl     string `env:"TOOLS_SOLVE_URL,required"`
+	ToolsDrawUrl      string `env:"TOOLS_DRAW_URL,required"`
 }
 
 func InitConfig() {
