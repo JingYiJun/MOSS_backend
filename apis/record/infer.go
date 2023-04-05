@@ -103,7 +103,14 @@ func Infer(record *Record, prefix string) (err error) {
 	record.Response = cutEndFlag(output)
 	record.Duration = duration
 	record.ExtraData = extraData
-	record.RawContent = record.Prefix[len(prefix):]
+
+	// cut out the latest context
+	humanIndex := strings.LastIndex(output, "<|Human|>:")
+	if index == -1 {
+		log.Printf("error find \"<|Human|>:\" from inference server, output: \"%v\"\n", output)
+		return InternalServerError()
+	}
+	record.RawContent = record.Prefix[humanIndex:]
 	return nil
 }
 
