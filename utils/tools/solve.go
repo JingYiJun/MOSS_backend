@@ -18,35 +18,35 @@ func solve(request string) (string, map[string]any) {
 	data, _ := json.Marshal(map[string]any{"text": request})
 	res, err := solveHttpClient.Post(config.Config.ToolsSolveUrl, "application/json", bytes.NewBuffer(data))
 	if err != nil {
-		utils.Logger.Error("post calculate(tools) error: ", zap.Error(err))
+		utils.Logger.Error("post solve(tools) error: ", zap.Error(err))
 		return "None", nil
 	}
 
 	if res.StatusCode != 200 {
-		utils.Logger.Error("post calculate(tools) status code error: " + strconv.Itoa(res.StatusCode))
+		utils.Logger.Error("post solve(tools) status code error: " + strconv.Itoa(res.StatusCode))
 		return "None", nil
 	}
 
 	var results map[string]any
 	responseData, err := io.ReadAll(res.Body)
 	if err != nil {
-		utils.Logger.Error("post calculate(tools) response read error: ", zap.Error(err))
+		utils.Logger.Error("post solve(tools) response read error: ", zap.Error(err))
 		return "None", nil
 	}
 	err = json.Unmarshal(responseData, &results)
 	if err != nil {
-		utils.Logger.Error("post calculate(tools) response unmarshal error: ", zap.Error(err))
+		utils.Logger.Error("post solve(tools) response unmarshal error: ", zap.Error(err))
 		return "None", nil
 	}
-	calculateResult, exist := results["result"]
+	solveResult, exist := results["result"]
 	if !exist {
-		utils.Logger.Error("post calculate(tools) response format error: ", zap.Error(keyNotExistError{Results: results}))
+		utils.Logger.Error("post solve(tools) response format error: ", zap.Error(keyNotExistError{Results: results}))
 		return "None", nil
 	}
-	resultsString, ok := calculateResult.(string)
+	resultsString, ok := solveResult.(string)
 	if !ok {
-		utils.Logger.Error("post calculate(tools) response format error: ", zap.Error(resultNotStringError{Results: results}))
+		utils.Logger.Error("post solve(tools) response format error: ", zap.Error(resultNotStringError{Results: results}))
 		return "None", nil
 	}
-	return resultsString, map[string]any{"type": "calculate", "data": results, "request": request}
+	return resultsString, map[string]any{"type": "solve", "data": results, "request": request}
 }

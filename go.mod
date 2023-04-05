@@ -24,6 +24,8 @@ require (
 	github.com/swaggo/swag v1.8.10
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.0.590
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/ses v1.0.590
+	github.com/vmihailenco/msgpack/v5 v5.3.5
+	go.uber.org/zap v1.24.0
 	golang.org/x/crypto v0.5.0
 	golang.org/x/exp v0.0.0-20221126150942-6ab00d035af9
 	gorm.io/driver/mysql v1.4.6
@@ -77,9 +79,9 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.44.0 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect
+	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
-	go.uber.org/zap v1.24.0 // indirect
 	golang.org/x/net v0.6.0 // indirect
 	golang.org/x/sys v0.5.0 // indirect
 	golang.org/x/text v0.7.0 // indirect

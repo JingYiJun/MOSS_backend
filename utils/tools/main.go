@@ -69,8 +69,8 @@ func executeOnce(command string) (result string, extraData map[string]any) {
 		return calculate(args)
 	case "Solve":
 		return solve(args)
-	//case "Draw":
-	//	return draw(args)
+	case "Draw":
+		return draw(args)
 	default:
 		return "None", nil
 	}
