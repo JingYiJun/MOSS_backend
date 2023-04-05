@@ -300,7 +300,14 @@ func inferLogicPath(
 	record.Response = cutEndFlag(output)
 	record.Duration = duration
 	record.ExtraData = extraData
-	record.RawContent = strings.Trim(record.Prefix[len(cleanedPrefix):], "")
+
+	// cut out the latest context
+	humanIndex := strings.LastIndex(output, "<|Human|>:")
+	if index == -1 {
+		log.Printf("error find \"<|Human|>:\" from inference server, output: \"%v\"\n", output)
+		return InternalServerError()
+	}
+	record.RawContent = record.Prefix[humanIndex:]
 
 	// end
 	err = c.WriteJSON(InferResponseModel{Status: 0})
