@@ -290,20 +290,19 @@ func inferLogicPath(
 	// save record prefix for next inference
 	record.Prefix = output
 	// output end with others
-	index := strings.LastIndex(output, "<|MOSS|>:")
+	index := strings.LastIndex(record.Prefix, "<|MOSS|>:")
 	if index == -1 {
-		log.Printf("error find \"<|MOSS|>:\" from inference server, output: \"%v\"\n", output)
+		log.Printf("error find \"<|MOSS|>:\" from inference server, output: \"%v\"\n", record.Prefix)
 		return InternalServerError()
 	}
-	output = output[index+9:]
-	record.Response = cutEndFlag(output)
+	record.Response = cutEndFlag(record.Prefix[index+9:])
 	record.Duration = duration
 	record.ExtraData = extraData
 
 	// cut out the latest context
-	humanIndex := strings.LastIndex(output, "<|Human|>:")
-	if index == -1 {
-		log.Printf("error find \"<|Human|>:\" from inference server, output: \"%v\"\n", output)
+	humanIndex := strings.LastIndex(record.Prefix, "<|Human|>:")
+	if humanIndex == -1 {
+		log.Printf("error find \"<|Human|>:\" from inference server, output: \"%v\"\n", record.Prefix)
 		return InternalServerError()
 	}
 	record.RawContent = record.Prefix[humanIndex:]
