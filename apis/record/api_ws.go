@@ -43,10 +43,6 @@ func AddRecordAsync(c *websocket.Conn) {
 			if httpError, ok := err.(*HttpError); ok {
 				response.StatusCode = httpError.Code
 			}
-			if errors.Is(err, maxLengthExceededError) {
-				chat.MaxLengthExceeded = true
-				DB.Save(&chat)
-			}
 			_ = c.WriteJSON(response)
 		}
 	}()
@@ -140,9 +136,9 @@ func AddRecordAsync(c *websocket.Conn) {
 			// async infer
 			err = InferAsync(c, oldRecord.Prefix, &record, user)
 			if err != nil && !errors.Is(err, sensitiveError) {
-				if httpError, ok := err.(*HttpError); ok && httpError.MessageType == MaxLength {
-					DB.Model(&chat).Update("max_length_exceeded", true)
-				}
+				//if httpError, ok := err.(*HttpError); ok && httpError.MessageType == MaxLength {
+				//	DB.Model(&chat).Update("max_length_exceeded", true)
+				//}
 				return err
 			}
 		}
@@ -205,10 +201,6 @@ func RegenerateAsync(c *websocket.Conn) {
 			response := InferResponseModel{Status: -1, Output: err.Error()}
 			if httpError, ok := err.(*HttpError); ok {
 				response.StatusCode = httpError.Code
-			}
-			if errors.Is(err, maxLengthExceededError) {
-				chat.MaxLengthExceeded = true
-				DB.Save(&chat)
 			}
 			err = c.WriteJSON(response)
 			if err != nil {
@@ -300,9 +292,10 @@ func RegenerateAsync(c *websocket.Conn) {
 		// async infer
 		err = InferAsync(c, prefixRecord.Prefix, &record, user)
 		if err != nil && !errors.Is(err, sensitiveError) {
-			if httpError, ok := err.(*HttpError); ok && httpError.MessageType == MaxLength {
-				DB.Model(&chat).Update("max_length_exceeded", true)
-			}
+			//
+			//if httpError, ok := err.(*HttpError); ok && httpError.MessageType == MaxLength {
+			//	DB.Model(&chat).Update("max_length_exceeded", true)
+			//}
 			return err
 		}
 

@@ -121,10 +121,10 @@ func AddRecord(c *fiber.Ctx) error {
 		// infer request
 		err = Infer(&record, oldRecord.Prefix)
 		if err != nil {
-			if errors.Is(err, maxLengthExceededError) {
-				chat.MaxLengthExceeded = true
-				DB.Save(&chat)
-			}
+			//if errors.Is(err, maxLengthExceededError) {
+			//	chat.MaxLengthExceeded = truea
+			//	DB.Save(&chat)
+			//}
 			return err
 		}
 
@@ -240,10 +240,10 @@ func RetryRecord(c *fiber.Ctx) error {
 	// infer request
 	err = Infer(&record, prefixRecord.Prefix)
 	if err != nil {
-		if errors.Is(err, maxLengthExceededError) {
-			chat.MaxLengthExceeded = true
-			DB.Save(&chat)
-		}
+		//if errors.Is(err, maxLengthExceededError) {
+		//	chat.MaxLengthExceeded = true
+		//	DB.Save(&chat)
+		//}
 		return err
 	}
 

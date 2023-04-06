@@ -29,7 +29,7 @@ var resultsRegexp = regexp.MustCompile(`<[|]Results[|]>[\s\S]+?<eor>`) // not gr
 
 var maxLengthExceededError = BadRequest("The maximum context length is exceeded").WithMessageType(MaxLength)
 
-var unknownError = InternalServerError("unknown error, please try again")
+var unknownError = InternalServerError("未知错误，请刷新或等待一分钟后再试。Unknown error, please refresh or wait a minute and try again")
 
 var sensitiveError = errors.New("sensitive")
 
@@ -484,7 +484,7 @@ func inferTrigger(data []byte) (string, float64, error) {
 			zap.ByteString("body", response),
 		)
 		if rsp.StatusCode == 400 {
-			return "", duration, maxLengthExceededError
+			return "", duration, unknownError
 		} else if rsp.StatusCode == 560 {
 			return "", duration, unknownError
 		} else if rsp.StatusCode >= 500 {
@@ -502,7 +502,7 @@ func inferTrigger(data []byte) (string, float64, error) {
 		if err != nil {
 			responseString := string(response)
 			if responseString == "400" {
-				return "", duration, maxLengthExceededError
+				return "", duration, unknownError
 			} else if responseString == "560" {
 				return "", duration, unknownError
 			} else {
