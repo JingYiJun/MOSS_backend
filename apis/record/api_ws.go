@@ -415,7 +415,7 @@ func InferWithoutLoginAsync(c *websocket.Conn) {
 		}
 
 		// sensitive request check
-		if sensitive.IsSensitive(body.String(), &User{}) {
+		if sensitive.IsSensitive(body.Context, &User{}) {
 
 			err = c.WriteJSON(InferResponseModel{
 				Status: -2, // sensitive
@@ -437,8 +437,11 @@ func InferWithoutLoginAsync(c *websocket.Conn) {
 
 		// store into database
 		directRecord := DirectRecord{
-			Records:  append(body.Records, RecordModel{Request: body.Request, Response: record.Response}),
-			Duration: record.Duration,
+			Duration:  record.Duration,
+			Context:   record.Prefix,
+			Request:   record.Request,
+			Response:  record.Response,
+			ExtraData: record.ExtraData,
 		}
 		_ = DB.Create(&directRecord).Error
 
