@@ -94,7 +94,10 @@ func LoadParamToMap(m map[string]any) error {
 type DirectRecord struct {
 	ID               int
 	CreatedAt        time.Time
-	Records          []RecordModel `gorm:"serializer:json"`
 	Duration         float64
 	ConsumerUsername string
+	Context          string
+	Request          string
+	Response         string
+	ExtraData        any
 }

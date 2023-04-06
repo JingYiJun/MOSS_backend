@@ -1,10 +1,5 @@
 package record
 
-import (
-	"MOSS_backend/models"
-	"strings"
-)
-
 type CreateModel struct {
 	Request string `json:"request" validate:"required"`
 }
@@ -19,22 +14,12 @@ type ModifyModel struct {
 }
 
 type InferenceRequest struct {
-	Records []models.RecordModel `json:"records"`
-	Request string               `json:"request" validate:"min=1"`
-}
-
-func (i InferenceRequest) String() string {
-	var builder strings.Builder
-	for _, record := range i.Records {
-		builder.WriteString(record.Request)
-		builder.WriteByte('\n')
-		builder.WriteString(record.Response)
-		builder.WriteByte('\n')
-	}
-	builder.WriteString(i.Request)
-	return builder.String()
+	Context string `json:"context"`
+	Request string `json:"request" validate:"min=1"`
 }
 
 type InferenceResponse struct {
-	Response string `json:"response"`
+	Response  string `json:"response"`
+	Context   string `json:"context"`
+	ExtraData any    `json:"extra_data"`
 }

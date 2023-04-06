@@ -354,12 +354,8 @@ func ModifyRecord(c *fiber.Ctx) error {
 // @Param json body InferenceRequest true "json"
 // @Success 200 {object} InferenceResponse
 func InferWithoutLogin(c *fiber.Ctx) error {
-	var (
-		body          InferenceRequest
-		formattedText string
-		err           error
-	)
-	err = ValidateBody(c, &body)
+	var body InferenceRequest
+	err := ValidateBody(c, &body)
 	if err != nil {
 		return err
 	}
@@ -367,17 +363,13 @@ func InferWithoutLogin(c *fiber.Ctx) error {
 	consumerUsername := c.Get("X-Consumer-Username")
 	passSensitiveCheck := slices.Contains(config.Config.PassSensitiveCheckUsername, consumerUsername)
 
-	if !passSensitiveCheck && sensitive.IsSensitive(body.String(), &User{}) {
+	if !passSensitiveCheck && sensitive.IsSensitive(body.Context, &User{}) {
 		return BadRequest(DefaultResponse).WithMessageType(Sensitive)
 	}
 
 	record := Record{Request: body.Request}
 
-	formattedText = InferPreprocess(body.Request, "")
-	if len([]rune(formattedText)) > 1024 {
-		return maxLengthExceededError
-	}
-	err = Infer(&record, "")
+	err = Infer(&record, body.Context)
 	if err != nil {
 		return err
 	}
@@ -387,12 +379,19 @@ func InferWithoutLogin(c *fiber.Ctx) error {
 	}
 
 	directRecord := DirectRecord{
-		Records:          append(body.Records, RecordModel{Request: body.Request, Response: record.Response}),
 		Duration:         record.Duration,
 		ConsumerUsername: consumerUsername,
+		Context:          record.Prefix,
+		Request:          record.Request,
+		Response:         record.Response,
+		ExtraData:        record.ExtraData,
 	}
 
 	_ = DB.Create(&directRecord).Error
 
-	return c.JSON(InferenceResponse{Response: record.Response})
+	return c.JSON(InferenceResponse{
+		Response:  record.Response,
+		Context:   record.Prefix,
+		ExtraData: record.ExtraData,
+	})
 }
