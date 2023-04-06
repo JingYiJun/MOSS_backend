@@ -99,5 +99,5 @@ type DirectRecord struct {
 	Context          string
 	Request          string
 	Response         string
-	ExtraData        any
+	ExtraData        any `json:"extra_data" gorm:"serializer:json"`
 }
