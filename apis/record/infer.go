@@ -484,7 +484,7 @@ func inferTrigger(data []byte) (string, float64, error) {
 			zap.ByteString("body", response),
 		)
 		if rsp.StatusCode == 400 {
-			return "", duration, maxLengthExceededError
+			return "", duration, unknownError
 		} else if rsp.StatusCode == 560 {
 			return "", duration, unknownError
 		} else if rsp.StatusCode >= 500 {
