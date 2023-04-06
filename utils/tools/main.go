@@ -32,7 +32,8 @@ func Execute(rawCommand string) (string, any) {
 	})
 	// commands now like: [[Search("A"), Search, A,] [Search("C"), Search, C] [Solve("B"), Solve, B]]
 	var resultsBuilder strings.Builder
-	searchResultsIndex := 0
+	// the index of `the search results in <|results|>` starts with 1
+	searchResultsIndex := 1
 	for i := range commands {
 		if i >= maxCommandNumber {
 			break
