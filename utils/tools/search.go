@@ -58,8 +58,6 @@ def convert(res):
     return tmp_sample
 */
 
-
-
 var searchHttpClient = http.Client{Timeout: 20 * time.Second}
 
 func clean(tmpAnswer string) string {
@@ -68,10 +66,12 @@ func clean(tmpAnswer string) string {
 	return tmpAnswer
 }
 
-func convert(lineDict map[string]any) (results string) {
+func searchResultsFormatter(lineDict map[string]any, searchResultIndex *int) (results string) {
+	if lineDict == nil {
+		return "None"
+	}
 	var tmpSample []string
 	id := 0
-
 	defer func() {
 		if something := recover(); something != nil {
 			log.Println(something)
@@ -89,15 +89,16 @@ func convert(lineDict map[string]any) (results string) {
 		} else {
 			panic("search response decode error")
 		}
-		tmpSample = append(tmpSample, fmt.Sprintf("<|%d|>: %s", id, tmpAnswer))
+		tmpSample = append(tmpSample, fmt.Sprintf("<|%d|>: %s", *searchResultIndex, tmpAnswer))
 	} else if _, exists := lineDict["0"]; exists {
 		for key := range lineDict {
 			tmpAnswer := lineDict[key].(Map)["summ"].(string)
 			tmpAnswerRune := []rune(clean(tmpAnswer))
 			tmpAnswerRune = tmpAnswerRune[:utils.Min(len(tmpAnswerRune), 400)]
 			tmpAnswer = string(tmpAnswerRune)
-			tmpSample = append(tmpSample, fmt.Sprintf("<|%d|>: %s", id, tmpAnswer))
-			if id < 3 {
+			tmpSample = append(tmpSample, fmt.Sprintf("<|%d|>: %s", *searchResultIndex, tmpAnswer))
+			if id < 3 { // topk
+				*searchResultIndex = *searchResultIndex + 1
 				id++
 			} else {
 				break
@@ -107,30 +108,29 @@ func convert(lineDict map[string]any) (results string) {
 	return strings.Join(tmpSample, "\n")
 }
 
-func search(request string) (string, map[string]any) {
+func search(request string) (results map[string]any, extraData map[string]any) {
 	data, _ := json.Marshal(map[string]any{"query": request, "topk": "3"})
 	res, err := searchHttpClient.Post(config.Config.ToolsSearchUrl, "application/json", bytes.NewBuffer(data))
 	if err != nil {
 		utils.Logger.Error("post search error: ", zap.Error(err))
-		return "None", nil
+		return nil, nil
 	}
 
 	if res.StatusCode != 200 {
 		utils.Logger.Error("post search status code error: " + strconv.Itoa(res.StatusCode))
-		return "None", nil
+		return nil, nil
 	}
 
-	var results map[string]any
 	responseData, err := io.ReadAll(res.Body)
 	if err != nil {
 		utils.Logger.Error("post search response read error: ", zap.Error(err))
-		return "None", nil
+		return nil, nil
 	}
 	err = json.Unmarshal(responseData, &results)
 	if err != nil {
 		utils.Logger.Error("post search response unmarshal error: ", zap.Error(err))
-		return "None", nil
+		return nil, nil
 	}
 
-	return convert(results), map[string]any{"type": "search", "data": results, "request": request}
+	return results, map[string]any{"type": "search", "data": results, "request": request}
 }

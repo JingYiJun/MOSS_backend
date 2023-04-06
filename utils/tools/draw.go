@@ -4,7 +4,6 @@ import (
 	"MOSS_backend/config"
 	"MOSS_backend/utils"
 	"bytes"
-	"encoding/base64"
 	"github.com/vmihailenco/msgpack/v5"
 	"go.uber.org/zap"
 	"io"
@@ -14,7 +13,7 @@ import (
 )
 
 //func main() {
-//	prompt := flag.String("p", "a photo of an astronaut riding a horse on mars", "prompt")
+//	prompt := flag.String("p", "a photo of an astronaut riding a horse on Mars", "prompt")
 //	host := flag.String("host", "0.0.0.0", "remote server host ip")
 //	port := flag.Int("port", 443, "service port")
 //	flag.Parse()
@@ -72,6 +71,6 @@ func draw(request string) (string, map[string]any) {
 		utils.Logger.Error("post draw(tools) response body data cannot Unmarshal error: ", zap.Error(err))
 		return "None", nil
 	}
-	resultsString := base64.StdEncoding.EncodeToString(resultsByte)
-	return resultsString, map[string]any{"type": "draw", "data": data, "request": request}
+	// sending resultsByte using json means `automatically encoding with BASE64`
+	return "a picture of the given prompt has been finished", map[string]any{"type": "draw", "data": resultsByte, "request": request}
 }
