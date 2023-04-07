@@ -25,7 +25,11 @@ import (
 
 var endContentRegexp = regexp.MustCompile(`<[es]o\w>`)
 
-var resultsRegexp = regexp.MustCompile(`<[|]Results[|]>[\s\S]+?<eor>`) // not greedy
+var resultsRegexp = regexp.MustCompile(`<[|]Results[|]>:[\s\S]+?<eor>`) // not greedy
+
+var commandsRegexp = regexp.MustCompile(`<\|Commands\|>:([\s\S]+?)<eo\w>`)
+
+var mossRegexp = regexp.MustCompile(`<\|MOSS\|>:([\s\S]+?)<eo\w>`)
 
 var maxLengthExceededError = BadRequest("The maximum context length is exceeded").WithMessageType(MaxLength)
 
@@ -223,89 +227,98 @@ func inferLogicPath(
 	if innerErr != nil {
 		return innerErr
 	}
-
 	if connectionClosed.Load() {
 		return nil
 	}
 
-	output = strings.Trim(output, " \t\n")
-	if strings.HasSuffix(output, "<eoc>") {
-		// output ended with <|Commands|>:xxx<eoc>
+	firstOutput := strings.Trim(output, " \t\n")
 
-		/* second infer */
-		// cut out command
-		outputCommand := strings.TrimSuffix(output, "<eoc>")
-		index := strings.LastIndex(output, "<|Commands|>:")
-		if index == -1 {
-			log.Printf("error find \"<|Commands|>:\" from inference server, output: \"%v\"\n", output)
-			return InternalServerError()
-		}
-		outputCommand = strings.Trim(outputCommand[index+13:], " ")
+	// middle process
+	humanIndex := strings.LastIndex(firstOutput, "<|Human|>:")
+	if humanIndex == -1 {
+		log.Printf("error find \"<|Human|>:\" from inference server, output: \"%v\"\n", record.Prefix)
+		return InternalServerError()
+	}
+	firstOutput = firstOutput[humanIndex:]
+	subsetIndex := commandsRegexp.FindStringSubmatchIndex(firstOutput)
+	// subsetIndex: [CommandsStructStartIndex CommandsStructEndIndex, CommandsContentStartIndex, CommandsContentEndIndex]
 
-		var results string
-		// get results from tools
-		results, extraData = tools.Execute(outputCommand)
-
-		if connectionClosed.Load() {
-			return nil
-		}
-
-		// generate new formatted text and uuid
-		uuidText = strings.ReplaceAll(uuid.NewString(), "-", "")
-		formattedText = InferWriteResult(results, output+"\n")
-		request["x"] = formattedText
-		request["url"] = config.Config.CallbackUrl + "?uuid=" + uuidText
-		data, _ = json.Marshal(request)
-
-		var wg sync.WaitGroup
-
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			innerErr = inferListener(
-				c,
-				record,
-				user,
-				uuidText,
-				connectionClosed,
-			)
-		}()
-
-		output, duration, err = inferTrigger(data)
-		if err != nil {
-			return err
-		}
-
-		wg.Wait()
-
-		if innerErr != nil {
-			return innerErr
-		}
+	if len(subsetIndex) < 4 {
+		log.Printf("error find \"<|Commands|> from inference server, output: \"%v\"\n", output)
+		return InternalServerError()
 	}
 
+	firstOutput = firstOutput[:subsetIndex[1]]
+	commandContent := firstOutput[subsetIndex[2]:subsetIndex[3]]
+
+	var results string
+	// get results from tools
+	results, extraData = tools.Execute(strings.Trim(commandContent, " "))
+
+	if connectionClosed.Load() {
+		return NoStatus("client interrupt")
+	}
+
+	/* second infer */
+
+	// generate new formatted text and uuid
+	uuidText = strings.ReplaceAll(uuid.NewString(), "-", "")
+	formattedText = InferWriteResult(results, cleanedPrefix+firstOutput+"\n")
+	request["x"] = formattedText
+	request["url"] = config.Config.CallbackUrl + "?uuid=" + uuidText
+	data, _ = json.Marshal(request)
+
+	var wg2 sync.WaitGroup
+	wg2.Add(1)
+	// start a new listener
+	go func() {
+		innerErr = inferListener(
+			c,
+			record,
+			user,
+			uuidText,
+			connectionClosed,
+		)
+		wg2.Done()
+	}()
+
+	// infer
+	secondOutput, duration, err := inferTrigger(data)
+	if err != nil {
+		return err
+	}
+
+	wg2.Wait()
+	if innerErr != nil {
+		return innerErr
+	}
 	if connectionClosed.Load() {
 		return nil
 	}
 
 	// save record prefix for next inference
-	record.Prefix = output
-	// output end with others
-	index := strings.LastIndex(record.Prefix, "<|MOSS|>:")
-	if index == -1 {
-		log.Printf("error find \"<|MOSS|>:\" from inference server, output: \"%v\"\n", record.Prefix)
-		return InternalServerError()
-	}
-	record.Response = cutEndFlag(record.Prefix[index+9:])
-	record.Duration = duration
-	record.ExtraData = extraData
+	record.Prefix = secondOutput
 
-	// cut out the latest context
-	humanIndex := strings.LastIndex(record.Prefix, "<|Human|>:")
+	// cut out this turn
+	humanIndex = strings.LastIndex(secondOutput, "<|Human|>:")
 	if humanIndex == -1 {
 		log.Printf("error find \"<|Human|>:\" from inference server, output: \"%v\"\n", record.Prefix)
 		return InternalServerError()
 	}
-	record.RawContent = record.Prefix[humanIndex:]
+	secondRawOutput := secondOutput[humanIndex:]
+
+	// get moss output
+	mossOutputSlice := mossRegexp.FindStringSubmatch(secondRawOutput)
+	if len(mossOutputSlice) < 2 {
+		log.Printf("error find \"<|MOSS|>:\" from inference server, output: \"%v\"\n", record.Prefix)
+		return InternalServerError()
+	}
+
+	// save to record
+	record.Response = strings.Trim(mossOutputSlice[1], " ")
+	record.Duration = duration
+	record.ExtraData = extraData
+	record.RawContent = secondRawOutput
 
 	// end
 	err = c.WriteJSON(InferResponseModel{Status: 0})
