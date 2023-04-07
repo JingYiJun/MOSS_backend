@@ -239,8 +239,8 @@ func inferLogicPath(
 		log.Printf("error find \"<|Human|>:\" from inference server, output: \"%v\"\n", record.Prefix)
 		return InternalServerError()
 	}
-	firstOutput = firstOutput[humanIndex:]
-	subsetIndex := commandsRegexp.FindStringSubmatchIndex(firstOutput)
+	firstRawOutput := firstOutput[humanIndex:]
+	subsetIndex := commandsRegexp.FindStringSubmatchIndex(firstRawOutput)
 	// subsetIndex: [CommandsStructStartIndex CommandsStructEndIndex, CommandsContentStartIndex, CommandsContentEndIndex]
 
 	if len(subsetIndex) < 4 {
@@ -248,12 +248,12 @@ func inferLogicPath(
 		return InternalServerError()
 	}
 
-	firstOutput = firstOutput[:subsetIndex[1]]
-	commandContent := firstOutput[subsetIndex[2]:subsetIndex[3]]
+	firstRawOutput = firstRawOutput[:subsetIndex[1]]
+	commandContent := firstRawOutput[subsetIndex[2]:subsetIndex[3]]
 
 	var results string
 	// get results from tools
-	results, extraData = tools.Execute(strings.Trim(commandContent, " "))
+	results, extraData = tools.Execute(strings.Trim(commandContent, " \n"))
 
 	if connectionClosed.Load() {
 		return NoStatus("client interrupt")
@@ -261,9 +261,16 @@ func inferLogicPath(
 
 	/* second infer */
 
+	// preprocess
+	if !strings.HasSuffix(firstRawOutput, "<eoc>") {
+		Logger.Info("error <|Commands|> ending flag", zap.String("first_raw_output", firstRawOutput))
+		firstRawOutput = firstRawOutput[:len(firstRawOutput)-5]
+		firstRawOutput = firstRawOutput + "<eoc>"
+	}
+
 	// generate new formatted text and uuid
 	uuidText = strings.ReplaceAll(uuid.NewString(), "-", "")
-	formattedText = InferWriteResult(results, cleanedPrefix+firstOutput+"\n")
+	formattedText = InferWriteResult(results, cleanedPrefix+firstRawOutput+"\n")
 	request["x"] = formattedText
 	request["url"] = config.Config.CallbackUrl + "?uuid=" + uuidText
 	data, _ = json.Marshal(request)
