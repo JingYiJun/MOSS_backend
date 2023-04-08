@@ -37,6 +37,8 @@ var unknownError = InternalServerError("未知错误，请刷新或等待一分�
 
 var sensitiveError = errors.New("sensitive")
 
+var interruptError = NoStatus("client interrupt")
+
 type InferResponseModel struct {
 	Status     int    `json:"status"` // 1 for output, 0 for end, -1 for error, -2 for sensitive
 	StatusCode int    `json:"status_code,omitempty"`
@@ -228,7 +230,7 @@ func inferLogicPath(
 		return innerErr
 	}
 	if connectionClosed.Load() {
-		return nil
+		return interruptError
 	}
 
 	firstOutput := strings.Trim(output, " \t\n")
@@ -236,7 +238,7 @@ func inferLogicPath(
 	// middle process
 	humanIndex := strings.LastIndex(firstOutput, "<|Human|>:")
 	if humanIndex == -1 {
-		log.Printf("error find \"<|Human|>:\" from inference server, output: \"%v\"\n", record.Prefix)
+		Logger.Error(`error find "<|Human|>:"`, zap.String("output", firstOutput))
 		return InternalServerError()
 	}
 	firstRawOutput := firstOutput[humanIndex:]
@@ -244,29 +246,32 @@ func inferLogicPath(
 	// subsetIndex: [CommandsStructStartIndex CommandsStructEndIndex, CommandsContentStartIndex, CommandsContentEndIndex]
 
 	if len(subsetIndex) < 4 {
-		log.Printf("error find \"<|Commands|> from inference server, output: \"%v\"\n", output)
+		Logger.Error(`error find "<|Commands|>:"`, zap.String("output", firstOutput))
 		return InternalServerError()
 	}
 
 	firstRawOutput = firstRawOutput[:subsetIndex[1]]
-	commandContent := firstRawOutput[subsetIndex[2]:subsetIndex[3]]
+	commandContent := strings.Trim(firstRawOutput[subsetIndex[2]:subsetIndex[3]], " \n")
+
+	// replace <|Commands|> <eo\w> to <eoc>
+	if !strings.HasSuffix(firstRawOutput, "<eoc>") {
+		Logger.Error(
+			"error <|Commands|> not end with <eoc>",
+			zap.String("output", firstOutput),
+			zap.String("raw_output", firstRawOutput),
+		)
+	}
+	firstRawOutput = commandsRegexp.ReplaceAllString(firstRawOutput, "<|Commands|>:$1<eoc>")
 
 	var results string
 	// get results from tools
-	results, extraData = tools.Execute(strings.Trim(commandContent, " \n"))
+	results, extraData = tools.Execute(commandContent)
 
 	if connectionClosed.Load() {
-		return NoStatus("client interrupt")
+		return interruptError
 	}
 
 	/* second infer */
-
-	// preprocess
-	if !strings.HasSuffix(firstRawOutput, "<eoc>") {
-		Logger.Info("error <|Commands|> ending flag", zap.String("first_raw_output", firstRawOutput))
-		firstRawOutput = firstRawOutput[:len(firstRawOutput)-5]
-		firstRawOutput = firstRawOutput + "<eoc>"
-	}
 
 	// generate new formatted text and uuid
 	uuidText = strings.ReplaceAll(uuid.NewString(), "-", "")
@@ -300,16 +305,13 @@ func inferLogicPath(
 		return innerErr
 	}
 	if connectionClosed.Load() {
-		return nil
+		return interruptError
 	}
-
-	// save record prefix for next inference
-	record.Prefix = secondOutput
 
 	// cut out this turn
 	humanIndex = strings.LastIndex(secondOutput, "<|Human|>:")
 	if humanIndex == -1 {
-		log.Printf("error find \"<|Human|>:\" from inference server, output: \"%v\"\n", record.Prefix)
+		Logger.Error(`error find "<|Human|>:"`, zap.String("output", secondOutput))
 		return InternalServerError()
 	}
 	secondRawOutput := secondOutput[humanIndex:]
@@ -317,11 +319,12 @@ func inferLogicPath(
 	// get moss output
 	mossOutputSlice := mossRegexp.FindStringSubmatch(secondRawOutput)
 	if len(mossOutputSlice) < 2 {
-		log.Printf("error find \"<|MOSS|>:\" from inference server, output: \"%v\"\n", record.Prefix)
+		Logger.Error(`error find "<|MOSS|>:"`, zap.String("output", secondOutput))
 		return InternalServerError()
 	}
 
 	// save to record
+	record.Prefix = secondOutput + "\n" // save record prefix for next inference
 	record.Response = strings.Trim(mossOutputSlice[1], " ")
 	record.Duration = duration
 	record.ExtraData = extraData
