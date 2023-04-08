@@ -48,6 +48,7 @@ var Config struct {
 	PassSensitiveCheckUsername []string `env:"PASS_SENSITIVE_CHECK_USERNAME"`
 
 	// tools
+	EnableTools       bool   `env:"ENABLE_TOOLS" envDefault:"true"`
 	ToolsSearchUrl    string `env:"TOOLS_SEARCH_URL,required"`
 	ToolsCalculateUrl string `env:"TOOLS_CALCULATE_URL,required"`
 	ToolsSolveUrl     string `env:"TOOLS_SOLVE_URL,required"`

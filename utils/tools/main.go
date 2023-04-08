@@ -16,7 +16,7 @@ var commandSplitRegexp = regexp.MustCompile(`(Search|Solve|Calculate|Draw)\("([\
 var commandOrder = map[string]int{"Search": 1, "Calculate": 2, "Solve": 3, "Draw": 4}
 
 func Execute(rawCommand string) (string, any) {
-	if rawCommand == "None" || rawCommand == "none" {
+	if !config.Config.EnableTools || rawCommand == "None" || rawCommand == "none" {
 		return "None", nil
 	}
 	// commands is like: [[Search("A"), Search, A,] [Solve("B"), Solve, B] [Search("C"), Search, C]]
