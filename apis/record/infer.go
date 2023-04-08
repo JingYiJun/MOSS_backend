@@ -254,6 +254,13 @@ func inferLogicPath(
 	commandContent := strings.Trim(firstRawOutput[subsetIndex[2]:subsetIndex[3]], " \n")
 
 	// replace <|Commands|> <eo\w> to <eoc>
+	if !strings.HasSuffix(firstRawOutput, "<eoc>") {
+		Logger.Error(
+			"error <|Commands|> not end with <eoc>",
+			zap.String("output", firstOutput),
+			zap.String("raw_output", firstRawOutput),
+		)
+	}
 	firstRawOutput = commandsRegexp.ReplaceAllString(firstRawOutput, "<|Commands|>:$1<eoc>")
 
 	var results string
