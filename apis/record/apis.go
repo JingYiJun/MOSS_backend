@@ -337,7 +337,7 @@ func ModifyRecord(c *fiber.Ctx) error {
 			record.LikeData = *body.Like
 		}
 
-		return tx.Save(&record).Error
+		return tx.Model(&record).Select("Feedback", "LikeData").Updates(&record).Error
 	})
 
 	if err != nil {
