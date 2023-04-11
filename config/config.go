@@ -24,6 +24,7 @@ var Config struct {
 	InferenceUrl string `env:"INFERENCE_URL,required"`
 
 	// 敏感信息检测
+	EnableSensitiveCheck   bool   `env:"ENABLE_SENSITIVE_CHECK" envDefault:"true"`
 	SensitiveCheckPlatform string `env:"SENSITIVE_CHECK_PLATFORM" envDefault:"ShuMei"` // one of ShuMei or DiTing
 
 	// 谛听平台
