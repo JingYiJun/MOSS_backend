@@ -14,8 +14,9 @@ type ModifyModel struct {
 }
 
 type InferenceRequest struct {
-	Context string `json:"context"`
-	Request string `json:"request" validate:"min=1"`
+	Context      string          `json:"context"`
+	Request      string          `json:"request" validate:"min=1"`
+	PluginConfig map[string]bool `json:"plugin_config"`
 }
 
 type InferenceResponse struct {

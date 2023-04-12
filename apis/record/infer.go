@@ -56,13 +56,13 @@ var inferHttpClient = http.Client{Timeout: 1 * time.Minute}
 
 type InferWsContext struct {
 	c                *websocket.Conn
-	user             *User
 	connectionClosed *atomic.Bool
 }
 
 func InferCommon(
 	record *Record,
 	prefix string,
+	user *User,
 	ctx *InferWsContext,
 ) (
 	err error,
@@ -82,6 +82,11 @@ func InferCommon(
 		return err
 	}
 
+	// load user plugin config
+	for key, value := range user.PluginConfig {
+		request[key] = value
+	}
+
 	cleanedPrefix := resultsRegexp.ReplaceAllString(prefix, "<|Results|>: None<eor>")
 
 	/* first infer */
@@ -97,6 +102,7 @@ func InferCommon(
 			innerErr = inferListener(
 				record,
 				uuidText,
+				user,
 				*ctx,
 			)
 			wg1.Done()
@@ -171,6 +177,7 @@ func InferCommon(
 			innerErr = inferListener(
 				record,
 				uuidText,
+				user,
 				*ctx,
 			)
 			wg2.Done()
@@ -228,8 +235,8 @@ func InferCommon(
 	return nil
 }
 
-func Infer(record *Record, prefix string) (err error) {
-	return InferCommon(record, prefix, nil)
+func Infer(record *Record, prefix string, user *User) (err error) {
+	return InferCommon(record, prefix, user, nil)
 }
 
 func InferAsync(
@@ -261,9 +268,9 @@ func InferAsync(
 		innerErr := inferLogicPath(
 			record,
 			prefix,
+			user,
 			InferWsContext{
 				c:                c,
-				user:             user,
 				connectionClosed: connectionClosed,
 			},
 		)
@@ -290,15 +297,17 @@ func InferAsync(
 func inferLogicPath(
 	record *Record,
 	prefix string,
+	user *User,
 	ctx InferWsContext,
 ) error {
-	return InferCommon(record, prefix, &ctx)
+	return InferCommon(record, prefix, user, &ctx)
 }
 
 // inferListener listen from output channel
 func inferListener(
 	record *Record,
 	uuidText string,
+	user *User,
 	ctx InferWsContext,
 ) error {
 	var err error
@@ -346,13 +355,13 @@ func inferListener(
 				detectedOutput = before
 
 				// output sensitive check
-				if sensitive.IsSensitive(detectedOutput, ctx.user) {
+				if sensitive.IsSensitive(detectedOutput, user) {
 					record.ResponseSensitive = true
 					// log new record
 					record.Response = detectedOutput
 					record.Duration = float64(time.Since(startTime)) / 1000_000_000
 					var banned bool
-					banned, err = ctx.user.AddUserOffense(UserOffenseMoss)
+					banned, err = user.AddUserOffense(UserOffenseMoss)
 					if err != nil {
 						return err
 					}
@@ -384,13 +393,13 @@ func inferListener(
 				}
 			case 0: // end
 				if nowOutput != detectedOutput {
-					if sensitive.IsSensitive(nowOutput, ctx.user) {
+					if sensitive.IsSensitive(nowOutput, user) {
 						record.ResponseSensitive = true
 						// log new record
 						record.Response = nowOutput
 						record.Duration = float64(time.Since(startTime)) / 1000_000_000
 						var banned bool
-						banned, err = ctx.user.AddUserOffense(UserOffenseMoss)
+						banned, err = user.AddUserOffense(UserOffenseMoss)
 						if err != nil {
 							return err
 						}

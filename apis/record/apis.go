@@ -119,10 +119,10 @@ func AddRecord(c *fiber.Ctx) error {
 		}
 
 		// infer request
-		err = Infer(&record, oldRecord.Prefix)
+		err = Infer(&record, oldRecord.Prefix, user)
 		if err != nil {
 			//if errors.Is(err, maxLengthExceededError) {
-			//	chat.MaxLengthExceeded = truea
+			//	chat.MaxLengthExceeded = true
 			//	DB.Save(&chat)
 			//}
 			return err
@@ -238,7 +238,7 @@ func RetryRecord(c *fiber.Ctx) error {
 	}
 
 	// infer request
-	err = Infer(&record, prefixRecord.Prefix)
+	err = Infer(&record, prefixRecord.Prefix, user)
 	if err != nil {
 		//if errors.Is(err, maxLengthExceededError) {
 		//	chat.MaxLengthExceeded = true
@@ -369,7 +369,7 @@ func InferWithoutLogin(c *fiber.Ctx) error {
 
 	record := Record{Request: body.Request}
 
-	err = Infer(&record, body.Context)
+	err = Infer(&record, body.Context, &User{PluginConfig: body.PluginConfig})
 	if err != nil {
 		return err
 	}
