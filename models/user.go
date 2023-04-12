@@ -16,23 +16,24 @@ import (
 )
 
 type User struct {
-	ID                    int            `json:"id" gorm:"primaryKey"`
-	JoinedTime            time.Time      `json:"joined_time" gorm:"autoCreateTime"`
-	LastLogin             time.Time      `json:"last_login" gorm:"autoUpdateTime"`
-	DeletedAt             gorm.DeletedAt `json:"-" gorm:"index"`
-	Nickname              string         `json:"nickname" gorm:"size:128;default:'user'"`
-	Email                 string         `json:"email" gorm:"size:128;index:,length:5"`
-	Phone                 string         `json:"phone" gorm:"size:128;index:,length:5"`
-	Password              string         `json:"-" gorm:"size:128"`
-	RegisterIP            string         `json:"-" gorm:"size:32"`
-	LastLoginIP           string         `json:"-" gorm:"size:32"`
-	LoginIP               []string       `json:"-" gorm:"serializer:json"`
-	Chats                 Chats          `json:"chats,omitempty"`
-	ShareConsent          bool           `json:"share_consent" gorm:"default:true"`
-	InviteCode            string         `json:"-" gorm:"size:32"`
-	IsAdmin               bool           `json:"is_admin"`
-	DisableSensitiveCheck bool           `json:"disable_sensitive_check"`
-	Banned                bool           `json:"banned"`
+	ID                    int             `json:"id" gorm:"primaryKey"`
+	JoinedTime            time.Time       `json:"joined_time" gorm:"autoCreateTime"`
+	LastLogin             time.Time       `json:"last_login" gorm:"autoUpdateTime"`
+	DeletedAt             gorm.DeletedAt  `json:"-" gorm:"index"`
+	Nickname              string          `json:"nickname" gorm:"size:128;default:'user'"`
+	Email                 string          `json:"email" gorm:"size:128;index:,length:5"`
+	Phone                 string          `json:"phone" gorm:"size:128;index:,length:5"`
+	Password              string          `json:"-" gorm:"size:128"`
+	RegisterIP            string          `json:"-" gorm:"size:32"`
+	LastLoginIP           string          `json:"-" gorm:"size:32"`
+	LoginIP               []string        `json:"-" gorm:"serializer:json"`
+	Chats                 Chats           `json:"chats,omitempty"`
+	ShareConsent          bool            `json:"share_consent" gorm:"default:true"`
+	InviteCode            string          `json:"-" gorm:"size:32"`
+	IsAdmin               bool            `json:"is_admin"`
+	DisableSensitiveCheck bool            `json:"disable_sensitive_check"`
+	Banned                bool            `json:"banned"`
+	PluginConfig          map[string]bool `json:"plugin_config" gorm:"serializer:json"`
 }
 
 func GetUserID(c *fiber.Ctx) (int, error) {
@@ -51,6 +52,38 @@ func GetUserID(c *fiber.Ctx) (int, error) {
 func LoadUserByID(userID int) (*User, error) {
 	var user User
 	err := DB.Take(&user, userID).Error
+
+	var defaultPluginConfig = config.Config.DefaultPluginConfig
+	if user.PluginConfig == nil {
+		user.PluginConfig = make(map[string]bool)
+		for key, value := range defaultPluginConfig {
+			user.PluginConfig[key] = value
+		}
+		DB.Model(&user).Select("PluginConfig").Updates(&user)
+	} else {
+		updated := false
+
+		// add new key
+		for key, value := range defaultPluginConfig {
+			if _, ok := user.PluginConfig[key]; !ok {
+				user.PluginConfig[key] = value
+				updated = true
+			}
+		}
+
+		// delete not used key
+		for key := range user.PluginConfig {
+			if _, ok := defaultPluginConfig[key]; !ok {
+				delete(user.PluginConfig, key)
+				updated = true
+			}
+		}
+
+		if updated {
+			DB.Model(&user).Select("PluginConfig").Updates(&user)
+		}
+	}
+
 	return &user, err
 }
 
@@ -107,7 +140,7 @@ func parseJWT(token string, bearer bool) (Map, error) {
 	}
 
 	// jwt encoding ignores padding, so RawStdEncoding should be used instead of StdEncoding
-	payloadBytes, err := base64.RawStdEncoding.DecodeString(payloads[1]) // the middle one is payload
+	payloadBytes, err := base64.RawURLEncoding.DecodeString(payloads[1]) // the middle one is payload
 	if err != nil {
 		return nil, err
 	}

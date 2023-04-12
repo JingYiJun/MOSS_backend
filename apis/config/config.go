@@ -1,6 +1,7 @@
 package config
 
 import (
+	"MOSS_backend/config"
 	. "MOSS_backend/models"
 	. "MOSS_backend/utils"
 	"github.com/gofiber/fiber/v2"
@@ -31,8 +32,9 @@ func GetConfig(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(Response{
-		Region:         region,
-		InviteRequired: configObject.InviteRequired,
-		Notice:         configObject.Notice,
+		Region:              region,
+		InviteRequired:      configObject.InviteRequired,
+		Notice:              configObject.Notice,
+		DefaultPluginConfig: config.Config.DefaultPluginConfig,
 	})
 }

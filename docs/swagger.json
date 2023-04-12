@@ -611,7 +611,8 @@
                     {
                         "type": "string",
                         "name": "email",
-                        "in": "query"
+                        "in": "query",
+                        "required": true
                     },
                     {
                         "minLength": 1,
@@ -667,7 +668,8 @@
                         "type": "string",
                         "description": "phone number in e164 mode",
                         "name": "phone",
-                        "in": "query"
+                        "in": "query",
+                        "required": true
                     },
                     {
                         "enum": [
@@ -786,6 +788,10 @@
     "definitions": {
         "account.LoginRequest": {
             "type": "object",
+            "required": [
+                "email",
+                "phone"
+            ],
             "properties": {
                 "email": {
                     "type": "string"
@@ -802,7 +808,14 @@
         },
         "account.ModifyUserRequest": {
             "type": "object",
+            "required": [
+                "email",
+                "phone"
+            ],
             "properties": {
+                "disable_sensitive_check": {
+                    "type": "boolean"
+                },
                 "email": {
                     "type": "string"
                 },
@@ -813,6 +826,12 @@
                 "phone": {
                     "description": "phone number in e164 mode",
                     "type": "string"
+                },
+                "plugin_config": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "boolean"
+                    }
                 },
                 "share_consent": {
                     "type": "boolean"
@@ -826,6 +845,10 @@
         },
         "account.RegisterRequest": {
             "type": "object",
+            "required": [
+                "email",
+                "phone"
+            ],
             "properties": {
                 "email": {
                     "type": "string"
@@ -890,6 +913,12 @@
         "config.Response": {
             "type": "object",
             "properties": {
+                "default_plugin_config": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "boolean"
+                    }
+                },
                 "invite_required": {
                     "type": "boolean"
                 },
@@ -913,6 +942,9 @@
                 },
                 "id": {
                     "type": "integer"
+                },
+                "max_length_exceeded": {
+                    "type": "boolean"
                 },
                 "name": {
                     "type": "string"
@@ -948,6 +980,7 @@
                     "description": "处理时间，单位 s",
                     "type": "number"
                 },
+                "extra_data": {},
                 "feedback": {
                     "type": "string"
                 },
@@ -957,6 +990,9 @@
                 "like_data": {
                     "description": "1 like, -1 dislike",
                     "type": "integer"
+                },
+                "raw_content": {
+                    "type": "string"
                 },
                 "request": {
                     "type": "string"
@@ -972,31 +1008,29 @@
                 }
             }
         },
-        "models.RecordModel": {
-            "type": "object",
-            "properties": {
-                "request": {
-                    "type": "string"
-                },
-                "response": {
-                    "type": "string"
-                }
-            }
-        },
         "models.User": {
             "type": "object",
             "properties": {
+                "banned": {
+                    "type": "boolean"
+                },
                 "chats": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/models.Chat"
                     }
                 },
+                "disable_sensitive_check": {
+                    "type": "boolean"
+                },
                 "email": {
                     "type": "string"
                 },
                 "id": {
                     "type": "integer"
+                },
+                "is_admin": {
+                    "type": "boolean"
                 },
                 "joined_time": {
                     "type": "string"
@@ -1009,6 +1043,12 @@
                 },
                 "phone": {
                     "type": "string"
+                },
+                "plugin_config": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "boolean"
+                    }
                 },
                 "share_consent": {
                     "type": "boolean"
@@ -1029,11 +1069,8 @@
         "record.InferenceRequest": {
             "type": "object",
             "properties": {
-                "records": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.RecordModel"
-                    }
+                "context": {
+                    "type": "string"
                 },
                 "request": {
                     "type": "string",
@@ -1044,6 +1081,10 @@
         "record.InferenceResponse": {
             "type": "object",
             "properties": {
+                "context": {
+                    "type": "string"
+                },
+                "extra_data": {},
                 "response": {
                     "type": "string"
                 }

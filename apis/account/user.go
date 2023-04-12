@@ -1,6 +1,7 @@
 package account
 
 import (
+	"MOSS_backend/config"
 	. "MOSS_backend/models"
 	. "MOSS_backend/utils"
 	"MOSS_backend/utils/auth"
@@ -18,12 +19,7 @@ import (
 //	@Failure		404	{object}	utils.MessageResponse	"User not found"
 //	@Failure		500	{object}	utils.MessageResponse
 func GetCurrentUser(c *fiber.Ctx) error {
-	userID, err := GetUserID(c)
-	if err != nil {
-		return err
-	}
-	var user User
-	err = DB.Take(&user, userID).Error
+	user, err := LoadUser(c)
 	if err != nil {
 		return err
 	}
@@ -90,6 +86,17 @@ func ModifyUser(c *fiber.Ctx) error {
 				return Forbidden()
 			}
 			user.DisableSensitiveCheck = *body.DisableSensitiveCheck
+		}
+
+		if body.PluginConfig != nil {
+			if user.PluginConfig == nil {
+				user.PluginConfig = make(map[string]bool)
+			}
+			for key, value := range body.PluginConfig {
+				if _, ok := config.Config.DefaultPluginConfig[key]; ok {
+					user.PluginConfig[key] = value
+				}
+			}
 		}
 
 		return tx.Save(&user).Error

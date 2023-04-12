@@ -54,6 +54,8 @@ var Config struct {
 	ToolsCalculateUrl string `env:"TOOLS_CALCULATE_URL,required"`
 	ToolsSolveUrl     string `env:"TOOLS_SOLVE_URL,required"`
 	ToolsDrawUrl      string `env:"TOOLS_DRAW_URL,required"`
+
+	DefaultPluginConfig map[string]bool `env:"DEFAULT_PLUGIN_CONFIG"`
 }
 
 func InitConfig() {

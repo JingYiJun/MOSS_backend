@@ -10,9 +10,14 @@ definitions:
       phone:
         description: phone number in e164 mode
         type: string
+    required:
+    - email
+    - phone
     type: object
   account.ModifyUserRequest:
     properties:
+      disable_sensitive_check:
+        type: boolean
       email:
         type: string
       nickname:
@@ -21,12 +26,19 @@ definitions:
       phone:
         description: phone number in e164 mode
         type: string
+      plugin_config:
+        additionalProperties:
+          type: boolean
+        type: object
       share_consent:
         type: boolean
       verification:
         maxLength: 6
         minLength: 6
         type: string
+    required:
+    - email
+    - phone
     type: object
   account.RegisterRequest:
     properties:
@@ -45,6 +57,9 @@ definitions:
         maxLength: 6
         minLength: 6
         type: string
+    required:
+    - email
+    - phone
     type: object
   account.TokenResponse:
     properties:
@@ -73,6 +88,10 @@ definitions:
     type: object
   config.Response:
     properties:
+      default_plugin_config:
+        additionalProperties:
+          type: boolean
+        type: object
       invite_required:
         type: boolean
       notice:
@@ -89,6 +108,8 @@ definitions:
         type: string
       id:
         type: integer
+      max_length_exceeded:
+        type: boolean
       name:
         type: string
       records:
@@ -112,6 +133,7 @@ definitions:
       duration:
         description: 处理时间，单位 s
         type: number
+      extra_data: {}
       feedback:
         type: string
       id:
@@ -119,6 +141,8 @@ definitions:
       like_data:
         description: 1 like, -1 dislike
         type: integer
+      raw_content:
+        type: string
       request:
         type: string
       request_sensitive:
@@ -128,23 +152,22 @@ definitions:
       response_sensitive:
         type: boolean
     type: object
-  models.RecordModel:
-    properties:
-      request:
-        type: string
-      response:
-        type: string
-    type: object
   models.User:
     properties:
+      banned:
+        type: boolean
       chats:
         items:
           $ref: '#/definitions/models.Chat'
         type: array
+      disable_sensitive_check:
+        type: boolean
       email:
         type: string
       id:
         type: integer
+      is_admin:
+        type: boolean
       joined_time:
         type: string
       last_login:
@@ -153,6 +176,10 @@ definitions:
         type: string
       phone:
         type: string
+      plugin_config:
+        additionalProperties:
+          type: boolean
+        type: object
       share_consent:
         type: boolean
     type: object
@@ -165,16 +192,17 @@ definitions:
     type: object
   record.InferenceRequest:
     properties:
-      records:
-        items:
-          $ref: '#/definitions/models.RecordModel'
-        type: array
+      context:
+        type: string
       request:
         minLength: 1
         type: string
     type: object
   record.InferenceResponse:
     properties:
+      context:
+        type: string
+      extra_data: {}
       response:
         type: string
     type: object
@@ -591,6 +619,7 @@ paths:
       parameters:
       - in: query
         name: email
+        required: true
         type: string
       - in: query
         minLength: 1
@@ -628,6 +657,7 @@ paths:
       - description: phone number in e164 mode
         in: query
         name: phone
+        required: true
         type: string
       - enum:
         - register
