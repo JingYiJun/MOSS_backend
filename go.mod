@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/apistd/uni-go-sdk v0.0.2
-	github.com/caarlos0/env/v6 v6.10.1
+	github.com/caarlos0/env/v8 v8.0.0
 	github.com/creasty/defaults v1.7.0
 	github.com/eko/gocache/lib/v4 v4.1.3
 	github.com/eko/gocache/store/go_cache/v4 v4.1.2
