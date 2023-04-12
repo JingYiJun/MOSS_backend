@@ -54,137 +54,26 @@ var InferResponseChannel sync.Map
 
 var inferHttpClient = http.Client{Timeout: 1 * time.Minute}
 
-func Infer(record *Record, prefix string) (err error) {
-	var extraData any
-	formattedText := InferPreprocess(record.Request, prefix)
-	request := Map{"x": formattedText}
-
-	// get params
-	err = LoadParamToMap(request)
-	if err != nil {
-		return err
-	}
-	data, _ := json.Marshal(request)
-
-	output, duration, err := inferTrigger(data)
-	if err != nil {
-		return err
-	}
-
-	output = strings.Trim(output, " \t\n")
-	if strings.HasSuffix(output, "<eoc>") {
-		// output end with <|Command|>:xxx<eoc>
-
-		outputCommand := strings.TrimSuffix(output, "<eoc>")
-		index := strings.LastIndex(output, "<|Commands|>:")
-		if index == -1 {
-			log.Printf("error find \"<|Commands|>:\" from inference server, output: \"%v\"\n", output)
-			return InternalServerError()
-		}
-		outputCommand = strings.Trim(outputCommand[index+13:], " ")
-
-		var results string
-		// get results from tools
-		results, extraData = tools.Execute(outputCommand)
-
-		// generate new formatted text
-		formattedText = InferWriteResult(results, output+"\n")
-		request["x"] = formattedText
-		data, _ = json.Marshal(request)
-
-		output, duration, err = inferTrigger(data)
-		if err != nil {
-			return err
-		}
-	}
-	// save record prefix for next inference
-	record.Prefix = output
-	// output end with others
-	index := strings.LastIndex(record.Prefix, "<|MOSS|>:")
-	if index == -1 {
-		log.Printf("error find \"<|MOSS|>:\" from inference server, output: \"%v\"\n", record.Prefix)
-		return InternalServerError()
-	}
-	record.Response = cutEndFlag(record.Prefix[index+9:])
-	record.Duration = duration
-	record.ExtraData = extraData
-
-	// cut out the latest context
-	humanIndex := strings.LastIndex(record.Prefix, "<|Human|>:")
-	if humanIndex == -1 {
-		log.Printf("error find \"<|Human|>:\" from inference server, output: \"%v\"\n", record.Prefix)
-		return InternalServerError()
-	}
-	record.RawContent = record.Prefix[humanIndex:]
-	return nil
+type InferWsContext struct {
+	c                *websocket.Conn
+	user             *User
+	connectionClosed *atomic.Bool
 }
 
-func InferAsync(
-	c *websocket.Conn,
-	prefix string,
+func InferCommon(
 	record *Record,
-	user *User,
+	prefix string,
+	ctx *InferWsContext,
 ) (
 	err error,
 ) {
 	var (
-		interruptChan    = make(chan any)   // frontend interrupt channel
-		connectionClosed = new(atomic.Bool) // connection closed flag
-		errChan          = make(chan error) // error transmission channel
-		successChan      = make(chan any)   // success infer flag
-	)
-	connectionClosed.Store(false)      // initialize
-	defer connectionClosed.Store(true) // if this closed, stop all goroutines
-
-	// wait for interrupt
-	go interrupt(
-		c,
-		interruptChan,
-		connectionClosed,
-	)
-
-	// wait for infer
-	go func() {
-		innerErr := inferLogicPath(
-			c,
-			record,
-			prefix,
-			user,
-			connectionClosed,
-		)
-		if innerErr != nil {
-			errChan <- innerErr
-		} else {
-			close(successChan)
-		}
-	}()
-
-	for {
-		select {
-		case <-interruptChan:
-			return NoStatus("client interrupt")
-		case err = <-errChan:
-			return err
-		case <-successChan:
-			return nil
-		}
-	}
-}
-
-// inferLogicPath hand out inference tasks
-func inferLogicPath(
-	c *websocket.Conn,
-	record *Record,
-	prefix string,
-	user *User,
-	connectionClosed *atomic.Bool,
-) error {
-	var (
-		err       error
 		innerErr  error
 		request   = map[string]any{}
-		uuidText  = strings.ReplaceAll(uuid.NewString(), "-", "")
+		uuidText  string
 		extraData any
+		wg1       sync.WaitGroup
+		wg2       sync.WaitGroup
 	)
 
 	// load params from db
@@ -196,46 +85,43 @@ func inferLogicPath(
 	cleanedPrefix := resultsRegexp.ReplaceAllString(prefix, "<|Results|>: None<eor>")
 
 	/* first infer */
-
-	var wg1 sync.WaitGroup
-
-	wg1.Add(1)
-	// start a listener
-	go func() {
-		defer wg1.Done()
-		innerErr = inferListener(
-			c,
-			record,
-			user,
-			uuidText,
-			connectionClosed,
-		)
-	}()
-
-	// get formatted text
+	// generate request
+	uuidText = strings.ReplaceAll(uuid.NewString(), "-", "")
 	formattedText := InferPreprocess(record.Request, cleanedPrefix)
-
-	// construct infer trigger data
 	request["x"] = formattedText
-	request["url"] = config.Config.CallbackUrl + "?uuid=" + uuidText
+
+	if ctx != nil {
+		wg1.Add(1)
+		// start a listener
+		go func() {
+			innerErr = inferListener(
+				record,
+				uuidText,
+				*ctx,
+			)
+			wg1.Done()
+		}()
+
+		request["url"] = config.Config.CallbackUrl + "?uuid=" + uuidText
+	}
 
 	// construct data to send
 	data, _ := json.Marshal(request)
+	output, duration, err := inferTrigger(data) // block here
 
-	// block here
-	output, duration, err := inferTrigger(data)
-
-	wg1.Wait()
-	if innerErr != nil {
-		return innerErr
+	if ctx != nil {
+		wg1.Wait()
+		if innerErr != nil {
+			return innerErr
+		}
+		if ctx.connectionClosed.Load() {
+			return interruptError
+		}
 	}
-	if connectionClosed.Load() {
-		return interruptError
-	}
-
-	firstOutput := strings.Trim(output, " \t\n")
 
 	// middle process
+	firstOutput := strings.Trim(output, " \t\n")
+
 	humanIndex := strings.LastIndex(firstOutput, "<|Human|>:")
 	if humanIndex == -1 {
 		Logger.Error(`error find "<|Human|>:"`, zap.String("output", firstOutput))
@@ -267,7 +153,7 @@ func inferLogicPath(
 	// get results from tools
 	results, extraData = tools.Execute(commandContent)
 
-	if connectionClosed.Load() {
+	if ctx != nil && ctx.connectionClosed.Load() {
 		return interruptError
 	}
 
@@ -277,35 +163,37 @@ func inferLogicPath(
 	uuidText = strings.ReplaceAll(uuid.NewString(), "-", "")
 	formattedText = InferWriteResult(results, cleanedPrefix+firstRawOutput+"\n")
 	request["x"] = formattedText
-	request["url"] = config.Config.CallbackUrl + "?uuid=" + uuidText
-	data, _ = json.Marshal(request)
 
-	var wg2 sync.WaitGroup
-	wg2.Add(1)
-	// start a new listener
-	go func() {
-		innerErr = inferListener(
-			c,
-			record,
-			user,
-			uuidText,
-			connectionClosed,
-		)
-		wg2.Done()
-	}()
+	if ctx != nil {
+		wg2.Add(1)
+		// start a new listener
+		go func() {
+			innerErr = inferListener(
+				record,
+				uuidText,
+				*ctx,
+			)
+			wg2.Done()
+		}()
+
+		request["url"] = config.Config.CallbackUrl + "?uuid=" + uuidText
+	}
 
 	// infer
+	data, _ = json.Marshal(request)
 	secondOutput, duration, err := inferTrigger(data)
 	if err != nil {
 		return err
 	}
 
-	wg2.Wait()
-	if innerErr != nil {
-		return innerErr
-	}
-	if connectionClosed.Load() {
-		return interruptError
+	if ctx != nil {
+		wg2.Wait()
+		if innerErr != nil {
+			return innerErr
+		}
+		if ctx.connectionClosed.Load() {
+			return interruptError
+		}
 	}
 
 	// cut out this turn
@@ -331,20 +219,87 @@ func inferLogicPath(
 	record.RawContent = secondRawOutput
 
 	// end
-	err = c.WriteJSON(InferResponseModel{Status: 0})
-	if err != nil {
-		return fmt.Errorf("write end status error: %v", err)
+	if ctx != nil {
+		err = ctx.c.WriteJSON(InferResponseModel{Status: 0})
+		if err != nil {
+			return fmt.Errorf("write end status error: %v", err)
+		}
 	}
 	return nil
 }
 
-// inferListener listen from output channel
-func inferListener(
+func Infer(record *Record, prefix string) (err error) {
+	return InferCommon(record, prefix, nil)
+}
+
+func InferAsync(
 	c *websocket.Conn,
+	prefix string,
 	record *Record,
 	user *User,
+) (
+	err error,
+) {
+	var (
+		interruptChan    = make(chan any)   // frontend interrupt channel
+		connectionClosed = new(atomic.Bool) // connection closed flag
+		errChan          = make(chan error) // error transmission channel
+		successChan      = make(chan any)   // success infer flag
+	)
+	connectionClosed.Store(false)      // initialize
+	defer connectionClosed.Store(true) // if this closed, stop all goroutines
+
+	// wait for interrupt
+	go interrupt(
+		c,
+		interruptChan,
+		connectionClosed,
+	)
+
+	// wait for infer
+	go func() {
+		innerErr := inferLogicPath(
+			record,
+			prefix,
+			InferWsContext{
+				c:                c,
+				user:             user,
+				connectionClosed: connectionClosed,
+			},
+		)
+		if innerErr != nil {
+			errChan <- innerErr
+		} else {
+			close(successChan)
+		}
+	}()
+
+	for {
+		select {
+		case <-interruptChan:
+			return NoStatus("client interrupt")
+		case err = <-errChan:
+			return err
+		case <-successChan:
+			return nil
+		}
+	}
+}
+
+// inferLogicPath hand out inference tasks
+func inferLogicPath(
+	record *Record,
+	prefix string,
+	ctx InferWsContext,
+) error {
+	return InferCommon(record, prefix, &ctx)
+}
+
+// inferListener listen from output channel
+func inferListener(
+	record *Record,
 	uuidText string,
-	connectionClosed *atomic.Bool,
+	ctx InferWsContext,
 ) error {
 	var err error
 
@@ -364,7 +319,7 @@ func inferListener(
 	var detectedOutput string
 
 	for {
-		if connectionClosed.Load() {
+		if ctx.connectionClosed.Load() {
 			return nil
 		}
 		if responseCh.closed.Load() {
@@ -391,23 +346,23 @@ func inferListener(
 				detectedOutput = before
 
 				// output sensitive check
-				if sensitive.IsSensitive(detectedOutput, user) {
+				if sensitive.IsSensitive(detectedOutput, ctx.user) {
 					record.ResponseSensitive = true
 					// log new record
 					record.Response = detectedOutput
 					record.Duration = float64(time.Since(startTime)) / 1000_000_000
 					var banned bool
-					banned, err = user.AddUserOffense(UserOffenseMoss)
+					banned, err = ctx.user.AddUserOffense(UserOffenseMoss)
 					if err != nil {
 						return err
 					}
 					if banned {
-						err = c.WriteJSON(InferResponseModel{
+						err = ctx.c.WriteJSON(InferResponseModel{
 							Status: -2, // banned
 							Output: OffenseMessage,
 						})
 					} else {
-						err = c.WriteJSON(InferResponseModel{
+						err = ctx.c.WriteJSON(InferResponseModel{
 							Status: -2, // sensitive
 							Output: DefaultResponse,
 						})
@@ -420,7 +375,7 @@ func inferListener(
 					return sensitiveError
 				}
 
-				err = c.WriteJSON(InferResponseModel{
+				err = ctx.c.WriteJSON(InferResponseModel{
 					Status: 1,
 					Output: detectedOutput,
 				})
@@ -429,23 +384,23 @@ func inferListener(
 				}
 			case 0: // end
 				if nowOutput != detectedOutput {
-					if sensitive.IsSensitive(nowOutput, user) {
+					if sensitive.IsSensitive(nowOutput, ctx.user) {
 						record.ResponseSensitive = true
 						// log new record
 						record.Response = nowOutput
 						record.Duration = float64(time.Since(startTime)) / 1000_000_000
 						var banned bool
-						banned, err = user.AddUserOffense(UserOffenseMoss)
+						banned, err = ctx.user.AddUserOffense(UserOffenseMoss)
 						if err != nil {
 							return err
 						}
 						if banned {
-							err = c.WriteJSON(InferResponseModel{
+							err = ctx.c.WriteJSON(InferResponseModel{
 								Status: -2, // banned
 								Output: OffenseMessage,
 							})
 						} else {
-							err = c.WriteJSON(InferResponseModel{
+							err = ctx.c.WriteJSON(InferResponseModel{
 								Status: -2, // sensitive
 								Output: DefaultResponse,
 							})
@@ -458,7 +413,7 @@ func inferListener(
 						return sensitiveError
 					}
 				}
-				err = c.WriteJSON(InferResponseModel{
+				err = ctx.c.WriteJSON(InferResponseModel{
 					Status: 1,
 					Output: nowOutput,
 				})
@@ -642,13 +597,4 @@ func InferPostprocess(output string) (tidyOutput string) {
 
 	// not cut
 	return output
-}
-
-func cutEndFlag(content string) string {
-	content = strings.Trim(content, " \n\t")
-	loc := endContentRegexp.FindIndex([]byte(content))
-	if loc != nil {
-		content = content[:loc[0]]
-	}
-	return strings.Trim(content, " ")
 }
