@@ -157,7 +157,16 @@ func InferCommon(
 
 	var results string
 	// get results from tools
-	results, extraData = tools.Execute(commandContent)
+	results, extraData, err = tools.Execute(commandContent)
+
+	// replace invalid commands output
+	if errors.Is(err, tools.CommandsFormatError) {
+		Logger.Error(
+			`error commands format`,
+			zap.String("command", commandContent),
+		)
+		firstRawOutput = commandsRegexp.ReplaceAllString(firstRawOutput, "<|Commands|>: None<eoc>")
+	}
 
 	if ctx != nil && ctx.connectionClosed.Load() {
 		return interruptError

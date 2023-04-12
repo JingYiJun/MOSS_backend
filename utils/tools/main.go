@@ -2,6 +2,7 @@ package tools
 
 import (
 	"MOSS_backend/config"
+	"errors"
 	"fmt"
 	"regexp"
 	"sort"
@@ -12,19 +13,24 @@ type Map = map[string]any
 
 const maxCommandNumber = 4
 
+var commandsFormatRegexp = regexp.MustCompile(`(Search|Solve|Calculate|Draw)\("([\s\S]+?)"\)(, *?(Search|Solve|Calculate|Draw)\("([\s\S]+?)"\))*`)
 var commandSplitRegexp = regexp.MustCompile(`(Search|Solve|Calculate|Draw)\("([\s\S]+?)"\)`)
 var commandOrder = map[string]int{"Search": 1, "Calculate": 2, "Solve": 3, "Draw": 4}
+var CommandsFormatError = errors.New("commands format error")
 
-func Execute(rawCommand string) (string, any) {
+func Execute(rawCommand string) (string, any, error) {
 	if !config.Config.EnableTools || rawCommand == "None" || rawCommand == "none" {
-		return "None", nil
+		return "None", nil, nil
+	}
+	if !commandsFormatRegexp.MatchString(rawCommand) {
+		return "None", nil, CommandsFormatError
 	}
 	// commands is like: [[Search("A"), Search, A,] [Solve("B"), Solve, B] [Search("C"), Search, C]]
 	commands := commandSplitRegexp.FindAllStringSubmatch(rawCommand, -1)
 
 	var extraDataSlice = make([]map[string]any, 0)
 	if len(commands) == 0 {
-		return "None", extraDataSlice
+		return "None", extraDataSlice, nil
 	}
 	// sort, search should be at first
 	sort.Slice(commands, func(i, j int) bool {
@@ -50,9 +56,9 @@ func Execute(rawCommand string) (string, any) {
 		}
 	}
 	if resultsBuilder.String() == "" {
-		return "None", extraDataSlice
+		return "None", extraDataSlice, nil
 	}
-	return resultsBuilder.String(), extraDataSlice
+	return resultsBuilder.String(), extraDataSlice, nil
 }
 
 func executeOnce(action string, args string, searchResultIndex *int) (string, map[string]any) {
