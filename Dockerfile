@@ -39,8 +39,10 @@ ENV TZ=Asia/Shanghai
 ENV MODE=production
 
 RUN mkdir -p ./screenshots
+RUN mkdir -p ./draw
 
 VOLUME ["/app/screenshots"]
+VOLUME ["/app/draw"]
 
 EXPOSE 8000
 

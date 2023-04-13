@@ -68,12 +68,11 @@ func InferCommon(
 	err error,
 ) {
 	var (
-		innerErr  error
-		request   = map[string]any{}
-		uuidText  string
-		extraData any
-		wg1       sync.WaitGroup
-		wg2       sync.WaitGroup
+		innerErr error
+		request  = map[string]any{}
+		uuidText string
+		wg1      sync.WaitGroup
+		wg2      sync.WaitGroup
 	)
 
 	// load params from db
@@ -155,9 +154,8 @@ func InferCommon(
 	}
 	firstRawOutput = commandsRegexp.ReplaceAllString(firstRawOutput, "<|Commands|>:$1<eoc>")
 
-	var results string
 	// get results from tools
-	results, extraData, err = tools.Execute(commandContent)
+	results, err := tools.Execute(commandContent)
 
 	// replace invalid commands output
 	if errors.Is(err, tools.CommandsFormatError) {
@@ -176,7 +174,7 @@ func InferCommon(
 
 	// generate new formatted text and uuid
 	uuidText = strings.ReplaceAll(uuid.NewString(), "-", "")
-	formattedText = InferWriteResult(results, cleanedPrefix+firstRawOutput+"\n")
+	formattedText = InferWriteResult(results.Result, cleanedPrefix+firstRawOutput+"\n")
 	request["x"] = formattedText
 
 	if ctx != nil {
@@ -231,7 +229,8 @@ func InferCommon(
 	record.Prefix = secondOutput + "\n" // save record prefix for next inference
 	record.Response = strings.Trim(mossOutputSlice[1], " ")
 	record.Duration = duration
-	record.ExtraData = extraData
+	record.ExtraData = results.ExtraData
+	record.ProcessedExtraData = results.ProcessedExtraData
 	record.RawContent = secondRawOutput
 
 	// end

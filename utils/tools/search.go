@@ -58,6 +58,19 @@ def convert(res):
     return tmp_sample
 */
 
+type searchTask struct {
+	taskModel
+	results          map[string]any
+	processedResults map[string]PrettySearch
+}
+
+var _ task = (*searchTask)(nil)
+
+type PrettySearch struct {
+	Url   string `json:"url"`
+	Title string `json:"title"`
+}
+
 var searchHttpClient = http.Client{Timeout: 20 * time.Second}
 
 func clean(tmpAnswer string) string {
@@ -66,71 +79,131 @@ func clean(tmpAnswer string) string {
 	return tmpAnswer
 }
 
-func searchResultsFormatter(lineDict map[string]any, searchResultIndex *int) (results string) {
-	if lineDict == nil {
-		return "None"
+func (t *searchTask) postprocess() (r *ResultModel) {
+	if t.results == nil || t.err != nil {
+		return NoneResultModel
 	}
-	var tmpSample []string
-	id := 0
+
+	var (
+		dict            = t.results
+		tmpSample       = make([]string, 0, 3)
+		processedResult = make(map[int]PrettySearch)
+		id              = 0 // counter
+		title, url      string
+	)
+
 	defer func() {
 		if something := recover(); something != nil {
 			log.Println(something)
-			results = "None"
+			r = NoneResultModel
 		}
 	}()
 
-	if _, exists := lineDict["url"]; exists {
+	if u, exists := t.results["url"]; exists {
+		url = u.(string)
 		tmpAnswer := "No Results."
-		if snippet, exists := lineDict["summ"].(Map)["snippet"]; exists {
-			tmpAnswer = strconv.Quote(fmt.Sprintf("%v", snippet))
-		} else if title, exists := lineDict["summ"].(Map)["title"]; exists {
-			answer := lineDict["summ"].(Map)["answer"]
-			tmpAnswer = fmt.Sprintf("%v: %v", title, strconv.Quote(fmt.Sprintf("%v", answer)))
+		if summ, ok := dict["summ"]; ok {
+			// in summary, there are two types of response
+			if snippet, exists := summ.(Map)["snippet"]; exists {
+				tmpAnswer = strconv.Quote(fmt.Sprintf("%v", snippet))
+				if titleValue, exists := summ.(Map)["title"]; exists {
+					title = titleValue.(string)
+				}
+			} else if titleValue, exists := summ.(Map)["title"]; exists {
+				title = titleValue.(string)
+				answer := summ.(Map)["answer"].(string)
+				tmpAnswer = fmt.Sprintf("%v: %v", title, strconv.Quote(fmt.Sprintf("%v", answer)))
+			} else {
+				utils.Logger.Error("search response decode error")
+				return NoneResultModel
+			}
 		} else {
-			panic("search response decode error")
+			utils.Logger.Error("search response decode error")
+			return NoneResultModel
 		}
-		tmpSample = append(tmpSample, fmt.Sprintf("<|%d|>: %s", *searchResultIndex, tmpAnswer))
-	} else if _, exists := lineDict["0"]; exists {
-		for key := range lineDict {
-			tmpAnswer := lineDict[key].(Map)["summ"].(string)
+
+		tmpSample = append(tmpSample, fmt.Sprintf("<|%d|>: %s", t.s.searchResultsIndex, tmpAnswer))
+
+		// save to processedResult
+		processedResult[t.s.searchResultsIndex] = PrettySearch{
+			Url:   url,
+			Title: title,
+		}
+		t.s.searchResultsIndex += 1
+	} else if _, exists := dict["0"]; exists {
+		for _, value := range dict {
+			// get title, url and answer
+			if titleValue, exists := value.(Map)["title"]; exists {
+				title = titleValue.(string)
+			}
+			if urlValue, exists := value.(Map)["url"]; exists {
+				url = urlValue.(string)
+			}
+			tmpAnswer := value.(Map)["summ"].(string)
 			tmpAnswerRune := []rune(clean(tmpAnswer))
 			tmpAnswerRune = tmpAnswerRune[:utils.Min(len(tmpAnswerRune), 400)]
 			tmpAnswer = string(tmpAnswerRune)
-			tmpSample = append(tmpSample, fmt.Sprintf("<|%d|>: %s", *searchResultIndex, tmpAnswer))
+			tmpSample = append(tmpSample, fmt.Sprintf("<|%d|>: %s", t.s.searchResultsIndex, tmpAnswer))
+
+			// save to processedResult
+			processedResult[t.s.searchResultsIndex] = PrettySearch{
+				Url:   url,
+				Title: title,
+			}
+			t.s.searchResultsIndex += 1
+
+			// to next or break
 			if id < 3 { // topk
-				*searchResultIndex = *searchResultIndex + 1
 				id++
 			} else {
 				break
 			}
 		}
 	}
-	return strings.Join(tmpSample, "\n")
+	return &ResultModel{
+		Result: strings.Join(tmpSample, "\n"),
+		ExtraData: &ExtraDataModel{
+			Type:    "search",
+			Request: t.args,
+			Data:    t.results,
+		},
+		ProcessedExtraData: &ExtraDataModel{
+			Type:    t.action,
+			Request: t.args,
+			Data:    processedResult,
+		},
+	}
 }
 
-func search(request string) (results map[string]any, extraData map[string]any) {
-	data, _ := json.Marshal(map[string]any{"query": request, "topk": "3"})
+func (t *searchTask) request() {
+	data, _ := json.Marshal(map[string]any{"query": t.args, "topk": "3"})
 	res, err := searchHttpClient.Post(config.Config.ToolsSearchUrl, "application/json", bytes.NewBuffer(data))
 	if err != nil {
 		utils.Logger.Error("post search error: ", zap.Error(err))
-		return nil, nil
+		t.err = defaultError
+		return
 	}
 
 	if res.StatusCode != 200 {
 		utils.Logger.Error("post search status code error: " + strconv.Itoa(res.StatusCode))
-		return nil, nil
+		t.err = defaultError
+		return
 	}
 
 	responseData, err := io.ReadAll(res.Body)
 	if err != nil {
 		utils.Logger.Error("post search response read error: ", zap.Error(err))
-		return nil, nil
+		t.err = defaultError
+		return
 	}
+	// result processing
+	var results Map
 	err = json.Unmarshal(responseData, &results)
 	if err != nil {
 		utils.Logger.Error("post search response unmarshal error: ", zap.Error(err))
-		return nil, nil
+		t.err = defaultError
+		return
 	}
 
-	return results, map[string]any{"type": "search", "data": results, "request": request}
+	t.results = results
 }

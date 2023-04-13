@@ -4,10 +4,13 @@ import (
 	"MOSS_backend/config"
 	"MOSS_backend/utils"
 	"bytes"
+	"fmt"
+	"github.com/google/uuid"
 	"github.com/vmihailenco/msgpack/v5"
 	"go.uber.org/zap"
 	"io"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 )
@@ -43,34 +46,78 @@ import (
 //	}
 //}
 
-var drawHttpClient = http.Client{Timeout: 20 * time.Second}
+type drawTask struct {
+	taskModel
+	results []byte
+	url     string
+}
 
-func draw(request string) (string, map[string]any) {
-	reqBody, err := msgpack.Marshal(request)
+var _ task = (*drawTask)(nil)
+
+func (t *drawTask) request() {
+	reqBody, err := msgpack.Marshal(t.args)
 	if err != nil {
 		utils.Logger.Error("post draw(tools) prompt cannot marshal error: ", zap.Error(err))
-		return "None", nil
+		t.err = defaultError
+		return
 	}
 	res, err := drawHttpClient.Post(config.Config.ToolsDrawUrl, "application/x-msgpack", bytes.NewBuffer(reqBody))
 	if err != nil {
 		utils.Logger.Error("post draw(tools) error: ", zap.Error(err))
-		return "None", nil
+		t.err = defaultError
+		return
 	}
 
 	if res.StatusCode != 200 {
 		utils.Logger.Error("post draw(tools) status code error: " + strconv.Itoa(res.StatusCode))
-		return "None", nil
+		t.err = defaultError
+		return
 	}
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
 		utils.Logger.Error("post draw(tools) response body data cannot read error: ", zap.Error(err))
-		return "None", nil
+		t.err = defaultError
+		return
 	}
 	var resultsByte []byte
 	if err = msgpack.Unmarshal(data, &resultsByte); err != nil {
 		utils.Logger.Error("post draw(tools) response body data cannot Unmarshal error: ", zap.Error(err))
-		return "None", nil
+		t.err = defaultError
+		return
 	}
-	// sending resultsByte using json means `automatically encoding with BASE64`
-	return "a picture of the given prompt has been finished", map[string]any{"type": "draw", "data": resultsByte, "request": request}
+
+	// save
+	t.results = resultsByte
 }
+
+func (t *drawTask) postprocess() *ResultModel {
+	if t.err != nil {
+		return NoneResultModel
+	}
+	// save to file
+	filename := uuid.NewString() + ".jpg"
+	err := os.WriteFile(fmt.Sprintf("./draw/%s", filename), t.results, 0644)
+	if err != nil {
+		utils.Logger.Error("post draw(tools) response body data cannot save to file error: ", zap.Error(err))
+		return NoneResultModel
+	}
+
+	t.url = fmt.Sprintf("https://%s/api/draw/%s", config.Config.Hostname, filename)
+
+	return &ResultModel{
+		Result: "a picture of the given prompt has been finished",
+		ExtraData: &ExtraDataModel{
+			Type:    "draw",
+			Request: t.args,
+			// sending resultsByte using json means `automatically encoding with BASE64`
+			Data: t.results,
+		},
+		ProcessedExtraData: &ExtraDataModel{
+			Type:    t.action,
+			Request: t.args,
+			Data:    t.url,
+		},
+	}
+}
+
+var drawHttpClient = http.Client{Timeout: 20 * time.Second}

@@ -7,79 +7,141 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 )
 
 type Map = map[string]any
 
 const maxCommandNumber = 4
 
-var commandsFormatRegexp = regexp.MustCompile(`(Search|Solve|Calculate|Draw)\("([\s\S]+?)"\)(, *?(Search|Solve|Calculate|Draw)\("([\s\S]+?)"\))*`)
-var commandSplitRegexp = regexp.MustCompile(`(Search|Solve|Calculate|Draw)\("([\s\S]+?)"\)`)
-var commandOrder = map[string]int{"Search": 1, "Calculate": 2, "Solve": 3, "Draw": 4}
+var commandsFormatRegexp = regexp.MustCompile(`(Search|Solve|Calculate|Text2Image)\("([\s\S]+?)"\)(, *?(Search|Solve|Calculate|Text2Image)\("([\s\S]+?)"\))*`)
+var commandSplitRegexp = regexp.MustCompile(`(Search|Solve|Calculate|Text2Image)\("([\s\S]+?)"\)`)
+var commandOrder = map[string]int{"Search": 1, "Calculate": 2, "Solve": 3, "Text2Image": 4}
 var CommandsFormatError = errors.New("commands format error")
 
-func Execute(rawCommand string) (string, any, error) {
+func Execute(rawCommand string) (*ResultTotalModel, error) {
 	if !config.Config.EnableTools || rawCommand == "None" || rawCommand == "none" {
-		return "None", nil, nil
+		return NoneResultTotalModel, nil
 	}
 	if !commandsFormatRegexp.MatchString(rawCommand) {
-		return "None", nil, CommandsFormatError
+		return NoneResultTotalModel, CommandsFormatError
 	}
 	// commands is like: [[Search("A"), Search, A,] [Solve("B"), Solve, B] [Search("C"), Search, C]]
 	commands := commandSplitRegexp.FindAllStringSubmatch(rawCommand, -1)
 
-	var extraDataSlice = make([]map[string]any, 0)
 	if len(commands) == 0 {
-		return "None", extraDataSlice, nil
+		return NoneResultTotalModel, CommandsFormatError
 	}
 	// sort, search should be at first
 	sort.Slice(commands, func(i, j int) bool {
 		return commandOrder[commands[i][1]] < commandOrder[commands[j][1]]
 	})
 	// commands now like: [[Search("A"), Search, A,] [Search("C"), Search, C] [Solve("B"), Solve, B]]
-	var resultsBuilder strings.Builder
-	// the index of `the search results in <|results|>` starts with 1
-	searchResultsIndex := 1
+
+	var s = &scheduler{
+		tasks: make([]task, 0, len(commands)),
+		// the index of `the search results in <|results|>` starts with 1
+		searchResultsIndex: 1,
+	}
+
+	var resultTotal = &ResultTotalModel{
+		ExtraData:          make([]*ExtraDataModel, 0, len(commands)),
+		ProcessedExtraData: make([]*ExtraDataModel, 0, len(commands)),
+	}
+
+	// generate tasks
 	for i := range commands {
 		if i >= maxCommandNumber {
 			break
 		}
+
+		t := s.NewTask(commands[i][1], commands[i][2])
+		if t != nil {
+			s.tasks = append(s.tasks, t)
+		}
+	}
+
+	// request tools concurrently
+	var wg sync.WaitGroup
+	for _, t := range s.tasks {
+		wg.Add(1)
+		go func(t task) {
+			defer wg.Done()
+			t.request()
+		}(t)
+	}
+	wg.Wait()
+
+	// postprocess
+	var resultsBuilder strings.Builder
+	for i, t := range s.tasks {
+		results := t.postprocess()
+
 		if i > 0 { // separator is '\n'
 			resultsBuilder.WriteString("\n")
 		}
-		results, extraData := executeOnce(commands[i][1], commands[i][2], &searchResultsIndex)
-		resultsBuilder.WriteString(commands[i][0])
+		resultsBuilder.WriteString(t.name())
 		resultsBuilder.WriteString(" =>\n")
-		resultsBuilder.WriteString(results)
-		if extraData != nil {
-			extraDataSlice = append(extraDataSlice, extraData)
+		resultsBuilder.WriteString(results.Result)
+		if results.ExtraData != nil {
+			resultTotal.ExtraData = append(resultTotal.ExtraData, results.ExtraData)
+		}
+		if results.ProcessedExtraData != nil {
+			resultTotal.ProcessedExtraData = append(resultTotal.ProcessedExtraData, results.ProcessedExtraData)
 		}
 	}
+
 	if resultsBuilder.String() == "" {
-		return "None", extraDataSlice, nil
+		return NoneResultTotalModel, nil
 	}
-	return resultsBuilder.String(), extraDataSlice, nil
+
+	resultTotal.Result = resultsBuilder.String()
+	return resultTotal, nil
 }
 
-func executeOnce(action string, args string, searchResultIndex *int) (string, map[string]any) {
+func (s *scheduler) NewTask(action string, args string) task {
 	if config.Config.Debug {
 		fmt.Println(action + args)
 	}
+	t := taskModel{
+		s:      s,
+		action: action,
+		args:   args,
+		err:    nil,
+	}
 	switch action {
 	case "Search":
-		results, extraData := search(args)
-		searchResult := searchResultsFormatter(results, searchResultIndex)
-		return searchResult, extraData
+		return &searchTask{taskModel: t}
 	case "Calculate":
-		return calculate(args)
+		return &calculateTask{taskModel: t}
 	case "Solve":
-		return solve(args)
-	case "Draw":
-		return draw(args)
+		return &solveTask{taskModel: t}
+	case "Text2Image":
+		return &drawTask{taskModel: t}
 	default:
-		return "None", nil
+		return nil
 	}
 }
+
+//func executeOnce(action string, args string, searchResultIndex *int) (string, map[string]any) {
+//	if config.Config.Debug {
+//		fmt.Println(action + args)
+//	}
+//	switch action {
+//	case "Search":
+//		results, extraData := search(args)
+//		searchResult := searchResultsFormatter(results, searchResultIndex)
+//		return searchResult, extraData
+//	case "Calculate":
+//		return calculate(args)
+//	case "Solve":
+//		return solve(args)
+//	case "Draw":
+//		return draw(args)
+//	default:
+//		return "None", nil
+//	}
+//}
 
 //func cutCommand(command string) (string, string) {
 //	before, after, found := strings.Cut(command, "(")

@@ -27,4 +27,6 @@ func RegisterRoutes(app *fiber.App) {
 	chat.RegisterRoutes(routes)
 	record.RegisterRoutes(routes)
 	config.RegisterRoutes(routes)
+
+	routes.Static("/draw", "./draw")
 }
