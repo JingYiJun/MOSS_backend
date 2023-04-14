@@ -2,8 +2,11 @@ package tools
 
 import (
 	"MOSS_backend/config"
+	"MOSS_backend/utils"
 	"errors"
 	"fmt"
+	"github.com/gofiber/websocket/v2"
+	"go.uber.org/zap"
 	"regexp"
 	"sort"
 	"strings"
@@ -11,6 +14,11 @@ import (
 )
 
 type Map = map[string]any
+type CommandStatusModel struct {
+	Status         int    `json:"status"`
+	CommandContent string `json:"output"`
+	StatusString   string `json:"type"`
+}
 
 const maxCommandNumber = 4
 
@@ -19,7 +27,7 @@ var commandSplitRegexp = regexp.MustCompile(`(Search|Solve|Calculate|Text2Image)
 var commandOrder = map[string]int{"Search": 1, "Calculate": 2, "Solve": 3, "Text2Image": 4}
 var CommandsFormatError = errors.New("commands format error")
 
-func Execute(rawCommand string) (*ResultTotalModel, error) {
+func Execute(c *websocket.Conn, rawCommand string) (*ResultTotalModel, error) {
 	if !config.Config.EnableTools || rawCommand == "None" || rawCommand == "none" {
 		return NoneResultTotalModel, nil
 	}
@@ -54,7 +62,7 @@ func Execute(rawCommand string) (*ResultTotalModel, error) {
 		if i >= maxCommandNumber {
 			break
 		}
-
+		sendCommandStatus(c, commands[i][0], "start")
 		t := s.NewTask(commands[i][1], commands[i][2])
 		if t != nil {
 			s.tasks = append(s.tasks, t)
@@ -76,7 +84,7 @@ func Execute(rawCommand string) (*ResultTotalModel, error) {
 	var resultsBuilder strings.Builder
 	for i, t := range s.tasks {
 		results := t.postprocess()
-
+		
 		if i > 0 { // separator is '\n'
 			resultsBuilder.WriteString("\n")
 		}
@@ -89,6 +97,7 @@ func Execute(rawCommand string) (*ResultTotalModel, error) {
 		if results.ProcessedExtraData != nil {
 			resultTotal.ProcessedExtraData = append(resultTotal.ProcessedExtraData, results.ProcessedExtraData)
 		}
+		sendCommandStatus(c, commands[i][0], "done")
 	}
 
 	if resultsBuilder.String() == "" {
@@ -120,6 +129,22 @@ func (s *scheduler) NewTask(action string, args string) task {
 		return &drawTask{taskModel: t}
 	default:
 		return nil
+	}
+}
+
+// sendCommandStatus
+// @Summary send command status
+// @Tags Websocket
+// @Router /ws/chats/{chat_id}/record
+// a filter. only inform frontend well-formed commands
+func sendCommandStatus(c *websocket.Conn, commandContent string, StatusString string) {
+	
+	if err := c.WriteJSON(CommandStatusModel{
+		Status:         3, // 3 means `send command status`
+		CommandContent: commandContent,
+		StatusString:    StatusString, // start or done
+	}); err != nil {
+		utils.Logger.Error("fail to send command status", zap.Error(err))
 	}
 }
 
