@@ -511,6 +511,7 @@ func inferTrigger(data []byte) (string, float64, error) {
 		} else {
 			Logger.Info(
 				"inference success",
+				zap.ByteString("request", data),
 				zap.Int("latency", latency),
 				zap.String("pred", responseStruct.Pred),
 				zap.Int("input_token_num", responseStruct.InputTokenNum),
