@@ -57,6 +57,8 @@ var Config struct {
 	ToolsDrawUrl      string `env:"TOOLS_DRAW_URL,required"`
 
 	DefaultPluginConfig map[string]bool `env:"DEFAULT_PLUGIN_CONFIG"`
+
+	InnerThoughtsPostprocess bool `env:"INNER_THOUGHTS_POSTPROCESS" envDefault:"false"`
 }
 
 func InitConfig() {

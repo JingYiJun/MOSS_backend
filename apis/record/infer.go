@@ -31,6 +31,8 @@ var commandsRegexp = regexp.MustCompile(`<\|Commands\|>:([\s\S]+?)<eo\w>`)
 
 var mossRegexp = regexp.MustCompile(`<\|MOSS\|>:([\s\S]+?)<eo\w>`)
 
+var innerThoughtsRegexp = regexp.MustCompile(`<\|Inner Thoughts\|>:([\s\S]+?)<eo\w>`)
+
 var maxLengthExceededError = BadRequest("The maximum context length is exceeded").WithMessageType(MaxLength)
 
 var unknownError = InternalServerError("未知错误，请刷新或等待一分钟后再试。Unknown error, please refresh or wait a minute and try again")
@@ -166,6 +168,9 @@ func InferCommon(
 			zap.String("command", commandContent),
 		)
 		firstRawOutput = commandsRegexp.ReplaceAllString(firstRawOutput, "<|Commands|>: None<eoc>")
+		if config.Config.InnerThoughtsPostprocess {
+			firstRawOutput = innerThoughtsRegexp.ReplaceAllString(firstRawOutput, "<|Inner Thoughts|>: None<eot>")
+		}
 	}
 
 	if ctx != nil && ctx.connectionClosed.Load() {
