@@ -15,9 +15,10 @@ import (
 
 type Map = map[string]any
 type CommandStatusModel struct {
-	Status         int    `json:"status"`
-	CommandContent string `json:"output"`
-	StatusString   string `json:"type"`
+	Status int    `json:"status"`
+	Args   string `json:"output"`
+	Type   string `json:"type"`
+	Stage  string `json:"stage"`
 }
 
 const maxCommandNumber = 4
@@ -31,7 +32,7 @@ func Execute(c *websocket.Conn, rawCommand string) (*ResultTotalModel, error) {
 	if !config.Config.EnableTools || rawCommand == "None" || rawCommand == "none" {
 		return NoneResultTotalModel, nil
 	}
-	if !commandsFormatRegexp.MatchString(rawCommand) {
+	if command := commandsFormatRegexp.FindString(rawCommand); command != rawCommand {
 		return NoneResultTotalModel, CommandsFormatError
 	}
 	// commands is like: [[Search("A"), Search, A,] [Solve("B"), Solve, B] [Search("C"), Search, C]]
@@ -62,7 +63,7 @@ func Execute(c *websocket.Conn, rawCommand string) (*ResultTotalModel, error) {
 		if i >= maxCommandNumber {
 			break
 		}
-		sendCommandStatus(c, commands[i][0], "start")
+		sendCommandStatus(c, commands[i][1], commands[i][2], "start")
 		t := s.NewTask(commands[i][1], commands[i][2])
 		if t != nil {
 			s.tasks = append(s.tasks, t)
@@ -84,7 +85,7 @@ func Execute(c *websocket.Conn, rawCommand string) (*ResultTotalModel, error) {
 	var resultsBuilder strings.Builder
 	for i, t := range s.tasks {
 		results := t.postprocess()
-		
+
 		if i > 0 { // separator is '\n'
 			resultsBuilder.WriteString("\n")
 		}
@@ -97,7 +98,7 @@ func Execute(c *websocket.Conn, rawCommand string) (*ResultTotalModel, error) {
 		if results.ProcessedExtraData != nil {
 			resultTotal.ProcessedExtraData = append(resultTotal.ProcessedExtraData, results.ProcessedExtraData)
 		}
-		sendCommandStatus(c, commands[i][0], "done")
+		sendCommandStatus(c, commands[i][1], commands[i][2], "done")
 	}
 
 	if resultsBuilder.String() == "" {
@@ -133,16 +134,14 @@ func (s *scheduler) NewTask(action string, args string) task {
 }
 
 // sendCommandStatus
-// @Summary send command status
-// @Tags Websocket
-// @Router /ws/chats/{chat_id}/record
 // a filter. only inform frontend well-formed commands
-func sendCommandStatus(c *websocket.Conn, commandContent string, StatusString string) {
-	
+func sendCommandStatus(c *websocket.Conn, action, args, StatusString string) {
+
 	if err := c.WriteJSON(CommandStatusModel{
-		Status:         3, // 3 means `send command status`
-		CommandContent: commandContent,
-		StatusString:    StatusString, // start or done
+		Status: 3, // 3 means `send command status`
+		Type:   action,
+		Args:   args,
+		Stage:  StatusString, // start or done
 	}); err != nil {
 		utils.Logger.Error("fail to send command status", zap.Error(err))
 	}

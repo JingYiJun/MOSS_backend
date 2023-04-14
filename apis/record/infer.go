@@ -43,6 +43,7 @@ type InferResponseModel struct {
 	Status     int    `json:"status"` // 1 for output, 0 for end, -1 for error, -2 for sensitive
 	StatusCode int    `json:"status_code,omitempty"`
 	Output     string `json:"output"`
+	Stage      string `json:"stage,omitempty"`
 }
 
 type responseChannel struct {
@@ -103,6 +104,7 @@ func InferCommon(
 				uuidText,
 				user,
 				*ctx,
+				"Inner Thoughts",
 			)
 			wg1.Done()
 		}()
@@ -186,6 +188,7 @@ func InferCommon(
 				uuidText,
 				user,
 				*ctx,
+				"MOSS",
 			)
 			wg2.Done()
 		}()
@@ -317,6 +320,7 @@ func inferListener(
 	uuidText string,
 	user *User,
 	ctx InferWsContext,
+	stage string,
 ) error {
 	var err error
 
@@ -395,6 +399,7 @@ func inferListener(
 				err = ctx.c.WriteJSON(InferResponseModel{
 					Status: 1,
 					Output: detectedOutput,
+					Stage:  stage,
 				})
 				if err != nil {
 					return fmt.Errorf("write response error: %v", err)
@@ -433,6 +438,7 @@ func inferListener(
 				err = ctx.c.WriteJSON(InferResponseModel{
 					Status: 1,
 					Output: nowOutput,
+					Stage:  stage,
 				})
 				if err != nil {
 					return fmt.Errorf("write response error: %v", err)
