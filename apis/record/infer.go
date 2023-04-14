@@ -603,7 +603,7 @@ func InferPreprocess(input, prefix string) (formattedText string) {
 }
 
 func InferWriteResult(results, prefix string) string {
-	return prefix + fmt.Sprintf("<|Results|>: %s<eor>\n", results)
+	return prefix + fmt.Sprintf("<|Results|>: %s<eor>\n<|MOSS|>:", results)
 }
 
 func InferPostprocess(output string) (tidyOutput string) {
