@@ -67,4 +67,6 @@ func InitConfig() {
 		panic(err)
 	}
 	fmt.Printf("%+v\n", &Config)
+
+	initCache()
 }
