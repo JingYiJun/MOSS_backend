@@ -29,7 +29,10 @@ var commandOrder = map[string]int{"Search": 1, "Calculate": 2, "Solve": 3, "Text
 var CommandsFormatError = errors.New("commands format error")
 
 func Execute(c *websocket.Conn, rawCommand string) (*ResultTotalModel, error) {
-	if !config.Config.EnableTools || rawCommand == "None" || rawCommand == "none" {
+	if rawCommand == "None" || rawCommand == "none" {
+		return NoneResultTotalModel, CommandsFormatError
+	}
+	if !config.Config.EnableTools {
 		return NoneResultTotalModel, nil
 	}
 	if command := commandsFormatRegexp.FindString(rawCommand); command != rawCommand {
