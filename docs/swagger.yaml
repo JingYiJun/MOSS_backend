@@ -89,6 +89,38 @@ definitions:
         minLength: 1
         type: string
     type: object
+  config.ModelConfigRequest:
+    properties:
+      description:
+        type: string
+      id:
+        minimum: 1
+        type: integer
+      inner_thoughts_postprocess:
+        enum:
+        - true
+        - false
+        type: boolean
+    type: object
+  config.ModifyModelConfigRequest:
+    properties:
+      invite_required:
+        enum:
+        - true
+        - false
+        type: boolean
+      model_config:
+        items:
+          $ref: '#/definitions/config.ModelConfigRequest'
+        type: array
+      notice:
+        type: string
+      offense_check:
+        enum:
+        - true
+        - false
+        type: boolean
+    type: object
   config.Response:
     properties:
       default_plugin_config:
@@ -394,6 +426,15 @@ paths:
       tags:
       - Config
     patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: body
+        in: body
+        name: json
+        required: true
+        schema:
+          $ref: '#/definitions/config.ModifyModelConfigRequest'
       produces:
       - application/json
       responses:

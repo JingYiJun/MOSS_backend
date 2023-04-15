@@ -248,6 +248,9 @@
                 }
             },
             "patch": {
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -255,6 +258,17 @@
                     "Config"
                 ],
                 "summary": "update global config",
+                "parameters": [
+                    {
+                        "description": "body",
+                        "name": "json",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/config.ModifyModelConfigRequest"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -940,6 +954,53 @@
                 "name": {
                     "type": "string",
                     "minLength": 1
+                }
+            }
+        },
+        "config.ModelConfigRequest": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "inner_thoughts_postprocess": {
+                    "type": "boolean",
+                    "enum": [
+                        true,
+                        false
+                    ]
+                }
+            }
+        },
+        "config.ModifyModelConfigRequest": {
+            "type": "object",
+            "properties": {
+                "invite_required": {
+                    "type": "boolean",
+                    "enum": [
+                        true,
+                        false
+                    ]
+                },
+                "model_config": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/config.ModelConfigRequest"
+                    }
+                },
+                "notice": {
+                    "type": "string"
+                },
+                "offense_check": {
+                    "type": "boolean",
+                    "enum": [
+                        true,
+                        false
+                    ]
                 }
             }
         },

@@ -137,7 +137,10 @@ func (s *scheduler) NewTask(action string, args string) task {
 // sendCommandStatus
 // a filter. only inform frontend well-formed commands
 func sendCommandStatus(c *websocket.Conn, action, args, StatusString string) {
-
+	if c == nil {
+		utils.Logger.Error("no ws connection")
+		return
+	}
 	if err := c.WriteJSON(CommandStatusModel{
 		Status: 3, // 3 means `send command status`
 		Type:   action,
