@@ -20,6 +20,9 @@ definitions:
         type: boolean
       email:
         type: string
+      model_id:
+        minimum: 1
+        type: integer
       nickname:
         minLength: 1
         type: string
@@ -133,7 +136,6 @@ definitions:
       duration:
         description: 处理时间，单位 s
         type: number
-      extra_data: {}
       feedback:
         type: string
       id:
@@ -141,8 +143,7 @@ definitions:
       like_data:
         description: 1 like, -1 dislike
         type: integer
-      raw_content:
-        type: string
+      processed_extra_data: {}
       request:
         type: string
       request_sensitive:
@@ -172,6 +173,9 @@ definitions:
         type: string
       last_login:
         type: string
+      model_id:
+        default: 1
+        type: integer
       nickname:
         type: string
       phone:
@@ -194,6 +198,10 @@ definitions:
     properties:
       context:
         type: string
+      plugin_config:
+        additionalProperties:
+          type: boolean
+        type: object
       request:
         minLength: 1
         type: string
@@ -383,6 +391,25 @@ paths:
           schema:
             $ref: '#/definitions/config.Response'
       summary: get global config
+      tags:
+      - Config
+    put:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/config.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/config.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/config.Response'
+      summary: update global config
       tags:
       - Config
   /inference:

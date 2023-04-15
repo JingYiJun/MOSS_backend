@@ -44,7 +44,6 @@ func GetConfig(c *fiber.Ctx) error {
 // @Tags Config
 // @Produce json
 // @Router /config [put]
-// @Param json body UpdateConfigRequest true "json"
 // @Success 200 {object} Response
 // @Failure 400 {object} Response
 // @Failure 500 {object} Response
