@@ -43,7 +43,7 @@ func GetConfig(c *fiber.Ctx) error {
 // @Summary update global config
 // @Tags Config
 // @Produce json
-// @Router /config [put]
+// @Router /config [patch]
 // @Success 200 {object} Response
 // @Failure 400 {object} Response
 // @Failure 500 {object} Response

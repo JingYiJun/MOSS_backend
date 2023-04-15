@@ -247,7 +247,7 @@
                     }
                 }
             },
-            "put": {
+            "patch": {
                 "produces": [
                     "application/json"
                 ],

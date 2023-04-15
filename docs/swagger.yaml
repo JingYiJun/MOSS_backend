@@ -393,7 +393,7 @@ paths:
       summary: get global config
       tags:
       - Config
-    put:
+    patch:
       produces:
       - application/json
       responses:

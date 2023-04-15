@@ -254,7 +254,7 @@ const docTemplate = `{
                     }
                 }
             },
-            "put": {
+            "patch": {
                 "produces": [
                     "application/json"
                 ],
