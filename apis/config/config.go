@@ -19,7 +19,7 @@ func GetConfig(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	
+
 	var region string
 	ok, err := IsInChina(GetRealIP(c))
 	if err != nil {
@@ -36,6 +36,7 @@ func GetConfig(c *fiber.Ctx) error {
 		InviteRequired:      configObject.InviteRequired,
 		Notice:              configObject.Notice,
 		DefaultPluginConfig: config.Config.DefaultPluginConfig,
+		ModelConfig:         FromModelConfig(configObject.ModelConfig),
 	})
 }
 
@@ -87,7 +88,7 @@ func PatchConfig(c *fiber.Ctx) error {
 			}
 		}
 	}
-	
+
 	// 将更新后的 configObject 保存到数据库中
 	err = UpdateConfig(&configObject)
 	if err != nil {

@@ -983,6 +983,17 @@ const docTemplate = `{
                 }
             }
         },
+        "config.ModelConfigResponse": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
         "config.ModifyModelConfigRequest": {
             "type": "object",
             "properties": {
@@ -1022,6 +1033,12 @@ const docTemplate = `{
                 },
                 "invite_required": {
                     "type": "boolean"
+                },
+                "model_config": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/config.ModelConfigResponse"
+                    }
                 },
                 "notice": {
                     "type": "string"

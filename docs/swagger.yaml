@@ -102,6 +102,13 @@ definitions:
         - false
         type: boolean
     type: object
+  config.ModelConfigResponse:
+    properties:
+      description:
+        type: string
+      id:
+        type: string
+    type: object
   config.ModifyModelConfigRequest:
     properties:
       invite_required:
@@ -129,6 +136,10 @@ definitions:
         type: object
       invite_required:
         type: boolean
+      model_config:
+        items:
+          $ref: '#/definitions/config.ModelConfigResponse'
+        type: array
       notice:
         type: string
       region:

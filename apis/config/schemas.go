@@ -1,10 +1,29 @@
 package config
 
+import "MOSS_backend/models"
+
 type Response struct {
-	Region              string          `json:"region"`
-	InviteRequired      bool            `json:"invite_required"`
-	Notice              string          `json:"notice"`
-	DefaultPluginConfig map[string]bool `json:"default_plugin_config"`
+	Region              string                `json:"region"`
+	InviteRequired      bool                  `json:"invite_required"`
+	Notice              string                `json:"notice"`
+	DefaultPluginConfig map[string]bool       `json:"default_plugin_config"`
+	ModelConfig         []ModelConfigResponse `json:"model_config"`
+}
+
+type ModelConfigResponse struct {
+	ID          string `json:"id"`
+	Description string `json:"description"`
+}
+
+func FromModelConfig(modelConfig []models.ModelConfig) []ModelConfigResponse {
+	var response []ModelConfigResponse
+	for _, config := range modelConfig {
+		response = append(response, ModelConfigResponse{
+			ID:          config.Url,
+			Description: config.Description,
+		})
+	}
+	return response
 }
 
 type ModelConfigRequest struct {
