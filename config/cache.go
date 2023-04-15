@@ -59,7 +59,7 @@ func SetCache(key string, model any, duration time.Duration) error {
 		return err
 	}
 	duration = GenRandomDuration(duration)
-	log.Printf("set cache %s|%v data: %v with duration %s", key, model, data, duration.String())
+	log.Printf("set cache %s|%v data(string): %v with duration %s", key, model, string(data), duration.String())
 	return Cache.Set(context.Background(), key, data, store.WithExpiration(duration))
 }
 
