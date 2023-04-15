@@ -4,14 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
+	"math/rand"
+	"time"
+
 	"github.com/eko/gocache/lib/v4/cache"
 	"github.com/eko/gocache/lib/v4/store"
 	gocacheStore "github.com/eko/gocache/store/go_cache/v4"
 	redisStore "github.com/eko/gocache/store/redis/v4"
 	gocache "github.com/patrickmn/go-cache"
 	"github.com/redis/go-redis/v9"
-	"math/rand"
-	"time"
 )
 
 var Cache *cache.Cache[[]byte]
@@ -45,8 +47,10 @@ func GetCache(key string, model any) error {
 	if err != nil {
 		return err
 	}
-
-	return json.Unmarshal(data, &model)
+	
+	err = json.Unmarshal(data, &model)
+	log.Printf("get cache %s| err %v", key, err)
+	return err
 }
 
 func SetCache(key string, model any, duration time.Duration) error {
@@ -55,6 +59,7 @@ func SetCache(key string, model any, duration time.Duration) error {
 		return err
 	}
 	duration = GenRandomDuration(duration)
+	log.Printf("set cache %s| with duration %s", key, duration.String())
 	return Cache.Set(context.Background(), key, data, store.WithExpiration(duration))
 }
 
