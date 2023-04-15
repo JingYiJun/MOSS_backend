@@ -7,9 +7,14 @@ import (
 )
 
 type ModelConfig struct {
-	ID          int    `json:"id"`
-	Description string `json:"description"`
-	Url         string `json:"-"`
+	ID                       int    `json:"id"`
+	InnerThoughtsPostprocess bool   `json:"inner_thoughts_postprocess" default:"false"`
+	Description              string `json:"description"`
+	Url                      string `json:"-"`
+}
+
+func (cfg *ModelConfig) TableName() string {
+	return "language_model_config"
 }
 
 type Config struct {

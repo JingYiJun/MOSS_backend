@@ -72,12 +72,28 @@ func InferCommon(
 	err error,
 ) {
 	var (
-		innerErr error
-		request  = map[string]any{}
-		uuidText string
-		wg1      sync.WaitGroup
-		wg2      sync.WaitGroup
+		innerErr                 error
+		request                  = map[string]any{}
+		uuidText                 string
+		wg1                      sync.WaitGroup
+		wg2                      sync.WaitGroup
+		inferUrl                 string
+		innerThoughtsPostprocess bool
+		configObject             Config
 	)
+	err = LoadConfig(&configObject)
+	if err != nil {
+		return err
+	}
+	inferUrl = configObject.ModelConfig[0].Url
+	innerThoughtsPostprocess = configObject.ModelConfig[0].InnerThoughtsPostprocess
+	for i := range configObject.ModelConfig {
+		if configObject.ModelConfig[i].ID == user.ModelID {
+			inferUrl = configObject.ModelConfig[i].Url
+			innerThoughtsPostprocess = configObject.ModelConfig[i].InnerThoughtsPostprocess
+			break
+		}
+	}
 
 	// load params from db
 	err = LoadParamToMap(request)
@@ -117,7 +133,7 @@ func InferCommon(
 
 	// construct data to send
 	data, _ := json.Marshal(request)
-	output, duration, err := inferTrigger(data) // block here
+	output, duration, err := inferTrigger(data, inferUrl) // block here
 
 	if ctx != nil {
 		wg1.Wait()
@@ -169,7 +185,7 @@ func InferCommon(
 			zap.String("command", commandContent),
 		)
 		firstRawOutput = commandsRegexp.ReplaceAllString(firstRawOutput, "<|Commands|>: None<eoc>")
-		if config.Config.InnerThoughtsPostprocess {
+		if innerThoughtsPostprocess {
 			firstRawOutput = innerThoughtsRegexp.ReplaceAllString(firstRawOutput, "<|Inner Thoughts|>: None<eot>")
 		}
 	}
@@ -204,7 +220,7 @@ func InferCommon(
 
 	// infer
 	data, _ = json.Marshal(request)
-	secondOutput, duration, err := inferTrigger(data)
+	secondOutput, duration, err := inferTrigger(data, inferUrl)
 	if err != nil {
 		return err
 	}
@@ -459,9 +475,9 @@ func inferListener(
 	}
 }
 
-func inferTrigger(data []byte) (string, float64, error) {
+func inferTrigger(data []byte, inferUrl string) (string, float64, error) {
 	startTime := time.Now()
-	rsp, err := inferHttpClient.Post(config.Config.InferenceUrl, "application/json", bytes.NewBuffer(data)) // take the ownership of data
+	rsp, err := inferHttpClient.Post(inferUrl, "application/json", bytes.NewBuffer(data)) // take the ownership of data
 	if err != nil {
 		Logger.Error(
 			"post inference error",

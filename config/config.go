@@ -22,7 +22,7 @@ var Config struct {
 	UniSignature  string `env:"UNI_SIGNATURE" envDefault:"fastnlp"`
 	UniTemplateID string `env:"UNI_TEMPLATE_ID,required"`
 
-	InferenceUrl string `env:"INFERENCE_URL,required"`
+	// InferenceUrl string `env:"INFERENCE_URL,required"` // now save it in db
 
 	// 敏感信息检测
 	EnableSensitiveCheck   bool   `env:"ENABLE_SENSITIVE_CHECK" envDefault:"true"`
@@ -58,7 +58,7 @@ var Config struct {
 
 	DefaultPluginConfig map[string]bool `env:"DEFAULT_PLUGIN_CONFIG"`
 
-	InnerThoughtsPostprocess bool `env:"INNER_THOUGHTS_POSTPROCESS" envDefault:"false"`
+	// InnerThoughtsPostprocess bool `env:"INNER_THOUGHTS_POSTPROCESS" envDefault:"false"`
 }
 
 func InitConfig() {
