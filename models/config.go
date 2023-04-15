@@ -22,7 +22,7 @@ type Config struct {
 	InviteRequired bool          `json:"invite_required"`
 	OffenseCheck   bool          `json:"offense_check"`
 	Notice         string        `json:"notice"`
-	ModelConfig    []ModelConfig `json:"model_config"`
+	ModelConfig    []ModelConfig `json:"model_config" gorm:"-:all"`
 }
 
 const configCacheName = "moss_backend_config"
