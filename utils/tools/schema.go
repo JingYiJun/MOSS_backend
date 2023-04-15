@@ -12,8 +12,8 @@ type ResultModel struct {
 }
 
 type ResultTotalModel struct {
-	Result             string            `json:"result"`
-	ExtraData          []*ExtraDataModel `json:"extra_data"`
+	Result             string            `json:"-"` //`json:"result"`
+	ExtraData          []*ExtraDataModel `json:"-"` //`json:"extra_data"`
 	ProcessedExtraData []*ExtraDataModel `json:"processed_extra_data"`
 }
 
@@ -49,4 +49,4 @@ type scheduler struct {
 	searchResultsIndex int
 }
 
-var defaultError = errors.New("default error")
+var ErrGeneric = errors.New("default error")

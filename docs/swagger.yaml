@@ -20,6 +20,9 @@ definitions:
         type: boolean
       email:
         type: string
+      model_id:
+        minimum: 1
+        type: integer
       nickname:
         minLength: 1
         type: string
@@ -86,6 +89,38 @@ definitions:
         minLength: 1
         type: string
     type: object
+  config.ModelConfigRequest:
+    properties:
+      description:
+        type: string
+      id:
+        minimum: 1
+        type: integer
+      inner_thoughts_postprocess:
+        enum:
+        - true
+        - false
+        type: boolean
+    type: object
+  config.ModifyModelConfigRequest:
+    properties:
+      invite_required:
+        enum:
+        - true
+        - false
+        type: boolean
+      model_config:
+        items:
+          $ref: '#/definitions/config.ModelConfigRequest'
+        type: array
+      notice:
+        type: string
+      offense_check:
+        enum:
+        - true
+        - false
+        type: boolean
+    type: object
   config.Response:
     properties:
       default_plugin_config:
@@ -133,7 +168,6 @@ definitions:
       duration:
         description: 处理时间，单位 s
         type: number
-      extra_data: {}
       feedback:
         type: string
       id:
@@ -141,8 +175,7 @@ definitions:
       like_data:
         description: 1 like, -1 dislike
         type: integer
-      raw_content:
-        type: string
+      processed_extra_data: {}
       request:
         type: string
       request_sensitive:
@@ -172,6 +205,9 @@ definitions:
         type: string
       last_login:
         type: string
+      model_id:
+        default: 1
+        type: integer
       nickname:
         type: string
       phone:
@@ -194,6 +230,10 @@ definitions:
     properties:
       context:
         type: string
+      plugin_config:
+        additionalProperties:
+          type: boolean
+        type: object
       request:
         minLength: 1
         type: string
@@ -383,6 +423,34 @@ paths:
           schema:
             $ref: '#/definitions/config.Response'
       summary: get global config
+      tags:
+      - Config
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: body
+        in: body
+        name: json
+        required: true
+        schema:
+          $ref: '#/definitions/config.ModifyModelConfigRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/config.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/config.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/config.Response'
+      summary: update global config
       tags:
       - Config
   /inference:

@@ -99,4 +99,9 @@ func InitDB() {
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		DB.Create(&configObject)
 	}
+	var configModelObject ModelConfig
+	err = DB.First(&configModelObject).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		DB.Create(&configModelObject)
+	}
 }

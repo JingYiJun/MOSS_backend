@@ -37,7 +37,7 @@ func (user *User) CheckUserOffense() (bool, error) {
 	)
 
 	var configObject Config
-	err = DB.First(&configObject).Error
+	err = LoadConfig(&configObject)
 	if err != nil {
 		return false, err
 	}

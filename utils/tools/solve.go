@@ -5,11 +5,12 @@ import (
 	"MOSS_backend/utils"
 	"bytes"
 	"encoding/json"
-	"go.uber.org/zap"
 	"io"
 	"net/http"
 	"strconv"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 type solveTask struct {
@@ -46,20 +47,20 @@ func (t *solveTask) request() {
 	res, err := solveHttpClient.Post(config.Config.ToolsSolveUrl, "application/json", bytes.NewBuffer(data))
 	if err != nil {
 		utils.Logger.Error("post solve(tools) error: ", zap.Error(err))
-		t.err = defaultError
+		t.err = ErrGeneric
 		return
 	}
 
 	if res.StatusCode != 200 {
 		utils.Logger.Error("post solve(tools) status code error: " + strconv.Itoa(res.StatusCode))
-		t.err = defaultError
+		t.err = ErrGeneric
 		return
 	}
 
 	responseData, err := io.ReadAll(res.Body)
 	if err != nil {
 		utils.Logger.Error("post solve(tools) response read error: ", zap.Error(err))
-		t.err = defaultError
+		t.err = ErrGeneric
 		return
 	}
 
@@ -67,25 +68,25 @@ func (t *solveTask) request() {
 	err = json.Unmarshal(responseData, &results)
 	if err != nil {
 		utils.Logger.Error("post solve(tools) response unmarshal error: ", zap.Error(err))
-		t.err = defaultError
+		t.err = ErrGeneric
 		return
 	}
 
 	solveResult, exist := results["result"]
 	if !exist {
 		utils.Logger.Error("post solve(tools) response format error: ", zap.Error(keyNotExistError{Results: results}))
-		t.err = defaultError
+		t.err = ErrGeneric
 		return
 	}
 	resultsString, ok := solveResult.(string)
 	if !ok {
 		utils.Logger.Error("post solve(tools) response format error: ", zap.Error(resultNotStringError{Results: results}))
-		t.err = defaultError
+		t.err = ErrGeneric
 		return
 	}
 	if resultsString == `[ERROR]` || resultsString == "" {
 		utils.Logger.Warn("post solve(tools) request no solution")
-		t.err = defaultError
+		t.err = ErrGeneric
 		return
 	}
 

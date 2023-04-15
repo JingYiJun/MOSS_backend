@@ -253,6 +253,49 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "patch": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Config"
+                ],
+                "summary": "update global config",
+                "parameters": [
+                    {
+                        "description": "body",
+                        "name": "json",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/config.ModifyModelConfigRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/config.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/config.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/config.Response"
+                        }
+                    }
+                }
             }
         },
         "/inference": {
@@ -826,6 +869,10 @@ const docTemplate = `{
                 "email": {
                     "type": "string"
                 },
+                "model_id": {
+                    "type": "integer",
+                    "minimum": 1
+                },
                 "nickname": {
                     "type": "string",
                     "minLength": 1
@@ -917,6 +964,53 @@ const docTemplate = `{
                 }
             }
         },
+        "config.ModelConfigRequest": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "inner_thoughts_postprocess": {
+                    "type": "boolean",
+                    "enum": [
+                        true,
+                        false
+                    ]
+                }
+            }
+        },
+        "config.ModifyModelConfigRequest": {
+            "type": "object",
+            "properties": {
+                "invite_required": {
+                    "type": "boolean",
+                    "enum": [
+                        true,
+                        false
+                    ]
+                },
+                "model_config": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/config.ModelConfigRequest"
+                    }
+                },
+                "notice": {
+                    "type": "string"
+                },
+                "offense_check": {
+                    "type": "boolean",
+                    "enum": [
+                        true,
+                        false
+                    ]
+                }
+            }
+        },
         "config.Response": {
             "type": "object",
             "properties": {
@@ -987,7 +1081,6 @@ const docTemplate = `{
                     "description": "处理时间，单位 s",
                     "type": "number"
                 },
-                "extra_data": {},
                 "feedback": {
                     "type": "string"
                 },
@@ -998,9 +1091,7 @@ const docTemplate = `{
                     "description": "1 like, -1 dislike",
                     "type": "integer"
                 },
-                "raw_content": {
-                    "type": "string"
-                },
+                "processed_extra_data": {},
                 "request": {
                     "type": "string"
                 },
@@ -1045,6 +1136,10 @@ const docTemplate = `{
                 "last_login": {
                     "type": "string"
                 },
+                "model_id": {
+                    "type": "integer",
+                    "default": 1
+                },
                 "nickname": {
                     "type": "string"
                 },
@@ -1078,6 +1173,12 @@ const docTemplate = `{
             "properties": {
                 "context": {
                     "type": "string"
+                },
+                "plugin_config": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "boolean"
+                    }
                 },
                 "request": {
                     "type": "string",
