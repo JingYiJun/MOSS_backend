@@ -11,7 +11,7 @@ type Response struct {
 }
 
 type ModelConfigResponse struct {
-	ID          string `json:"id"`
+	ID          int    `json:"id"`
 	Description string `json:"description"`
 }
 
@@ -19,7 +19,7 @@ func FromModelConfig(modelConfig []models.ModelConfig) []ModelConfigResponse {
 	var response []ModelConfigResponse
 	for _, config := range modelConfig {
 		response = append(response, ModelConfigResponse{
-			ID:          config.Url,
+			ID:          config.ID,
 			Description: config.Description,
 		})
 	}
