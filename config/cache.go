@@ -42,13 +42,13 @@ func initCache() {
 	}
 }
 
-func GetCache(key string, model any) error {
+func GetCache(key string, modelPtr any) error {
 	data, err := Cache.Get(context.Background(), key)
 	if err != nil {
 		return err
 	}
 	
-	err = json.Unmarshal(data, model)
+	err = json.Unmarshal(data, modelPtr)
 	log.Printf("get cache %s|%v err %v", key, data, err)
 	return err
 }
