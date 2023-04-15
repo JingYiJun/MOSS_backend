@@ -30,7 +30,7 @@ type Record struct {
 	Response           string         `json:"response"`
 	Prefix             string         `json:"-"`
 	RawContent         string         `json:"-"` //`json:"raw_content"`
-	ExtraData          any            `json:"-"` //`json:"extra_data" gorm:"serializer:json"`
+	ExtraData          any            `json:"-" gorm:"serializer:json"` //`json:"extra_data" gorm:"serializer:json"`
 	ProcessedExtraData any            `json:"processed_extra_data" gorm:"serializer:json"`
 	LikeData           int            `json:"like_data"` // 1 like, -1 dislike
 	Feedback           string         `json:"feedback"`
