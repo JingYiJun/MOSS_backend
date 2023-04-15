@@ -31,7 +31,7 @@ var ErrInvalidCommandFormat = errors.New("commands format error")
 
 func Execute(c *websocket.Conn, rawCommand string) (*ResultTotalModel, error) {
 	if rawCommand == "None" || rawCommand == "none" {
-		return NoneResultTotalModel, CommandsFormatError
+		return NoneResultTotalModel, ErrInvalidCommandFormat
 	}
 	if !config.Config.EnableTools {
 		return NoneResultTotalModel, nil
