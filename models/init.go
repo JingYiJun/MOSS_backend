@@ -84,6 +84,7 @@ func InitDB() {
 		Record{},
 		ActiveStatus{},
 		Config{},
+		ModelConfig{},
 		InviteCode{},
 		Param{},
 		EmailBlacklist{},
