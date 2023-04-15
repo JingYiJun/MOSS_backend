@@ -29,7 +29,8 @@ const configCacheName = "moss_backend_config"
 const configCacheExpire = 24 * time.Hour
 
 func LoadConfig(configObjectPtr *Config) error {
-	if config.GetCache(configCacheName, configObjectPtr) != nil {
+	if problem := config.GetCache(configCacheName, configObjectPtr); problem != nil {
+		log.Println(problem)
 		if err := DB.First(configObjectPtr).Error; err != nil {
 			return err
 		}
