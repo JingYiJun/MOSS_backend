@@ -40,6 +40,9 @@ func LoadConfig(configObjectPtr *Config) error {
 		if err != nil {
 			log.Println(err)
 		}
+		log.Printf("Config loaded from database configObjectPtr.InviteRequired:%v", configObjectPtr.InviteRequired)
+	} else {
+		log.Printf("Config loaded from cache configObjectPtr.InviteRequired:%v", configObjectPtr.InviteRequired)
 	}
 	return nil
 }
