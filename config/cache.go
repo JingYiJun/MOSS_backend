@@ -49,7 +49,7 @@ func GetCache(key string, modelPtr any) error {
 	}
 	
 	err = json.Unmarshal(data, modelPtr)
-	log.Printf("get cache %s|%v err %v", key, data, err)
+	log.Printf("get cache %s|%v err %v", key, string(data), err)
 	return err
 }
 
