@@ -6,13 +6,15 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"log"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/websocket/v2"
 	"golang.org/x/exp/slices"
 	"gorm.io/gorm"
-	"strconv"
-	"strings"
-	"time"
 )
 
 type User struct {
@@ -33,8 +35,15 @@ type User struct {
 	IsAdmin               bool            `json:"is_admin"`
 	DisableSensitiveCheck bool            `json:"disable_sensitive_check"`
 	Banned                bool            `json:"banned"`
+	ModelID               int             `json:"model_id" default:"1" gorm:"default:1"`
 	PluginConfig          map[string]bool `json:"plugin_config" gorm:"serializer:json"`
 }
+
+func GetUserCacheKey(userID int) string {
+	return "moss_user:" + strconv.Itoa(userID)
+}
+
+const UserCacheExpire = 48 * time.Hour
 
 func GetUserID(c *fiber.Ctx) (int, error) {
 	if config.Config.Mode == "dev" || config.Config.Mode == "test" {
@@ -49,21 +58,41 @@ func GetUserID(c *fiber.Ctx) (int, error) {
 	return id, nil
 }
 
+// return value `err` is directly from DB.Take()
+func LoadUserByIDFromCache(userID int, userPtr *User) error {
+	cacheKey := GetUserCacheKey(userID)
+	if config.GetCache(cacheKey, userPtr) != nil {
+		err := DB.Take(userPtr, userID).Error
+		if err != nil {
+			return err
+		}
+		err = config.SetCache(cacheKey, *userPtr, UserCacheExpire)
+		if err != nil {
+			log.Println(err)
+		}
+	}
+	return nil
+}
+
+func DeleteUserCacheByID(userID int) {
+	cacheKey := GetUserCacheKey(userID)
+	_ = config.DeleteCache(cacheKey)
+}
+
 func LoadUserByID(userID int) (*User, error) {
 	var user User
-	err := DB.Take(&user, userID).Error
+	err := LoadUserByIDFromCache(userID, &user)
 
 	var defaultPluginConfig = config.Config.DefaultPluginConfig
+	updated := false
 	if user.PluginConfig == nil {
 		user.PluginConfig = make(map[string]bool)
 		for key, value := range defaultPluginConfig {
 			user.PluginConfig[key] = value
 		}
+		updated = true
 		DB.Model(&user).Select("PluginConfig").Updates(&user)
-	} else {
-		updated := false
-
-		// add new key
+	} else { // add new key
 		for key, value := range defaultPluginConfig {
 			if _, ok := user.PluginConfig[key]; !ok {
 				user.PluginConfig[key] = value
@@ -81,6 +110,19 @@ func LoadUserByID(userID int) (*User, error) {
 
 		if updated {
 			DB.Model(&user).Select("PluginConfig").Updates(&user)
+		}
+	}
+
+	if user.ModelID == 0 {
+		user.ModelID = 1
+		DB.Model(&user).Select("ModelID").Updates(&user)
+		updated = true
+	}
+
+	if updated {
+		err := config.SetCache(GetUserCacheKey(userID), user, UserCacheExpire)
+		if err != nil {
+			log.Println(err)
 		}
 	}
 
@@ -172,7 +214,7 @@ func GetUserByRefreshToken(c *fiber.Ctx) (*User, error) {
 	}
 
 	var user User
-	err = DB.Take(&user, userID).Error
+	err = LoadUserByIDFromCache(userID, &user)
 	return &user, err
 }
 

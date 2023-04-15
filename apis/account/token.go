@@ -92,7 +92,7 @@ func Logout(c *fiber.Ctx) error {
 	_, messageCollection := GetInfoByIP(GetRealIP(c))
 
 	var user User
-	err = DB.Take(&user, userID).Error
+	err = LoadUserByIDFromCache(userID, &user)
 	if err != nil {
 		return err
 	}

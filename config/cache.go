@@ -10,6 +10,7 @@ import (
 	redisStore "github.com/eko/gocache/store/redis/v4"
 	gocache "github.com/patrickmn/go-cache"
 	"github.com/redis/go-redis/v9"
+	"math/rand"
 	"time"
 )
 
@@ -53,5 +54,18 @@ func SetCache(key string, model any, duration time.Duration) error {
 	if err != nil {
 		return err
 	}
+	duration = GenRandomDuration(duration)
 	return Cache.Set(context.Background(), key, data, store.WithExpiration(duration))
+}
+
+func DeleteCache(key string) error {
+	return Cache.Delete(context.Background(), key)
+}
+
+func ClearCache() error {
+	return Cache.Clear(context.Background())
+}
+
+func GenRandomDuration(delay time.Duration) time.Duration {
+	return delay + time.Duration(rand.Int63n(int64(900 * time.Second)))
 }

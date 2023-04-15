@@ -5,6 +5,7 @@ import (
 	. "MOSS_backend/models"
 	. "MOSS_backend/utils"
 	"MOSS_backend/utils/auth"
+
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 )
@@ -99,11 +100,22 @@ func ModifyUser(c *fiber.Ctx) error {
 			}
 		}
 
+		if body.ModelID != nil {
+			if user.ModelID == 0 {
+				user.ModelID = 1
+			}
+			user.ModelID = *body.ModelID
+		}
+
 		return tx.Save(&user).Error
 	})
+
 	if err != nil {
 		return err
 	}
+
+	// redis update
+	config.SetCache(GetUserCacheKey(user.ID), user, UserCacheExpire)
 
 	return c.JSON(user)
 }

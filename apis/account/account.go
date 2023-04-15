@@ -6,10 +6,11 @@ import (
 	"MOSS_backend/utils/auth"
 	"MOSS_backend/utils/kong"
 	"errors"
+	"time"
+
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"time"
 )
 
 // Register godoc
@@ -46,7 +47,7 @@ func Register(c *fiber.Ctx) error {
 
 	// check invite code config
 	var configObject Config
-	err = DB.First(&configObject).Error
+	err = LoadConfig(&configObject)
 	if err != nil {
 		return err
 	}
@@ -300,10 +301,9 @@ func VerifyWithEmail(c *fiber.Ctx) error {
 	)
 	userID, _ := GetUserID(c)
 	login = userID != 0
-
 	// check invite code config
 	var configObject Config
-	err = DB.First(&configObject).Error
+	err = LoadConfig(&configObject)
 	if err != nil {
 		return err
 	}
@@ -316,7 +316,8 @@ func VerifyWithEmail(c *fiber.Ctx) error {
 		if !login {
 			scope = "register"
 		} else {
-			scope = "modify"
+			scope = "modify" 
+			DeleteUserCacheByID(userID)// 已登录的，清空缓存
 		}
 	} else {
 		if !login {
@@ -411,7 +412,7 @@ func VerifyWithPhone(c *fiber.Ctx) error {
 
 	// check invite code config
 	var configObject Config
-	err = DB.First(&configObject).Error
+	err = LoadConfig(&configObject)
 	if err != nil {
 		return err
 	}
@@ -427,6 +428,7 @@ func VerifyWithPhone(c *fiber.Ctx) error {
 			scope = "register" // 未注册、未登录
 		} else {
 			scope = "modify" // 未注册、已登录
+			DeleteUserCacheByID(userID)
 		}
 	} else {
 		if !login {
@@ -538,6 +540,8 @@ func DeleteUser(c *fiber.Ctx) error {
 
 		return tx.Delete(&user).Error
 	})
+
+	DeleteUserCacheByID(user.ID)
 
 	err = kong.DeleteJwtCredential(user.ID)
 	if err != nil {

@@ -5,12 +5,13 @@ import (
 	"MOSS_backend/utils"
 	"errors"
 	"fmt"
-	"github.com/gofiber/websocket/v2"
-	"go.uber.org/zap"
 	"regexp"
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/gofiber/websocket/v2"
+	"go.uber.org/zap"
 )
 
 type Map = map[string]any
@@ -26,20 +27,20 @@ const maxCommandNumber = 4
 var commandsFormatRegexp = regexp.MustCompile(`(Search|Solve|Calculate|Text2Image)\("([\s\S]+?)"\)(, *?(Search|Solve|Calculate|Text2Image)\("([\s\S]+?)"\))*`)
 var commandSplitRegexp = regexp.MustCompile(`(Search|Solve|Calculate|Text2Image)\("([\s\S]+?)"\)`)
 var commandOrder = map[string]int{"Search": 1, "Calculate": 2, "Solve": 3, "Text2Image": 4}
-var CommandsFormatError = errors.New("commands format error")
+var ErrInvalidCommandFormat = errors.New("commands format error")
 
 func Execute(c *websocket.Conn, rawCommand string) (*ResultTotalModel, error) {
 	if !config.Config.EnableTools || rawCommand == "None" || rawCommand == "none" {
 		return NoneResultTotalModel, nil
 	}
 	if command := commandsFormatRegexp.FindString(rawCommand); command != rawCommand {
-		return NoneResultTotalModel, CommandsFormatError
+		return NoneResultTotalModel, ErrInvalidCommandFormat
 	}
 	// commands is like: [[Search("A"), Search, A,] [Solve("B"), Solve, B] [Search("C"), Search, C]]
 	commands := commandSplitRegexp.FindAllStringSubmatch(rawCommand, -1)
 
 	if len(commands) == 0 {
-		return NoneResultTotalModel, CommandsFormatError
+		return NoneResultTotalModel, ErrInvalidCommandFormat
 	}
 	// sort, search should be at first
 	sort.Slice(commands, func(i, j int) bool {

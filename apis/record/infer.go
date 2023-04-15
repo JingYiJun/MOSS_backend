@@ -10,9 +10,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/gofiber/websocket/v2"
-	"github.com/google/uuid"
-	"go.uber.org/zap"
 	"io"
 	"log"
 	"net/http"
@@ -21,6 +18,10 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/gofiber/websocket/v2"
+	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 var endContentRegexp = regexp.MustCompile(`<[es]o\w>`)
@@ -162,7 +163,7 @@ func InferCommon(
 	results, err := tools.Execute(ctx.c, commandContent)
 
 	// replace invalid commands output
-	if errors.Is(err, tools.CommandsFormatError) {
+	if errors.Is(err, tools.ErrInvalidCommandFormat) {
 		Logger.Error(
 			`error commands format`,
 			zap.String("command", commandContent),

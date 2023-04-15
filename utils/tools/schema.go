@@ -49,4 +49,4 @@ type scheduler struct {
 	searchResultsIndex int
 }
 
-var defaultError = errors.New("default error")
+var ErrGeneric = errors.New("default error")

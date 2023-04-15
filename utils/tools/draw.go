@@ -5,14 +5,15 @@ import (
 	"MOSS_backend/utils"
 	"bytes"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/vmihailenco/msgpack/v5"
-	"go.uber.org/zap"
 	"io"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/vmihailenco/msgpack/v5"
+	"go.uber.org/zap"
 )
 
 //func main() {
@@ -58,31 +59,31 @@ func (t *drawTask) request() {
 	reqBody, err := msgpack.Marshal(t.args)
 	if err != nil {
 		utils.Logger.Error("post draw(tools) prompt cannot marshal error: ", zap.Error(err))
-		t.err = defaultError
+		t.err = ErrGeneric
 		return
 	}
 	res, err := drawHttpClient.Post(config.Config.ToolsDrawUrl, "application/x-msgpack", bytes.NewBuffer(reqBody))
 	if err != nil {
 		utils.Logger.Error("post draw(tools) error: ", zap.Error(err))
-		t.err = defaultError
+		t.err = ErrGeneric
 		return
 	}
 
 	if res.StatusCode != 200 {
 		utils.Logger.Error("post draw(tools) status code error: " + strconv.Itoa(res.StatusCode))
-		t.err = defaultError
+		t.err = ErrGeneric
 		return
 	}
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
 		utils.Logger.Error("post draw(tools) response body data cannot read error: ", zap.Error(err))
-		t.err = defaultError
+		t.err = ErrGeneric
 		return
 	}
 	var resultsByte []byte
 	if err = msgpack.Unmarshal(data, &resultsByte); err != nil {
 		utils.Logger.Error("post draw(tools) response body data cannot Unmarshal error: ", zap.Error(err))
-		t.err = defaultError
+		t.err = ErrGeneric
 		return
 	}
 

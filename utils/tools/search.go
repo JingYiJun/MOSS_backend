@@ -6,13 +6,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"go.uber.org/zap"
 	"io"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 /*
@@ -180,20 +181,20 @@ func (t *searchTask) request() {
 	res, err := searchHttpClient.Post(config.Config.ToolsSearchUrl, "application/json", bytes.NewBuffer(data))
 	if err != nil {
 		utils.Logger.Error("post search error: ", zap.Error(err))
-		t.err = defaultError
+		t.err = ErrGeneric
 		return
 	}
 
 	if res.StatusCode != 200 {
 		utils.Logger.Error("post search status code error: " + strconv.Itoa(res.StatusCode))
-		t.err = defaultError
+		t.err = ErrGeneric
 		return
 	}
 
 	responseData, err := io.ReadAll(res.Body)
 	if err != nil {
 		utils.Logger.Error("post search response read error: ", zap.Error(err))
-		t.err = defaultError
+		t.err = ErrGeneric
 		return
 	}
 	// result processing
@@ -201,7 +202,7 @@ func (t *searchTask) request() {
 	err = json.Unmarshal(responseData, &results)
 	if err != nil {
 		utils.Logger.Error("post search response unmarshal error: ", zap.Error(err))
-		t.err = defaultError
+		t.err = ErrGeneric
 		return
 	}
 
