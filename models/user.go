@@ -58,7 +58,7 @@ func GetUserID(c *fiber.Ctx) (int, error) {
 	return id, nil
 }
 
-// return value `err` is directly from DB.Take()
+// LoadUserByIDFromCache return value `err` is directly from DB.Take()
 func LoadUserByIDFromCache(userID int, userPtr *User) error {
 	cacheKey := GetUserCacheKey(userID)
 	if config.GetCache(cacheKey, userPtr) != nil {

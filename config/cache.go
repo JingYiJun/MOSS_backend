@@ -44,7 +44,7 @@ func GetCache(key string, modelPtr any) error {
 }
 
 // SetCache set cache with random duration(+15min)
-// the err can be dropped because it has been logged in the function
+// the error can be dropped because it has been logged in the function
 func SetCache(key string, model any, duration time.Duration) error {
 	data, err := json.Marshal(model)
 	if err != nil {
