@@ -176,7 +176,12 @@ func InferCommon(
 	firstRawOutput = commandsRegexp.ReplaceAllString(firstRawOutput, "<|Commands|>:$1<eoc>")
 
 	// get results from tools
-	results, err := tools.Execute(ctx.c, commandContent)
+	var results *tools.ResultTotalModel
+	if ctx != nil {
+		results, err = tools.Execute(ctx.c, commandContent)
+	} else {
+		results, err = tools.Execute(nil, commandContent)
+	}
 
 	// replace invalid commands output
 	if errors.Is(err, tools.ErrInvalidCommandFormat) {
