@@ -2,7 +2,6 @@ package models
 
 import (
 	"MOSS_backend/config"
-	"log"
 	"time"
 )
 
@@ -29,22 +28,15 @@ const configCacheName = "moss_backend_config"
 const configCacheExpire = 24 * time.Hour
 
 func LoadConfig(configObjectPtr *Config) error {
-	if problem := config.GetCache(configCacheName, configObjectPtr); problem != nil {
-		log.Println(problem)
+	if config.GetCache(configCacheName, configObjectPtr) != nil {
 		if err := DB.First(configObjectPtr).Error; err != nil {
 			return err
 		}
 		if err := DB.First(&(configObjectPtr.ModelConfig)).Error; err != nil {
 			return err
 		}
-		err := config.SetCache(configCacheName, *configObjectPtr, configCacheExpire)
-		if err != nil {
-			log.Println(err)
-		}
-		log.Printf("Config loaded from database configObjectPtr.InviteRequired:%v", configObjectPtr.InviteRequired)
-	} else {
-		log.Printf("Config loaded from cache configObjectPtr.InviteRequired:%v", configObjectPtr.InviteRequired)
-	}
+		_ = config.SetCache(configCacheName, *configObjectPtr, configCacheExpire)
+	} 
 	return nil
 }
 
@@ -53,9 +45,6 @@ func UpdateConfig(configObjectPtr *Config) error {
 	if err != nil {
 		return err
 	}
-	err = config.SetCache(configCacheName, *configObjectPtr, configCacheExpire)
-	if err != nil {
-		log.Println(err)
-	}
+	_ = config.SetCache(configCacheName, *configObjectPtr, configCacheExpire)
 	return nil
 }

@@ -22,12 +22,11 @@ func initCache() {
 	fmt.Println(pong, err)
 }
 
+// GetCache get cache from redis
 func GetCache(key string, modelPtr any) error {
 	data, err := RedisClient.Get(context.Background(), key).Bytes()
 	if err != nil {
-		if err == redis.Nil {
-			log.Printf("cache not found %s", key)
-		} else if err != nil {
+		if err != redis.Nil { // err == redis.Nil means key does not exist, logging that is not necessary
 			log.Printf("error get cache %s err %v", key, err)
 		}
 		return err
@@ -39,14 +38,17 @@ func GetCache(key string, modelPtr any) error {
 
 	err = json.Unmarshal(data, modelPtr)
 	if err != nil {
-		log.Printf("error get cache %s|%v err %v", key, string(data), err)
+		log.Printf("error during unmarshal %s, data:%v ,err %v", key, string(data), err)
 	}
 	return err
 }
 
+// SetCache set cache with random duration(+15min)
+// the err can be dropped because it has been logged in the function
 func SetCache(key string, model any, duration time.Duration) error {
 	data, err := json.Marshal(model)
 	if err != nil {
+		log.Printf("error during marshal %s|%v, err %v", key, model, err)
 		return err
 	}
 	duration = GenRandomDuration(duration)

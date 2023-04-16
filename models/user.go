@@ -6,13 +6,13 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"log"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/websocket/v2"
+	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 	"gorm.io/gorm"
 )
@@ -66,17 +66,18 @@ func LoadUserByIDFromCache(userID int, userPtr *User) error {
 		if err != nil {
 			return err
 		}
-		err = config.SetCache(cacheKey, *userPtr, UserCacheExpire)
-		if err != nil {
-			log.Println(err)
-		}
+		// err has been printed in SetCache
+		_ = config.SetCache(cacheKey, *userPtr, UserCacheExpire)
 	}
 	return nil
 }
 
 func DeleteUserCacheByID(userID int) {
 	cacheKey := GetUserCacheKey(userID)
-	_ = config.DeleteCache(cacheKey)
+	err := config.DeleteCache(cacheKey)
+	if err != nil {
+		utils.Logger.Error("err in DeleteUserCacheByID: ", zap.Error(err))
+	}
 }
 
 func LoadUserByID(userID int) (*User, error) {
@@ -119,13 +120,11 @@ func LoadUserByID(userID int) (*User, error) {
 		updated = true
 	}
 
-	if updated {
-		err := config.SetCache(GetUserCacheKey(userID), user, UserCacheExpire)
-		if err != nil {
-			log.Println(err)
-		}
+	if err != nil { // something wrong in DB.Take() in LoadUserByIDFromCache()
+		DeleteUserCacheByID(userID)
+	} else if updated {
+		err = config.SetCache(GetUserCacheKey(userID), user, UserCacheExpire)
 	}
-
 	return &user, err
 }
 
