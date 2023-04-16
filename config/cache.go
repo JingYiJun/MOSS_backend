@@ -8,48 +8,29 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/eko/gocache/lib/v4/cache"
-	"github.com/eko/gocache/lib/v4/store"
-	gocacheStore "github.com/eko/gocache/store/go_cache/v4"
-	redisStore "github.com/eko/gocache/store/redis/v4"
-	gocache "github.com/patrickmn/go-cache"
 	"github.com/redis/go-redis/v9"
 )
 
-var Cache *cache.Cache[[]byte]
+var RedisClient *redis.Client
 
 func initCache() {
-	if Config.RedisUrl != "" {
-		Cache = cache.New[[]byte](
-			redisStore.NewRedis(
-				redis.NewClient(
-					&redis.Options{
-						Addr: Config.RedisUrl,
-					},
-				),
-			),
-		)
-		fmt.Println("using redis")
-	} else {
-		Cache = cache.New[[]byte](
-			gocacheStore.NewGoCache(
-				gocache.New(
-					10*time.Minute,
-					20*time.Minute),
-			),
-		)
-		fmt.Println("using gocache")
-	}
+	RedisClient = redis.NewClient(&redis.Options{
+		Addr: Config.RedisUrl,
+	})
+	pong, err := RedisClient.Ping(context.Background()).Result()
+	fmt.Println(pong, err)
 }
 
 func GetCache(key string, modelPtr any) error {
-	data, err := Cache.Get(context.Background(), key)
+	data, err := RedisClient.Get(context.Background(), key).Bytes()
 	if err != nil {
 		return err
 	}
-	
+
 	err = json.Unmarshal(data, modelPtr)
-	log.Printf("get cache %s|%v err %v", key, string(data), err)
+	if err != nil {
+		log.Printf("error get cache %s|%v err %v", key, string(data), err)
+	}
 	return err
 }
 
@@ -59,20 +40,22 @@ func SetCache(key string, model any, duration time.Duration) error {
 		return err
 	}
 	duration = GenRandomDuration(duration)
-	err2 := Cache.Set(context.Background(), key, data, store.WithExpiration(duration))
-	log.Printf("set cache %s|%v data(string): %v with duration %s, err %v", 
-			key, model, string(data), duration.String(), err2)
-	return err2
+	err = RedisClient.Set(context.Background(), key, data, duration).Err()
+	if err != nil {
+		log.Printf("error set cache %s|%v data(string): %v with duration %s, err %v",
+			key, model, string(data), duration.String(), err)
+	}
+	return err
 }
 
 func DeleteCache(key string) error {
-	return Cache.Delete(context.Background(), key)
+	return RedisClient.Del(context.Background(), key).Err()
 }
 
 func ClearCache() error {
-	return Cache.Clear(context.Background())
+	return RedisClient.FlushAll(context.Background()).Err()
 }
 
 func GenRandomDuration(delay time.Duration) time.Duration {
-	return delay + time.Duration(rand.Int63n(int64(900 * time.Second)))
+	return delay + time.Duration(rand.Int63n(int64(900*time.Second)))
 }
