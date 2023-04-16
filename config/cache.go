@@ -3,6 +3,7 @@ package config
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"math/rand"
@@ -24,7 +25,16 @@ func initCache() {
 func GetCache(key string, modelPtr any) error {
 	data, err := RedisClient.Get(context.Background(), key).Bytes()
 	if err != nil {
+		if err == redis.Nil {
+			log.Printf("cache not found %s", key)
+		} else if err != nil {
+			log.Printf("error get cache %s err %v", key, err)
+		}
 		return err
+	}
+	if len(data) == 0 {
+		log.Printf("empty value of key %v", key)
+		return errors.New("empty value")
 	}
 
 	err = json.Unmarshal(data, modelPtr)
