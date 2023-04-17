@@ -83,7 +83,17 @@ func PatchConfig(c *fiber.Ctx) error {
 						configObject.ModelConfig[i].InnerThoughtsPostprocess = *(newSingleCfg.InnerThoughtsPostprocess)
 					}
 					if newSingleCfg.DefaultPluginConfig != nil {
-						configObject.ModelConfig[i].DefaultPluginConfig = *(newSingleCfg.DefaultPluginConfig)
+						if configObject.ModelConfig[i].DefaultPluginConfig == nil {
+							// this means the default plugin config is never set
+							configObject.ModelConfig[i].DefaultPluginConfig = *(newSingleCfg.DefaultPluginConfig)
+						} else {
+							for k, v := range *(newSingleCfg.DefaultPluginConfig) {
+								if _, ok := configObject.ModelConfig[i].DefaultPluginConfig[k]; ok {
+									configObject.ModelConfig[i].DefaultPluginConfig[k] = v
+								} 
+							}
+						}
+						
 					}
 				}
 			}
