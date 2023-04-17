@@ -19,7 +19,7 @@ func (cfg *ModelConfig) TableName() string {
 }
 
 type Config struct {
-	ID             int           `json:"-"`
+	ID             int           `json:"id"`
 	InviteRequired bool          `json:"invite_required"`
 	OffenseCheck   bool          `json:"offense_check"`
 	Notice         string        `json:"notice"`
@@ -43,7 +43,7 @@ func LoadConfig(configObjectPtr *Config) error {
 }
 
 func UpdateConfig(configObjectPtr *Config) error {
-	err := DB.Model(&Config{}).Updates(configObjectPtr).Error
+	err := DB.Model(&Config{ID:1}).Updates(configObjectPtr).Error
 	if err != nil {
 		log.Println(err)
 		return err
