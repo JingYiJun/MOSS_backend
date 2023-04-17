@@ -150,6 +150,9 @@ func InferCommon(
 	// construct data to send
 	data, _ := json.Marshal(request)
 	output, duration, err := inferTrigger(data, inferUrl) // block here
+	if err != nil {
+		return err
+	}
 
 	if ctx != nil {
 		wg1.Wait()
