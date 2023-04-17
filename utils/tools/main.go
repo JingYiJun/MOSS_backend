@@ -17,6 +17,7 @@ import (
 type Map = map[string]any
 type CommandStatusModel struct {
 	Status int    `json:"status"`
+	ID     int    `json:"id"`
 	Args   string `json:"output"`
 	Type   string `json:"type"`
 	Stage  string `json:"stage"`
@@ -67,7 +68,7 @@ func Execute(c *websocket.Conn, rawCommand string) (*ResultTotalModel, error) {
 		if i >= maxCommandNumber {
 			break
 		}
-		sendCommandStatus(c, commands[i][1], commands[i][2], "start")
+		sendCommandStatus(c, i, commands[i][1], commands[i][2], "start")
 		t := s.NewTask(commands[i][1], commands[i][2])
 		if t != nil {
 			s.tasks = append(s.tasks, t)
@@ -102,7 +103,7 @@ func Execute(c *websocket.Conn, rawCommand string) (*ResultTotalModel, error) {
 		if results.ProcessedExtraData != nil {
 			resultTotal.ProcessedExtraData = append(resultTotal.ProcessedExtraData, results.ProcessedExtraData)
 		}
-		sendCommandStatus(c, commands[i][1], commands[i][2], "done")
+		sendCommandStatus(c, i, commands[i][1], commands[i][2], "done")
 	}
 
 	if resultsBuilder.String() == "" {
@@ -139,13 +140,14 @@ func (s *scheduler) NewTask(action string, args string) task {
 
 // sendCommandStatus
 // a filter. only inform frontend well-formed commands
-func sendCommandStatus(c *websocket.Conn, action, args, StatusString string) {
+func sendCommandStatus(c *websocket.Conn, id int, action, args, StatusString string) {
 	if c == nil {
 		utils.Logger.Info("no ws connection")
 		return
 	}
 	if err := c.WriteJSON(CommandStatusModel{
-		Status: 3, // 3 means `send command status`
+		Status: 3,      // 3 means `send command status`
+		ID:     id + 1, // id start with 1
 		Type:   action,
 		Args:   args,
 		Stage:  StatusString, // start or done
