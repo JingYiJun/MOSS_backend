@@ -65,6 +65,12 @@ func AddRecordAsync(c *websocket.Conn) {
 			return fmt.Errorf("error unmarshal text: %s", err)
 		}
 
+		if body.Request == "" {
+			return BadRequest("request is empty")
+		} else if len([]rune(body.Request)) > 1000 {
+			return maxInputExceededError
+		}
+
 		// get user id
 		user, err = LoadUserFromWs(c)
 		if err != nil {
@@ -88,11 +94,6 @@ func AddRecordAsync(c *websocket.Conn) {
 		// permission
 		if chat.UserID != user.ID {
 			return Forbidden()
-		}
-
-		// max length exceeded
-		if chat.MaxLengthExceeded {
-			return maxLengthExceededError
 		}
 
 		record := Record{
@@ -238,11 +239,6 @@ func RegenerateAsync(c *websocket.Conn) {
 		// permission
 		if chat.UserID != user.ID {
 			return Forbidden()
-		}
-
-		// max length exceeded
-		if chat.MaxLengthExceeded {
-			return maxLengthExceededError
 		}
 
 		// get the latest record
@@ -407,6 +403,12 @@ func InferWithoutLoginAsync(c *websocket.Conn) {
 			return fmt.Errorf("error unmarshal text: %s", err)
 		}
 
+		if body.Request == "" {
+			return BadRequest("request is empty")
+		} else if len([]rune(body.Request)) > 1000 {
+			return maxInputExceededError
+		}
+
 		// sensitive request check
 		if sensitive.IsSensitive(body.Context, &User{}) {
 
@@ -422,7 +424,7 @@ func InferWithoutLoginAsync(c *websocket.Conn) {
 
 			record.Request = body.Request
 			// async infer
-			err = InferAsync(c, "", &record, &User{})
+			err = InferAsync(c, body.Context, &record, &User{})
 			if err != nil {
 				return err
 			}

@@ -67,6 +67,12 @@ func AddRecord(c *fiber.Ctx) error {
 		return err
 	}
 
+	if body.Request == "" {
+		return BadRequest("request is empty")
+	} else if len([]rune(body.Request)) > 1000 {
+		return maxInputExceededError
+	}
+
 	user, err := LoadUser(c)
 	if err != nil {
 		return err
@@ -358,6 +364,12 @@ func InferWithoutLogin(c *fiber.Ctx) error {
 	err := ValidateBody(c, &body)
 	if err != nil {
 		return err
+	}
+
+	if body.Request == "" {
+		return BadRequest("request is empty")
+	} else if len([]rune(body.Request)) > 1000 {
+		return maxInputExceededError
 	}
 
 	consumerUsername := c.Get("X-Consumer-Username")

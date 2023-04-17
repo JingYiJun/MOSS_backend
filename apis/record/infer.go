@@ -34,7 +34,11 @@ var mossRegexp = regexp.MustCompile(`<\|MOSS\|>:([\s\S]+?)<eo\w>`)
 
 var innerThoughtsRegexp = regexp.MustCompile(`<\|Inner Thoughts\|>:([\s\S]+?)<eo\w>`)
 
-var maxLengthExceededError = BadRequest("The maximum context length is exceeded").WithMessageType(MaxLength)
+//var maxLengthExceededError = BadRequest("The maximum context length is exceeded").WithMessageType(MaxLength)
+
+var maxInputExceededError = BadRequest("单次输入限长为 1000 字符。Input no more than 1000 characters").WithMessageType(MaxLength)
+
+var maxInputExceededFromInferError = BadRequest("单次输入超长，请减少字数并重试。Input max length exceeded, please reduce length and try again").WithMessageType(MaxLength)
 
 var unknownError = InternalServerError("未知错误，请刷新或等待一分钟后再试。Unknown error, please refresh or wait a minute and try again")
 
@@ -512,7 +516,7 @@ func inferTrigger(data []byte, inferUrl string) (string, float64, error) {
 			zap.ByteString("body", response),
 		)
 		if rsp.StatusCode == 400 {
-			return "", duration, unknownError
+			return "", duration, maxInputExceededFromInferError
 		} else if rsp.StatusCode == 560 {
 			return "", duration, unknownError
 		} else if rsp.StatusCode >= 500 {
@@ -530,7 +534,7 @@ func inferTrigger(data []byte, inferUrl string) (string, float64, error) {
 		if err != nil {
 			responseString := string(response)
 			if responseString == "400" {
-				return "", duration, unknownError
+				return "", duration, maxInputExceededFromInferError
 			} else if responseString == "560" {
 				return "", duration, unknownError
 			} else {
