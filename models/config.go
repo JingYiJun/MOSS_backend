@@ -2,7 +2,8 @@ package models
 
 import (
 	"MOSS_backend/config"
-	"log"
+	"MOSS_backend/utils"
+	"go.uber.org/zap"
 	"time"
 )
 
@@ -43,10 +44,17 @@ func LoadConfig(configObjectPtr *Config) error {
 }
 
 func UpdateConfig(configObjectPtr *Config) error {
-	err := DB.Model(&Config{ID:1}).Updates(configObjectPtr).Error
+	err := DB.Model(&Config{ID: 1}).Updates(configObjectPtr).Error
 	if err != nil {
-		log.Println(err)
+		utils.Logger.Error("failed to update config", zap.Error(err))
 		return err
+	}
+	for i := range configObjectPtr.ModelConfig {
+		err = DB.Model(&configObjectPtr.ModelConfig).Updates(&configObjectPtr.ModelConfig[i]).Error
+		if err != nil {
+			utils.Logger.Error("failed to update model config", zap.Error(err))
+			return err
+		}
 	}
 	_ = config.SetCache(configCacheName, *configObjectPtr, configCacheExpire)
 	return nil
