@@ -19,7 +19,7 @@ func (cfg *ModelConfig) TableName() string {
 }
 
 type Config struct {
-	ID             int           `json:"-"`
+	ID             int           `json:"id"`
 	InviteRequired bool          `json:"invite_required"`
 	OffenseCheck   bool          `json:"offense_check"`
 	Notice         string        `json:"notice"`
