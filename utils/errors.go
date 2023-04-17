@@ -29,10 +29,8 @@ func (e *HttpError) WithMessageType(messageType MessageType) *HttpError {
 
 type MessageType = string
 
-const (
-	MaxLength MessageType = "max_length"
-	Sensitive             = "sensitive"
-)
+const MaxLength MessageType = "max_length"
+const Sensitive = "sensitive"
 
 func NoStatus(message string) *HttpError {
 	return &HttpError{
@@ -86,7 +84,7 @@ func NotFound(messages ...string) *HttpError {
 }
 
 func InternalServerError(messages ...string) *HttpError {
-	message := "Internal Server Error"
+	message := "Unknown Error"
 	if len(messages) > 0 {
 		message = messages[0]
 	}

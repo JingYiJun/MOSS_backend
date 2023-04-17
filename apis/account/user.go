@@ -89,22 +89,27 @@ func ModifyUser(c *fiber.Ctx) error {
 			user.DisableSensitiveCheck = *body.DisableSensitiveCheck
 		}
 
-		if body.PluginConfig != nil {
-			if user.PluginConfig == nil {
-				user.PluginConfig = make(map[string]bool)
-			}
-			for key, value := range body.PluginConfig {
-				if _, ok := config.Config.DefaultPluginConfig[key]; ok {
-					user.PluginConfig[key] = value
-				}
-			}
-		}
-
 		if body.ModelID != nil {
 			if user.ModelID == 0 {
 				user.ModelID = 1
 			}
 			user.ModelID = *body.ModelID
+		}
+
+		defaultPluginConfig, err := GetPluginConfig(user.ModelID)
+		if err != nil {
+			return InternalServerError("Failed to change plugin config, please try again later")
+		}
+
+		if body.PluginConfig != nil {
+			if user.PluginConfig == nil {
+				user.PluginConfig = make(map[string]bool)
+			}
+			for key, value := range body.PluginConfig {
+				if _, ok := defaultPluginConfig[key]; ok {
+					user.PluginConfig[key] = value
+				}
+			}
 		}
 
 		return tx.Save(&user).Error

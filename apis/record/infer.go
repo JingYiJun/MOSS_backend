@@ -26,6 +26,8 @@ import (
 
 var endContentRegexp = regexp.MustCompile(`<[es]o\w>`)
 
+var mossSpecialTokenRegexp = regexp.MustCompile(`<eot>|<eoc>|<eor>|<eom>|<eoh>`)
+
 var resultsRegexp = regexp.MustCompile(`<[|]Results[|]>:[\s\S]+?<eor>`) // not greedy
 
 var commandsRegexp = regexp.MustCompile(`<\|Commands\|>:([\s\S]+?)<eo\w>`)
@@ -42,7 +44,7 @@ var maxInputExceededFromInferError = BadRequest("单次输入超长，请减少�
 
 var unknownError = InternalServerError("未知错误，请刷新或等待一分钟后再试。Unknown error, please refresh or wait a minute and try again")
 
-var sensitiveError = errors.New("sensitive")
+var ErrSensitive = errors.New("sensitive")
 
 var interruptError = NoStatus("client interrupt")
 
@@ -83,6 +85,8 @@ func InferCommon(
 		wg2                      sync.WaitGroup
 		inferUrl                 string
 		innerThoughtsPostprocess bool
+		defaultPluginConfig      map[string]bool
+		pluginConfig             = map[string]bool{}
 		configObject             Config
 	)
 	err = LoadConfig(&configObject)
@@ -91,10 +95,12 @@ func InferCommon(
 	}
 	inferUrl = configObject.ModelConfig[0].Url
 	innerThoughtsPostprocess = configObject.ModelConfig[0].InnerThoughtsPostprocess
+	defaultPluginConfig = configObject.ModelConfig[0].DefaultPluginConfig
 	for i := range configObject.ModelConfig {
 		if configObject.ModelConfig[i].ID == user.ModelID {
 			inferUrl = configObject.ModelConfig[i].Url
 			innerThoughtsPostprocess = configObject.ModelConfig[i].InnerThoughtsPostprocess
+			defaultPluginConfig = configObject.ModelConfig[i].DefaultPluginConfig
 			break
 		}
 	}
@@ -105,9 +111,15 @@ func InferCommon(
 		return err
 	}
 
-	// load user plugin config
-	for key, value := range user.PluginConfig {
-		request[key] = value
+	// load user plugin config, if not exist, fill with default
+	for key, value := range defaultPluginConfig {
+		if v, ok := user.PluginConfig[key]; ok {
+			request[key] = v && value
+			pluginConfig[key] = v && value
+		} else {
+			request[key] = value
+			pluginConfig[key] = value
+		}
 	}
 
 	cleanedPrefix := resultsRegexp.ReplaceAllString(prefix, "<|Results|>: None<eor>")
@@ -181,23 +193,27 @@ func InferCommon(
 
 	// get results from tools
 	var results *tools.ResultTotalModel
+	var newCommandString string
 	if ctx != nil {
-		results, err = tools.Execute(ctx.c, commandContent)
+		results, newCommandString, err = tools.Execute(ctx.c, commandContent, pluginConfig)
 	} else {
-		results, err = tools.Execute(nil, commandContent)
+		results, newCommandString, err = tools.Execute(nil, commandContent, pluginConfig)
 	}
 
-	// replace invalid commands output
-	if errors.Is(err, tools.ErrInvalidCommandFormat) {
-		Logger.Error(
-			`error commands format`,
-			zap.String("command", commandContent),
-		)
-		firstRawOutput = commandsRegexp.ReplaceAllString(firstRawOutput, "<|Commands|>: None<eoc>")
+	// invalid commands output => log & replace inner thoughts
+	if err != nil {
+		if errors.Is(err, tools.ErrInvalidCommandFormat) {
+			Logger.Error(
+				`error commands format`,
+				zap.String("command", commandContent),
+			)
+		}
 		if innerThoughtsPostprocess {
 			firstRawOutput = innerThoughtsRegexp.ReplaceAllString(firstRawOutput, "<|Inner Thoughts|>: None<eot>")
 		}
 	}
+	// valid/invalid commands output replace <|Commands|>
+	firstRawOutput = commandsRegexp.ReplaceAllString(firstRawOutput, "<|Commands|>: "+newCommandString+"<eoc>") // there is a space after colon
 
 	if ctx != nil && ctx.connectionClosed.Load() {
 		return interruptError
@@ -424,7 +440,7 @@ func inferListener(
 					}
 
 					// if sensitive, jump out and record
-					return sensitiveError
+					return ErrSensitive
 				}
 
 				err = ctx.c.WriteJSON(InferResponseModel{
@@ -463,7 +479,7 @@ func inferListener(
 						}
 
 						// if sensitive, jump out and record
-						return sensitiveError
+						return ErrSensitive
 					}
 				}
 				err = ctx.c.WriteJSON(InferResponseModel{
@@ -636,6 +652,7 @@ func ReceiveInferResponse(c *websocket.Conn) {
 }
 
 func InferPreprocess(input, prefix string) (formattedText string) {
+	input = mossSpecialTokenRegexp.ReplaceAllString(input, " ")
 	return prefix + fmt.Sprintf("<|Human|>: %s<eoh>\n", input)
 }
 

@@ -3,33 +3,35 @@ package config
 import "MOSS_backend/models"
 
 type Response struct {
-	Region              string                `json:"region"`
-	InviteRequired      bool                  `json:"invite_required"`
-	Notice              string                `json:"notice"`
-	DefaultPluginConfig map[string]bool       `json:"default_plugin_config"`
-	ModelConfig         []ModelConfigResponse `json:"model_config"`
+	Region         string                `json:"region"`
+	InviteRequired bool                  `json:"invite_required"`
+	Notice         string                `json:"notice"`
+	ModelConfig    []ModelConfigResponse `json:"model_config"`
 }
 
 type ModelConfigResponse struct {
-	ID          int    `json:"id"`
-	Description string `json:"description"`
+	ID                  int             `json:"id"`
+	Description         string          `json:"description"`
+	DefaultPluginConfig map[string]bool `json:"default_plugin_config"`
 }
 
 func FromModelConfig(modelConfig []models.ModelConfig) []ModelConfigResponse {
 	var response []ModelConfigResponse
 	for _, config := range modelConfig {
 		response = append(response, ModelConfigResponse{
-			ID:          config.ID,
-			Description: config.Description,
+			ID:                  config.ID,
+			Description:         config.Description,
+			DefaultPluginConfig: config.DefaultPluginConfig,
 		})
 	}
 	return response
 }
 
 type ModelConfigRequest struct {
-	ID                       *int    `json:"id" validate:"min=1"`
-	InnerThoughtsPostprocess *bool   `json:"inner_thoughts_postprocess" validate:"omitempty,oneof=true false"`
-	Description              *string `json:"description" validate:"omitempty"`
+	ID                       *int            `json:"id" validate:"min=1"`
+	InnerThoughtsPostprocess *bool           `json:"inner_thoughts_postprocess" validate:"omitempty,oneof=true false"`
+	Description              *string         `json:"description" validate:"omitempty"`
+	DefaultPluginConfig      *map[string]bool `json:"default_plugin_config" validate:"omitempty"`
 }
 
 type ModifyModelConfigRequest struct {

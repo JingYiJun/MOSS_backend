@@ -6,10 +6,11 @@ import (
 )
 
 type ModelConfig struct {
-	ID                       int    `json:"id"`
-	InnerThoughtsPostprocess bool   `json:"inner_thoughts_postprocess" default:"false"`
-	Description              string `json:"description"`
-	Url                      string `json:"url"`
+	ID                       int             `json:"id"`
+	InnerThoughtsPostprocess bool            `json:"inner_thoughts_postprocess" default:"false"`
+	Description              string          `json:"description"`
+	DefaultPluginConfig      map[string]bool `json:"default_plugin_config" gorm:"serializer:json"`
+	Url                      string          `json:"url"`
 }
 
 func (cfg *ModelConfig) TableName() string {
@@ -36,7 +37,7 @@ func LoadConfig(configObjectPtr *Config) error {
 			return err
 		}
 		_ = config.SetCache(configCacheName, *configObjectPtr, configCacheExpire)
-	} 
+	}
 	return nil
 }
 
@@ -47,4 +48,18 @@ func UpdateConfig(configObjectPtr *Config) error {
 	}
 	_ = config.SetCache(configCacheName, *configObjectPtr, configCacheExpire)
 	return nil
+}
+
+func GetPluginConfig(modelID int) (map[string]bool, error) {
+	var config Config
+	if err := LoadConfig(&config); err != nil {
+		return nil, err
+	}
+	for _, modelConfig := range config.ModelConfig {
+		if modelConfig.ID == modelID {
+			return modelConfig.DefaultPluginConfig, nil
+		}
+	}
+	// if not found, return default config of first model
+	return config.ModelConfig[0].DefaultPluginConfig, nil
 }

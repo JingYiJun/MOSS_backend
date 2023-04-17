@@ -25,27 +25,31 @@ type CommandStatusModel struct {
 
 const maxCommandNumber = 4
 
-var commandsFormatRegexp = regexp.MustCompile(`(Search|Solve|Calculate|Text2Image)\("([\s\S]+?)"\)(, *?(Search|Solve|Calculate|Text2Image)\("([\s\S]+?)"\))*`)
-var commandSplitRegexp = regexp.MustCompile(`(Search|Solve|Calculate|Text2Image)\("([\s\S]+?)"\)`)
+var commandsFormatRegexp = regexp.MustCompile(`\w+\("([\s\S]+?)"\)(, *?\w+\("([\s\S]+?)"\))*`)
+var commandSplitRegexp = regexp.MustCompile(`(\w+)\("([\s\S]+?)"\)`)
 var commandOrder = map[string]int{"Search": 1, "Calculate": 2, "Solve": 3, "Text2Image": 4}
+var Command2Description = map[string]string{"Search": "Web search", "Calculate": "Calculator", "Solve": "Equation solver", "Text2Image": "Text-to-image" }
 var ErrInvalidCommandFormat = errors.New("commands format error")
+var ErrCommandIsNotNone = errors.New("command is not none")
 
-func Execute(c *websocket.Conn, rawCommand string) (*ResultTotalModel, error) {
+func Execute(c *websocket.Conn, rawCommand string, pluginConfig map[string]bool) (*ResultTotalModel, string, error) {
 	if rawCommand == "None" || rawCommand == "none" {
-		return NoneResultTotalModel, nil
+		return NoneResultTotalModel, "None", ErrCommandIsNotNone
 	}
 	if !config.Config.EnableTools {
-		return NoneResultTotalModel, nil
+		return NoneResultTotalModel, "None", ErrCommandIsNotNone
 	}
 	if command := commandsFormatRegexp.FindString(rawCommand); command != rawCommand {
-		return NoneResultTotalModel, ErrInvalidCommandFormat
+		return NoneResultTotalModel, "None", ErrInvalidCommandFormat
 	}
 	// commands is like: [[Search("A"), Search, A,] [Solve("B"), Solve, B] [Search("C"), Search, C]]
 	commands := commandSplitRegexp.FindAllStringSubmatch(rawCommand, -1)
 
-	if len(commands) == 0 {
-		return NoneResultTotalModel, ErrInvalidCommandFormat
+	commands, newCommandString, err := filterCommand(commands, pluginConfig)
+	if err != nil {
+		return NoneResultTotalModel, "None", err
 	}
+
 	// sort, search should be at first
 	sort.Slice(commands, func(i, j int) bool {
 		return commandOrder[commands[i][1]] < commandOrder[commands[j][1]]
@@ -107,11 +111,11 @@ func Execute(c *websocket.Conn, rawCommand string) (*ResultTotalModel, error) {
 	}
 
 	if resultsBuilder.String() == "" {
-		return NoneResultTotalModel, nil
+		return NoneResultTotalModel, "None", nil
 	}
 
 	resultTotal.Result = resultsBuilder.String()
-	return resultTotal, nil
+	return resultTotal, newCommandString, nil
 }
 
 func (s *scheduler) NewTask(action string, args string) task {
@@ -154,6 +158,29 @@ func sendCommandStatus(c *websocket.Conn, id int, action, args, StatusString str
 	}); err != nil {
 		utils.Logger.Error("fail to send command status", zap.Error(err))
 	}
+}
+
+func filterCommand(commands [][]string, pluginConfig map[string]bool) ([][]string, string, error) {
+	var newCommandBuilder strings.Builder
+	var validCommands = make([][]string, 0, len(commands))
+	for i := range commands {
+		if description, ok := Command2Description[commands[i][1]]; !ok {
+			continue
+		} else {
+			if v, ok := pluginConfig[description]; !ok || !v {
+				continue
+			}
+		}
+		validCommands = append(validCommands, commands[i])
+		if i > 0 {
+			newCommandBuilder.WriteString(", ")
+		}
+		newCommandBuilder.WriteString(commands[i][0])
+	}
+	if len(validCommands) == 0 {
+		return nil, "None", ErrCommandIsNotNone
+	}
+	return validCommands, newCommandBuilder.String(), nil
 }
 
 //func executeOnce(action string, args string, searchResultIndex *int) (string, map[string]any) {

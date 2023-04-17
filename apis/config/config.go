@@ -1,7 +1,6 @@
 package config
 
 import (
-	"MOSS_backend/config"
 	. "MOSS_backend/models"
 	. "MOSS_backend/utils"
 	"github.com/gofiber/fiber/v2"
@@ -35,7 +34,6 @@ func GetConfig(c *fiber.Ctx) error {
 		Region:              region,
 		InviteRequired:      configObject.InviteRequired,
 		Notice:              configObject.Notice,
-		DefaultPluginConfig: config.Config.DefaultPluginConfig,
 		ModelConfig:         FromModelConfig(configObject.ModelConfig),
 	})
 }
@@ -83,6 +81,9 @@ func PatchConfig(c *fiber.Ctx) error {
 					}
 					if newSingleCfg.InnerThoughtsPostprocess != nil {
 						configObject.ModelConfig[i].InnerThoughtsPostprocess = *(newSingleCfg.InnerThoughtsPostprocess)
+					}
+					if newSingleCfg.DefaultPluginConfig != nil {
+						configObject.ModelConfig[i].DefaultPluginConfig = *(newSingleCfg.DefaultPluginConfig)
 					}
 				}
 			}

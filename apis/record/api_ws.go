@@ -8,12 +8,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/gofiber/websocket/v2"
-	"go.uber.org/zap"
-	"gorm.io/gorm"
 	"log"
 	"strconv"
 	"sync/atomic"
+
+	"github.com/gofiber/websocket/v2"
+	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 // AddRecordAsync
@@ -55,7 +56,7 @@ func AddRecordAsync(c *websocket.Conn) {
 
 		// read body
 		if _, message, err = c.ReadMessage(); err != nil {
-			return fmt.Errorf("error receive message: %s\n", err)
+			return fmt.Errorf("error receive message: %s", err)
 		}
 
 		// unmarshal body
@@ -136,7 +137,7 @@ func AddRecordAsync(c *websocket.Conn) {
 
 			// async infer
 			err = InferAsync(c, oldRecord.Prefix, &record, user)
-			if err != nil && !errors.Is(err, sensitiveError) {
+			if err != nil && !errors.Is(err, ErrSensitive) {
 				//if httpError, ok := err.(*HttpError); ok && httpError.MessageType == MaxLength {
 				//	DB.Model(&chat).Update("max_length_exceeded", true)
 				//}
@@ -287,7 +288,7 @@ func RegenerateAsync(c *websocket.Conn) {
 
 		// async infer
 		err = InferAsync(c, prefixRecord.Prefix, &record, user)
-		if err != nil && !errors.Is(err, sensitiveError) {
+		if err != nil && !errors.Is(err, ErrSensitive) {
 			//
 			//if httpError, ok := err.(*HttpError); ok && httpError.MessageType == MaxLength {
 			//	DB.Model(&chat).Update("max_length_exceeded", true)
@@ -393,7 +394,7 @@ func InferWithoutLoginAsync(c *websocket.Conn) {
 
 		// read body
 		if _, message, err = c.ReadMessage(); err != nil {
-			return fmt.Errorf("error receive message: %s\n", err)
+			return fmt.Errorf("error receive message: %s", err)
 		}
 
 		// unmarshal body

@@ -83,9 +83,21 @@ func DeleteUserCacheByID(userID int) {
 func LoadUserByID(userID int) (*User, error) {
 	var user User
 	err := LoadUserByIDFromCache(userID, &user)
-
-	var defaultPluginConfig = config.Config.DefaultPluginConfig
+	if err != nil { // something wrong in DB.Take() in LoadUserByIDFromCache()
+		DeleteUserCacheByID(userID)
+		return nil, err
+	} 
 	updated := false
+
+	if user.ModelID == 0 {
+		user.ModelID = 1
+		DB.Model(&user).Select("ModelID").Updates(&user)
+		updated = true
+	}
+
+	var defaultPluginConfig map[string]bool
+	defaultPluginConfig, err = GetPluginConfig(user.ModelID)
+	
 	if user.PluginConfig == nil {
 		user.PluginConfig = make(map[string]bool)
 		for key, value := range defaultPluginConfig {
@@ -114,15 +126,7 @@ func LoadUserByID(userID int) (*User, error) {
 		}
 	}
 
-	if user.ModelID == 0 {
-		user.ModelID = 1
-		DB.Model(&user).Select("ModelID").Updates(&user)
-		updated = true
-	}
-
-	if err != nil { // something wrong in DB.Take() in LoadUserByIDFromCache()
-		DeleteUserCacheByID(userID)
-	} else if updated {
+	if updated {
 		err = config.SetCache(GetUserCacheKey(userID), user, UserCacheExpire)
 	}
 	return &user, err

@@ -56,7 +56,7 @@ var Config struct {
 	ToolsSolveUrl     string `env:"TOOLS_SOLVE_URL,required"`
 	ToolsDrawUrl      string `env:"TOOLS_DRAW_URL,required"`
 
-	DefaultPluginConfig map[string]bool `env:"DEFAULT_PLUGIN_CONFIG"`
+	// DefaultPluginConfig map[string]bool `env:"DEFAULT_PLUGIN_CONFIG"`
 
 	// InnerThoughtsPostprocess bool `env:"INNER_THOUGHTS_POSTPROCESS" envDefault:"false"`
 }
