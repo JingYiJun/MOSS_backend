@@ -2,6 +2,7 @@ package models
 
 import (
 	"MOSS_backend/config"
+	"log"
 	"time"
 )
 
@@ -44,6 +45,7 @@ func LoadConfig(configObjectPtr *Config) error {
 func UpdateConfig(configObjectPtr *Config) error {
 	err := DB.Model(&Config{}).Updates(configObjectPtr).Error
 	if err != nil {
+		log.Println(err)
 		return err
 	}
 	_ = config.SetCache(configCacheName, *configObjectPtr, configCacheExpire)
