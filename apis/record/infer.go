@@ -153,22 +153,33 @@ func InferCommon(
 		return unknownError
 	}
 
-	// get first output Commands
+	// replace invalid <|Commands|> <eo\w> to <eoc>
 	commands := commandsRegexp.FindStringSubmatch(firstFormattedNewGenerations)
 	if len(commands) != 3 {
 		Logger.Error("error format first output", zap.String("new_generations", firstFormattedNewGenerations))
 		return unknownError
-	}
-	rawCommand := strings.Trim(commands[1], " ")
-
-	// replace <|Commands|> <eo\w> to <eoc>
-	if commands[2] != "<eoc>" {
+	} else if commands[2] != "<eoc>" { // replace <|Commands|> <eo\w> to <eoc>
 		Logger.Error(
 			"error <|Commands|> not end with <eoc>",
 			zap.String("new_generations", firstFormattedNewGenerations),
 		)
 		firstFormattedNewGenerations = commandsRegexp.ReplaceAllString(firstFormattedNewGenerations, "<|Commands|>:$1<eoc>")
 	}
+
+	// replace invalid <|Inner Thoughts|> <eo\w> to <eot>
+	innerThoughtsOutputSlice := innerThoughtsRegexp.FindStringSubmatch(firstFormattedNewGenerations)
+	if len(innerThoughtsOutputSlice) != 3 {
+		Logger.Error("error format first output", zap.String("new_generations", firstFormattedNewGenerations))
+		return unknownError
+	} else if innerThoughtsOutputSlice[2] != "<eot>" {
+		Logger.Error(
+			"error <|Inner Thoughts|> not end with <eot>",
+			zap.String("new_generations", firstFormattedNewGenerations),
+		)
+		firstFormattedNewGenerations = innerThoughtsRegexp.ReplaceAllString(firstFormattedNewGenerations, "<|Inner Thoughts|>:$1<eot>")
+	}
+	// get first output Commands
+	rawCommand := strings.Trim(commands[1], " ")
 
 	// get results from tools
 	var results *tools.ResultTotalModel
@@ -244,7 +255,7 @@ func InferCommon(
 
 	// second output check format
 	secondFormattedNewGenerations := "<|MOSS|>:" + inferTriggerResults.NewGeneration
-	if !mossRegexp.MatchString(secondFormattedNewGenerations) {
+	if !secondGenerationsFormatRegexp.MatchString(secondFormattedNewGenerations) {
 		Logger.Error(
 			"error format second output",
 			zap.String("new_generations", secondFormattedNewGenerations),
@@ -252,8 +263,18 @@ func InferCommon(
 		return unknownError
 	}
 
-	// cut output
+	// replace invalid <|MOSS|> <eo\w> to <eom>
 	mossOutputSlice := mossRegexp.FindStringSubmatch(secondFormattedNewGenerations)
+	if len(mossOutputSlice) != 3 {
+		Logger.Error("error format second output", zap.String("new_generations", secondFormattedNewGenerations))
+		return unknownError
+	} else if mossOutputSlice[2] != "<eom>" {
+		Logger.Error(
+			"error <|MOSS|> not end with <eom>",
+			zap.String("new_generations", secondFormattedNewGenerations),
+		)
+		secondFormattedNewGenerations = mossRegexp.ReplaceAllString(secondFormattedNewGenerations, "<|MOSS|>:$1<eom>")
+	}
 
 	// save to record
 	record.Prefix = inferTriggerResults.Output + "\n" // save record prefix for next inference

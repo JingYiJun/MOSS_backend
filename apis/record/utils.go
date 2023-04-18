@@ -8,13 +8,14 @@ import (
 
 // regexps
 var (
-	endContentRegexp             = regexp.MustCompile(`<[es]o\w>`)
-	mossSpecialTokenRegexp       = regexp.MustCompile(`<eo[tcrmh]>`)
-	resultsRegexp                = regexp.MustCompile(`<\|Results\|>:[\s\S]+?<eor>`) // not greedy
-	commandsRegexp               = regexp.MustCompile(`<\|Commands\|>:([\s\S]+?)(<eo\w>)`)
-	mossRegexp                   = regexp.MustCompile(`<\|MOSS\|>:([\s\S]+?)<eo\w>`)
-	innerThoughtsRegexp          = regexp.MustCompile(`<\|Inner Thoughts\|>:([\s\S]+?)<eo\w>`)
-	firstGenerationsFormatRegexp = regexp.MustCompile(`^<\|Inner Thoughts\|>:([\s\S]+?)<eo\w>\n<\|Commands\|>:([\s\S]+?)<eo\w>$`)
+	endContentRegexp              = regexp.MustCompile(`<[es]o\w>`)
+	mossSpecialTokenRegexp        = regexp.MustCompile(`<eo[tcrmh]>`)
+	innerThoughtsRegexp           = regexp.MustCompile(`<\|Inner Thoughts\|>:([\s\S]+?)(<eo\w>)`)
+	commandsRegexp                = regexp.MustCompile(`<\|Commands\|>:([\s\S]+?)(<eo\w>)`)
+	resultsRegexp                 = regexp.MustCompile(`<\|Results\|>:[\s\S]+?<eor>`) // not greedy
+	mossRegexp                    = regexp.MustCompile(`<\|MOSS\|>:([\s\S]+?)(<eo\w>)`)
+	secondGenerationsFormatRegexp = regexp.MustCompile(`^<\|MOSS\|>:[\s\S]+?<eo\w>$`)
+	firstGenerationsFormatRegexp  = regexp.MustCompile(`^<\|Inner Thoughts\|>:[\s\S]+?<eo\w>\n<\|Commands\|>:[\s\S]+?<eo\w>$`)
 )
 
 //var maxLengthExceededError = BadRequest("The maximum context length is exceeded").WithMessageType(MaxLength)
