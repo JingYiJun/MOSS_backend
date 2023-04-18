@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -95,7 +94,7 @@ func (t *searchTask) postprocess() (r *ResultModel) {
 
 	defer func() {
 		if something := recover(); something != nil {
-			log.Println(something)
+			utils.Logger.Error("search postprocess panic", zap.Any("something", something))
 			r = NoneResultModel
 		}
 	}()
