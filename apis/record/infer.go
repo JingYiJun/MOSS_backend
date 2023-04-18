@@ -656,7 +656,7 @@ func ReceiveInferResponse(c *websocket.Conn) {
 
 func InferPreprocess(input, prefix string) (formattedText string) {
 	input = mossSpecialTokenRegexp.ReplaceAllString(input, " ")
-	return prefix + fmt.Sprintf("<|Human|>: %s<eoh>\n", input)
+	return prefix + fmt.Sprintf("<|Human|>: %s<eoh>\n<|Inner Thoughts|>:", input)
 }
 
 func InferWriteResult(results, prefix string) string {
