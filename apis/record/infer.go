@@ -13,7 +13,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"regexp"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -23,30 +22,6 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
-
-var endContentRegexp = regexp.MustCompile(`<[es]o\w>`)
-
-var mossSpecialTokenRegexp = regexp.MustCompile(`<eot>|<eoc>|<eor>|<eom>|<eoh>`)
-
-var resultsRegexp = regexp.MustCompile(`<[|]Results[|]>:[\s\S]+?<eor>`) // not greedy
-
-var commandsRegexp = regexp.MustCompile(`<\|Commands\|>:([\s\S]+?)<eo\w>`)
-
-var mossRegexp = regexp.MustCompile(`<\|MOSS\|>:([\s\S]+?)<eo\w>`)
-
-var innerThoughtsRegexp = regexp.MustCompile(`<\|Inner Thoughts\|>:([\s\S]+?)<eo\w>`)
-
-//var maxLengthExceededError = BadRequest("The maximum context length is exceeded").WithMessageType(MaxLength)
-
-var maxInputExceededError = BadRequest("单次输入限长为 1000 字符。Input no more than 1000 characters").WithMessageType(MaxLength)
-
-var maxInputExceededFromInferError = BadRequest("单次输入超长，请减少字数并重试。Input max length exceeded, please reduce length and try again").WithMessageType(MaxLength)
-
-var unknownError = InternalServerError("未知错误，请刷新或等待一分钟后再试。Unknown error, please refresh or wait a minute and try again")
-
-var ErrSensitive = errors.New("sensitive")
-
-var interruptError = NoStatus("client interrupt")
 
 type InferResponseModel struct {
 	Status     int    `json:"status"` // 1 for output, 0 for end, -1 for error, -2 for sensitive
@@ -88,7 +63,10 @@ func InferCommon(
 		defaultPluginConfig      map[string]bool
 		pluginConfig             = map[string]bool{}
 		configObject             Config
+		rawContentBuilder        strings.Builder
 	)
+
+	// load config
 	err = LoadConfig(&configObject)
 	if err != nil {
 		return err
@@ -122,25 +100,25 @@ func InferCommon(
 		}
 	}
 
+	// prefix replace
 	cleanedPrefix := resultsRegexp.ReplaceAllString(prefix, "<|Results|>: None<eor>")
 
 	/* first infer */
 	// generate request
 	uuidText = strings.ReplaceAll(uuid.NewString(), "-", "")
-	formattedText := InferPreprocess(record.Request, cleanedPrefix)
-	request["x"] = formattedText
+	input := mossSpecialTokenRegexp.ReplaceAllString(record.Request, " ") // replace special token
+	firstFormattedInput := fmt.Sprintf("<|Human|>: %s<eoh>\n", input)
+	request["x"] = fmt.Sprintf(
+		"%s%s<|Inner Thoughts|>:",
+		cleanedPrefix,
+		firstFormattedInput, // <|Human|>: xxx<eoh>\n
+	)
 
 	if ctx != nil {
 		wg1.Add(1)
 		// start a listener
 		go func() {
-			innerErr = inferListener(
-				record,
-				uuidText,
-				user,
-				*ctx,
-				"Inner Thoughts",
-			)
+			innerErr = inferListener(record, uuidText, user, *ctx, "Inner Thoughts")
 			wg1.Done()
 		}()
 
@@ -149,7 +127,7 @@ func InferCommon(
 
 	// construct data to send
 	data, _ := json.Marshal(request)
-	output, duration, err := inferTrigger(data, inferUrl) // block here
+	inferTriggerResults, err := inferTrigger(data, inferUrl) // block here
 	if err != nil {
 		return err
 	}
@@ -164,43 +142,41 @@ func InferCommon(
 		}
 	}
 
-	// middle process
-	firstOutput := strings.Trim(output, " \t\n")
-
-	humanIndex := strings.LastIndex(firstOutput, "<|Human|>:")
-	if humanIndex == -1 {
-		Logger.Error(`error find "<|Human|>:"`, zap.String("output", firstOutput))
-		return InternalServerError()
-	}
-	firstRawOutput := firstOutput[humanIndex:]
-	subsetIndex := commandsRegexp.FindStringSubmatchIndex(firstRawOutput)
-	// subsetIndex: [CommandsStructStartIndex CommandsStructEndIndex, CommandsContentStartIndex, CommandsContentEndIndex]
-
-	if len(subsetIndex) < 4 {
-		Logger.Error(`error find "<|Commands|>:"`, zap.String("output", firstOutput))
-		return InternalServerError()
+	/* middle process */
+	// check if first output is valid
+	firstFormattedNewGenerations := "<|Inner Thoughts|>:" + inferTriggerResults.NewGeneration
+	if !firstGenerationsFormatRegexp.MatchString(firstFormattedNewGenerations) {
+		Logger.Error(
+			"error format first output",
+			zap.String("new_generations", firstFormattedNewGenerations),
+		)
+		return unknownError
 	}
 
-	firstRawOutput = firstRawOutput[:subsetIndex[1]]
-	commandContent := strings.Trim(firstRawOutput[subsetIndex[2]:subsetIndex[3]], " \n")
+	// get first output Commands
+	commands := commandsRegexp.FindStringSubmatch(firstFormattedNewGenerations)
+	if len(commands) != 3 {
+		Logger.Error("error format first output", zap.String("new_generations", firstFormattedNewGenerations))
+		return unknownError
+	}
+	rawCommand := strings.Trim(commands[1], " ")
 
 	// replace <|Commands|> <eo\w> to <eoc>
-	if !strings.HasSuffix(firstRawOutput, "<eoc>") {
+	if commands[2] != "<eoc>" {
 		Logger.Error(
 			"error <|Commands|> not end with <eoc>",
-			zap.String("output", firstOutput),
-			zap.String("raw_output", firstRawOutput),
+			zap.String("new_generations", firstFormattedNewGenerations),
 		)
+		firstFormattedNewGenerations = commandsRegexp.ReplaceAllString(firstFormattedNewGenerations, "<|Commands|>:$1<eoc>")
 	}
-	firstRawOutput = commandsRegexp.ReplaceAllString(firstRawOutput, "<|Commands|>:$1<eoc>")
 
 	// get results from tools
 	var results *tools.ResultTotalModel
 	var newCommandString string
 	if ctx != nil {
-		results, newCommandString, err = tools.Execute(ctx.c, commandContent, pluginConfig)
+		results, newCommandString, err = tools.Execute(ctx.c, rawCommand, pluginConfig)
 	} else {
-		results, newCommandString, err = tools.Execute(nil, commandContent, pluginConfig)
+		results, newCommandString, err = tools.Execute(nil, rawCommand, pluginConfig)
 	}
 
 	// invalid commands output => log & replace inner thoughts
@@ -208,15 +184,18 @@ func InferCommon(
 		if errors.Is(err, tools.ErrInvalidCommandFormat) {
 			Logger.Error(
 				`error commands format`,
-				zap.String("command", commandContent),
+				zap.String("command", rawCommand),
 			)
 		}
 		if innerThoughtsPostprocess {
-			firstRawOutput = innerThoughtsRegexp.ReplaceAllString(firstRawOutput, "<|Inner Thoughts|>: None<eot>")
+			firstFormattedNewGenerations = innerThoughtsRegexp.ReplaceAllString(firstFormattedNewGenerations, "<|Inner Thoughts|>: None<eot>")
 		}
 	}
 	// valid/invalid commands output replace <|Commands|>
-	firstRawOutput = commandsRegexp.ReplaceAllString(firstRawOutput, "<|Commands|>: "+newCommandString+"<eoc>") // there is a space after colon
+	firstFormattedNewGenerations = commandsRegexp.ReplaceAllString(
+		firstFormattedNewGenerations,
+		"<|Commands|>: "+newCommandString+"<eoc>",
+	) // there is a space after colon
 
 	if ctx != nil && ctx.connectionClosed.Load() {
 		return interruptError
@@ -226,20 +205,20 @@ func InferCommon(
 
 	// generate new formatted text and uuid
 	uuidText = strings.ReplaceAll(uuid.NewString(), "-", "")
-	formattedText = InferWriteResult(results.Result, cleanedPrefix+firstRawOutput+"\n")
-	request["x"] = formattedText
+	secondFormattedInput := fmt.Sprintf("<|Results|>: %s<eor>\n", results.Result)
+	request["x"] = fmt.Sprintf(
+		"%s%s%s\n%s<|MOSS|>:",
+		cleanedPrefix,                // context
+		firstFormattedInput,          // <|Human|>: xxx<eoh>\n
+		firstFormattedNewGenerations, // <|Inner Thoughts|>: xxx<eot>\n<|Commands|>: xxx<eoc>
+		secondFormattedInput,         // <|Results|>: xxx<eor>\n
+	)
 
 	if ctx != nil {
 		wg2.Add(1)
 		// start a new listener
 		go func() {
-			innerErr = inferListener(
-				record,
-				uuidText,
-				user,
-				*ctx,
-				"MOSS",
-			)
+			innerErr = inferListener(record, uuidText, user, *ctx, "MOSS")
 			wg2.Done()
 		}()
 
@@ -248,7 +227,7 @@ func InferCommon(
 
 	// infer
 	data, _ = json.Marshal(request)
-	secondOutput, duration, err := inferTrigger(data, inferUrl)
+	inferTriggerResults, err = inferTrigger(data, inferUrl)
 	if err != nil {
 		return err
 	}
@@ -263,28 +242,33 @@ func InferCommon(
 		}
 	}
 
-	// cut out this turn
-	humanIndex = strings.LastIndex(secondOutput, "<|Human|>:")
-	if humanIndex == -1 {
-		Logger.Error(`error find "<|Human|>:"`, zap.String("output", secondOutput))
-		return InternalServerError()
+	// second output check format
+	secondFormattedNewGenerations := "<|MOSS|>:" + inferTriggerResults.NewGeneration
+	if !mossRegexp.MatchString(secondFormattedNewGenerations) {
+		Logger.Error(
+			"error format second output",
+			zap.String("new_generations", secondFormattedNewGenerations),
+		)
+		return unknownError
 	}
-	secondRawOutput := secondOutput[humanIndex:]
 
-	// get moss output
-	mossOutputSlice := mossRegexp.FindStringSubmatch(secondRawOutput)
-	if len(mossOutputSlice) < 2 {
-		Logger.Error(`error find "<|MOSS|>:"`, zap.String("output", secondOutput))
-		return InternalServerError()
-	}
+	// cut output
+	mossOutputSlice := mossRegexp.FindStringSubmatch(secondFormattedNewGenerations)
 
 	// save to record
-	record.Prefix = secondOutput + "\n" // save record prefix for next inference
+	record.Prefix = inferTriggerResults.Output + "\n" // save record prefix for next inference
 	record.Response = strings.Trim(mossOutputSlice[1], " ")
-	record.Duration = duration
+	record.Duration = inferTriggerResults.Duration
 	record.ExtraData = results.ExtraData
 	record.ProcessedExtraData = results.ProcessedExtraData
-	record.RawContent = secondRawOutput
+
+	rawContentBuilder.WriteString(firstFormattedInput)
+	rawContentBuilder.WriteString(firstFormattedNewGenerations)
+	rawContentBuilder.WriteString("\n")
+	rawContentBuilder.WriteString(secondFormattedInput)
+	rawContentBuilder.WriteString(secondFormattedNewGenerations)
+	rawContentBuilder.WriteString("\n")
+	record.RawContent = rawContentBuilder.String()
 
 	// end
 	if ctx != nil {
@@ -503,7 +487,13 @@ func inferListener(
 	}
 }
 
-func inferTrigger(data []byte, inferUrl string) (string, float64, error) {
+type InferTriggerResponse struct {
+	Output        string  `json:"output"`
+	NewGeneration string  `json:"new_generation"`
+	Duration      float64 `json:"duration"`
+}
+
+func inferTrigger(data []byte, inferUrl string) (*InferTriggerResponse, error) {
 	startTime := time.Now()
 	rsp, err := inferHttpClient.Post(inferUrl, "application/json", bytes.NewBuffer(data)) // take the ownership of data
 	if err != nil {
@@ -511,7 +501,7 @@ func inferTrigger(data []byte, inferUrl string) (string, float64, error) {
 			"post inference error",
 			zap.Error(err),
 		)
-		return "", 0, InternalServerError("inference server error")
+		return nil, InternalServerError("inference server error")
 	}
 
 	defer func() {
@@ -521,7 +511,7 @@ func inferTrigger(data []byte, inferUrl string) (string, float64, error) {
 	response, err := io.ReadAll(rsp.Body)
 	if err != nil {
 		Logger.Error("fail to read response body", zap.Error(err))
-		return "", 0, InternalServerError()
+		return nil, InternalServerError()
 	}
 
 	latency := int(time.Since(startTime))
@@ -535,17 +525,18 @@ func inferTrigger(data []byte, inferUrl string) (string, float64, error) {
 			zap.ByteString("body", response),
 		)
 		if rsp.StatusCode == 400 {
-			return "", duration, maxInputExceededFromInferError
+			return nil, maxInputExceededFromInferError
 		} else if rsp.StatusCode == 560 {
-			return "", duration, unknownError
+			return nil, unknownError
 		} else if rsp.StatusCode >= 500 {
-			return "", duration, InternalServerError()
+			return nil, InternalServerError()
 		} else {
-			return "", duration, unknownError
+			return nil, unknownError
 		}
 	} else {
 		var responseStruct struct {
 			Pred                   string `json:"pred"`
+			NewGenerations         string `json:"new_generations"`
 			InputTokenNum          int    `json:"input_token_num"`
 			NewGenerationsTokenNum int    `json:"new_generations_token_num"`
 		}
@@ -553,9 +544,9 @@ func inferTrigger(data []byte, inferUrl string) (string, float64, error) {
 		if err != nil {
 			responseString := string(response)
 			if responseString == "400" {
-				return "", duration, maxInputExceededFromInferError
+				return nil, maxInputExceededFromInferError
 			} else if responseString == "560" {
-				return "", duration, unknownError
+				return nil, unknownError
 			} else {
 				Logger.Error(
 					"unable to unmarshal response from infer",
@@ -563,18 +554,23 @@ func inferTrigger(data []byte, inferUrl string) (string, float64, error) {
 					zap.Error(err),
 				)
 			}
-			return "", duration, InternalServerError()
+			return nil, InternalServerError()
 		} else {
 			Logger.Info(
 				"inference success",
 				zap.ByteString("request", data),
 				zap.Int("latency", latency),
 				zap.String("pred", responseStruct.Pred),
+				zap.String("new_generations", responseStruct.NewGenerations),
 				zap.Int("input_token_num", responseStruct.InputTokenNum),
 				zap.Int("new_generations_token_num", responseStruct.NewGenerationsTokenNum),
 				zap.Float64("average", float64(latency)/float64(responseStruct.NewGenerationsTokenNum)),
 			)
-			return responseStruct.Pred, duration, nil
+			return &InferTriggerResponse{
+				Output:        responseStruct.Pred,
+				NewGeneration: responseStruct.NewGenerations,
+				Duration:      duration,
+			}, nil
 		}
 	}
 }
@@ -652,15 +648,6 @@ func ReceiveInferResponse(c *websocket.Conn) {
 			return
 		}
 	}
-}
-
-func InferPreprocess(input, prefix string) (formattedText string) {
-	input = mossSpecialTokenRegexp.ReplaceAllString(input, " ")
-	return prefix + fmt.Sprintf("<|Human|>: %s<eoh>\n<|Inner Thoughts|>:", input)
-}
-
-func InferWriteResult(results, prefix string) string {
-	return prefix + fmt.Sprintf("<|Results|>: %s<eor>\n<|MOSS|>:", results)
 }
 
 func InferPostprocess(output string) (tidyOutput string) {

@@ -61,15 +61,15 @@ func UpdateConfig(configObjectPtr *Config) error {
 }
 
 func GetPluginConfig(modelID int) (map[string]bool, error) {
-	var config Config
-	if err := LoadConfig(&config); err != nil {
+	var configObject Config
+	if err := LoadConfig(&configObject); err != nil {
 		return nil, err
 	}
-	for _, modelConfig := range config.ModelConfig {
+	for _, modelConfig := range configObject.ModelConfig {
 		if modelConfig.ID == modelID {
 			return modelConfig.DefaultPluginConfig, nil
 		}
 	}
 	// if not found, return default config of first model
-	return config.ModelConfig[0].DefaultPluginConfig, nil
+	return configObject.ModelConfig[0].DefaultPluginConfig, nil
 }

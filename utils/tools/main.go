@@ -25,10 +25,10 @@ type CommandStatusModel struct {
 
 const maxCommandNumber = 4
 
-var commandsFormatRegexp = regexp.MustCompile(`\w+\("([\s\S]+?)"\)(, *?\w+\("([\s\S]+?)"\))*`)
+var commandsFormatRegexp = regexp.MustCompile(`^\w+\("([\s\S]+?)"\)(, *?\w+\("([\s\S]+?)"\))*$`)
 var commandSplitRegexp = regexp.MustCompile(`(\w+)\("([\s\S]+?)"\)`)
 var commandOrder = map[string]int{"Search": 1, "Calculate": 2, "Solve": 3, "Text2Image": 4}
-var Command2Description = map[string]string{"Search": "Web search", "Calculate": "Calculator", "Solve": "Equation solver", "Text2Image": "Text-to-image" }
+var Command2Description = map[string]string{"Search": "Web search", "Calculate": "Calculator", "Solve": "Equation solver", "Text2Image": "Text-to-image"}
 var ErrInvalidCommandFormat = errors.New("commands format error")
 var ErrCommandIsNotNone = errors.New("command is not none")
 
@@ -39,7 +39,7 @@ func Execute(c *websocket.Conn, rawCommand string, pluginConfig map[string]bool)
 	if !config.Config.EnableTools {
 		return NoneResultTotalModel, "None", ErrCommandIsNotNone
 	}
-	if command := commandsFormatRegexp.FindString(rawCommand); command != rawCommand {
+	if !commandsFormatRegexp.MatchString(rawCommand) {
 		return NoneResultTotalModel, "None", ErrInvalidCommandFormat
 	}
 	// commands is like: [[Search("A"), Search, A,] [Solve("B"), Solve, B] [Search("C"), Search, C]]
