@@ -56,8 +56,7 @@ func InferCommon(
 		innerErr                 error
 		request                  = map[string]any{}
 		uuidText                 string
-		wg1                      sync.WaitGroup
-		wg2                      sync.WaitGroup
+		wg                       sync.WaitGroup
 		inferUrl                 string
 		innerThoughtsPostprocess bool
 		defaultPluginConfig      map[string]bool
@@ -105,7 +104,6 @@ func InferCommon(
 
 	/* first infer */
 	// generate request
-	uuidText = strings.ReplaceAll(uuid.NewString(), "-", "")
 	input := mossSpecialTokenRegexp.ReplaceAllString(record.Request, " ") // replace special token
 	firstFormattedInput := fmt.Sprintf("<|Human|>: %s<eoh>\n", input)
 	request["x"] = fmt.Sprintf(
@@ -114,32 +112,11 @@ func InferCommon(
 		firstFormattedInput, // <|Human|>: xxx<eoh>\n
 	)
 
-	if ctx != nil {
-		wg1.Add(1)
-		// start a listener
-		go func() {
-			innerErr = inferListener(record, uuidText, user, *ctx, "Inner Thoughts")
-			wg1.Done()
-		}()
-
-		request["url"] = config.Config.CallbackUrl + "?uuid=" + uuidText
-	}
-
 	// construct data to send
 	data, _ := json.Marshal(request)
 	inferTriggerResults, err := inferTrigger(data, inferUrl) // block here
 	if err != nil {
 		return err
-	}
-
-	if ctx != nil {
-		wg1.Wait()
-		if innerErr != nil {
-			return innerErr
-		}
-		if ctx.connectionClosed.Load() {
-			return interruptError
-		}
 	}
 
 	/* middle process */
@@ -154,11 +131,11 @@ func InferCommon(
 	}
 
 	// replace invalid <|Commands|> <eo\w> to <eoc>
-	commands := commandsRegexp.FindStringSubmatch(firstFormattedNewGenerations)
-	if len(commands) != 3 {
+	commandsOutputSlice := commandsRegexp.FindStringSubmatch(firstFormattedNewGenerations)
+	if len(commandsOutputSlice) != 3 {
 		Logger.Error("error format first output", zap.String("new_generations", firstFormattedNewGenerations))
 		return unknownError
-	} else if commands[2] != "<eoc>" { // replace <|Commands|> <eo\w> to <eoc>
+	} else if commandsOutputSlice[2] != "<eoc>" { // replace <|Commands|> <eo\w> to <eoc>
 		Logger.Error(
 			"error <|Commands|> not end with <eoc>",
 			zap.String("new_generations", firstFormattedNewGenerations),
@@ -178,8 +155,9 @@ func InferCommon(
 		)
 		firstFormattedNewGenerations = innerThoughtsRegexp.ReplaceAllString(firstFormattedNewGenerations, "<|Inner Thoughts|>:$1<eot>")
 	}
-	// get first output Commands
-	rawCommand := strings.Trim(commands[1], " ")
+	// get first output Commands and InnerThoughts
+	rawInnerThoughts := strings.Trim(innerThoughtsOutputSlice[1], " ")
+	rawCommand := strings.Trim(commandsOutputSlice[1], " ")
 
 	// get results from tools
 	var results *tools.ResultTotalModel
@@ -200,6 +178,7 @@ func InferCommon(
 		}
 		if innerThoughtsPostprocess {
 			firstFormattedNewGenerations = innerThoughtsRegexp.ReplaceAllString(firstFormattedNewGenerations, "<|Inner Thoughts|>: None<eot>")
+			rawInnerThoughts = "None"
 		}
 	}
 	// valid/invalid commands output replace <|Commands|>
@@ -226,11 +205,11 @@ func InferCommon(
 	)
 
 	if ctx != nil {
-		wg2.Add(1)
+		wg.Add(1)
 		// start a new listener
 		go func() {
 			innerErr = inferListener(record, uuidText, user, *ctx, "MOSS")
-			wg2.Done()
+			wg.Done()
 		}()
 
 		request["url"] = config.Config.CallbackUrl + "?uuid=" + uuidText
@@ -244,7 +223,7 @@ func InferCommon(
 	}
 
 	if ctx != nil {
-		wg2.Wait()
+		wg.Wait()
 		if innerErr != nil {
 			return innerErr
 		}
@@ -282,6 +261,7 @@ func InferCommon(
 	record.Duration = inferTriggerResults.Duration
 	record.ExtraData = results.ExtraData
 	record.ProcessedExtraData = results.ProcessedExtraData
+	record.InnerThoughts = rawInnerThoughts
 
 	rawContentBuilder.WriteString(firstFormattedInput)
 	rawContentBuilder.WriteString(firstFormattedNewGenerations)
@@ -678,6 +658,17 @@ func InferPostprocess(output string) (tidyOutput string) {
 		runeSlice = runeSlice[:len(runeSlice)-1]
 	}
 
+	output = strings.Trim(string(runeSlice), " ")
+
+	output = cutSuffix(output, "<", "<e", "<eo", "<eom", "<eom>")
+
 	// not cut
 	return output
+}
+
+func cutSuffix(s string, suffix ...string) string {
+	for _, suf := range suffix {
+		s, _ = strings.CutSuffix(s, suf)
+	}
+	return s
 }
