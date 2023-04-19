@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"golang.org/x/exp/slices"
 	"gorm.io/gorm"
+	"time"
 )
 
 // ListRecords
@@ -76,6 +77,17 @@ func AddRecord(c *fiber.Ctx) error {
 	user, err := LoadUser(c)
 	if err != nil {
 		return err
+	}
+
+	// check user lock
+	if _, ok := userLockMap.LoadOrStore(user.ID, UserLockValue{LockTime: time.Now()}); ok {
+		return userRequestingError
+	}
+	defer userLockMap.Delete(user.ID)
+
+	// infer limiter
+	if !inferLimiter.Allow() {
+		return unknownError
 	}
 
 	banned, err := user.CheckUserOffense()
@@ -192,6 +204,17 @@ func RetryRecord(c *fiber.Ctx) error {
 	err = DB.Take(&chat, chatID).Error
 	if err != nil {
 		return err
+	}
+
+	// check user lock
+	if _, ok := userLockMap.LoadOrStore(user.ID, UserLockValue{LockTime: time.Now()}); ok {
+		return userRequestingError
+	}
+	defer userLockMap.Delete(user.ID)
+
+	// infer limiter
+	if !inferLimiter.Allow() {
+		return unknownError
 	}
 
 	banned, err := user.CheckUserOffense()
@@ -370,6 +393,11 @@ func InferWithoutLogin(c *fiber.Ctx) error {
 		return BadRequest("request is empty")
 	} else if len([]rune(body.Request)) > 1000 {
 		return maxInputExceededError
+	}
+
+	// infer limiter
+	if !inferLimiter.Allow() {
+		return unknownError
 	}
 
 	consumerUsername := c.Get("X-Consumer-Username")

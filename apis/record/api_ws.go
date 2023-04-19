@@ -10,12 +10,34 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/gofiber/websocket/v2"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
+
+var userLockMap sync.Map
+
+type UserLockValue struct {
+	LockTime time.Time
+}
+
+func UserLockCheck() {
+	ticker := time.NewTicker(time.Hour)
+	for range ticker.C {
+		userLockMap.Range(func(key, value interface{}) bool {
+			userLockValue := value.(UserLockValue)
+			// delete lock before 1 minute
+			if userLockValue.LockTime.Before(time.Now().Add(-time.Minute)) {
+				userLockMap.Delete(key)
+			}
+			return true
+		})
+	}
+}
 
 // AddRecordAsync
 // @Summary add a record
@@ -76,6 +98,17 @@ func AddRecordAsync(c *websocket.Conn) {
 		user, err = LoadUserFromWs(c)
 		if err != nil {
 			return Unauthorized()
+		}
+
+		// check user lock
+		if _, ok := userLockMap.LoadOrStore(user.ID, UserLockValue{LockTime: time.Now()}); ok {
+			return userRequestingError
+		}
+		defer userLockMap.Delete(user.ID)
+
+		// infer limiter
+		if !inferLimiter.Allow() {
+			return unknownError
 		}
 
 		banned, err = user.CheckUserOffense()
@@ -221,6 +254,17 @@ func RegenerateAsync(c *websocket.Conn) {
 		user, err = LoadUserFromWs(c)
 		if err != nil {
 			return Unauthorized()
+		}
+
+		// check user lock
+		if _, ok := userLockMap.LoadOrStore(user.ID, UserLockValue{LockTime: time.Now()}); ok {
+			return userRequestingError
+		}
+		defer userLockMap.Delete(user.ID)
+
+		// infer limiter
+		if !inferLimiter.Allow() {
+			return unknownError
 		}
 
 		banned, err = user.CheckUserOffense()
@@ -408,6 +452,11 @@ func InferWithoutLoginAsync(c *websocket.Conn) {
 			return BadRequest("request is empty")
 		} else if len([]rune(body.Request)) > 1000 {
 			return maxInputExceededError
+		}
+
+		// infer limiter
+		if !inferLimiter.Allow() {
+			return unknownError
 		}
 
 		// sensitive request check

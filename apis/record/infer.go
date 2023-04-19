@@ -494,7 +494,7 @@ type InferTriggerResponse struct {
 	Duration      float64 `json:"duration"`
 }
 
-func inferTrigger(data []byte, inferUrl string) (*InferTriggerResponse, error) {
+func inferTrigger(data []byte, inferUrl string) (i *InferTriggerResponse, err error) {
 	startTime := time.Now()
 	rsp, err := inferHttpClient.Post(inferUrl, "application/json", bytes.NewBuffer(data)) // take the ownership of data
 	if err != nil {
@@ -517,6 +517,9 @@ func inferTrigger(data []byte, inferUrl string) (*InferTriggerResponse, error) {
 
 	latency := int(time.Since(startTime))
 	duration := float64(latency) / 1000_000_000
+
+	// add stats
+	defer inferLimiter.AddStats(err == nil)
 
 	if rsp.StatusCode != 200 {
 		Logger.Error(

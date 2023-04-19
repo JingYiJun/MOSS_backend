@@ -29,8 +29,10 @@ func (e *HttpError) WithMessageType(messageType MessageType) *HttpError {
 
 type MessageType = string
 
-const MaxLength MessageType = "max_length"
-const Sensitive = "sensitive"
+const (
+	MaxLength MessageType = "max_length"
+	Sensitive             = "sensitive"
+)
 
 func NoStatus(message string) *HttpError {
 	return &HttpError{

@@ -102,7 +102,7 @@ func ModifyUser(c *fiber.Ctx) error {
 			if err != nil {
 				return InternalServerError("Failed to change plugin config, please try again later")
 			}
-			if user.PluginConfig == nil { // init 
+			if user.PluginConfig == nil { // init
 				user.PluginConfig = defaultPluginConfig
 			}
 		}
@@ -114,7 +114,7 @@ func ModifyUser(c *fiber.Ctx) error {
 					user.PluginConfig[key] = value
 				}
 			}
-		}	
+		}
 		return tx.Save(&user).Error
 	})
 
@@ -123,7 +123,7 @@ func ModifyUser(c *fiber.Ctx) error {
 	}
 
 	// redis update
-	config.SetCache(GetUserCacheKey(user.ID), user, UserCacheExpire)
+	_ = config.SetCache(GetUserCacheKey(user.ID), user, UserCacheExpire)
 
 	return c.JSON(user)
 }

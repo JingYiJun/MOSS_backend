@@ -16,6 +16,7 @@ package main
 
 import (
 	"MOSS_backend/apis"
+	"MOSS_backend/apis/record"
 	"MOSS_backend/config"
 	_ "MOSS_backend/docs"
 	"MOSS_backend/middlewares"
@@ -79,4 +80,5 @@ func startTasks() {
 		panic(err)
 	}
 	go c.Start()
+	go record.UserLockCheck()
 }
