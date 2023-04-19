@@ -532,11 +532,9 @@ func inferTrigger(data []byte, inferUrl string) (i *InferTriggerResponse, err er
 	latency := int(time.Since(startTime))
 	duration := float64(latency) / 1000_000_000
 
-	// add stats
-	defer inferLimiter.AddStats(err == nil)
-
 	statusCode = rsp.StatusCode
 	if rsp.StatusCode != 200 {
+		inferLimiter.AddStats(false)
 		Logger.Error(
 			"inference error",
 			zap.Int("latency", latency),
@@ -561,6 +559,7 @@ func inferTrigger(data []byte, inferUrl string) (i *InferTriggerResponse, err er
 		}
 		err = json.Unmarshal(response, &responseStruct)
 		if err != nil {
+			inferLimiter.AddStats(false)
 			responseString := string(response)
 			if responseString == "400" {
 				statusCode = 400
@@ -578,6 +577,7 @@ func inferTrigger(data []byte, inferUrl string) (i *InferTriggerResponse, err er
 				return nil, InternalServerError()
 			}
 		} else {
+			inferLimiter.AddStats(true)
 			Logger.Info(
 				"inference success",
 				zap.ByteString("request", data),

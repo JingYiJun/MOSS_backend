@@ -86,29 +86,27 @@ func LoadUserByID(userID int) (*User, error) {
 	if err != nil { // something wrong in DB.Take() in LoadUserByIDFromCache()
 		DeleteUserCacheByID(userID)
 		return nil, err
-	} 
+	}
 	updated := false
 
 	if user.ModelID == 0 {
 		user.ModelID = 1
-		DB.Model(&user).Select("ModelID").Updates(&user)
 		updated = true
 	}
 
 	var defaultPluginConfig map[string]bool
 	defaultPluginConfig, err = GetPluginConfig(user.ModelID)
-	
+
 	if user.PluginConfig == nil {
 		user.PluginConfig = make(map[string]bool)
-		for key, value := range defaultPluginConfig {
-			user.PluginConfig[key] = value
+		for key := range defaultPluginConfig {
+			user.PluginConfig[key] = false
 		}
 		updated = true
-		DB.Model(&user).Select("PluginConfig").Updates(&user)
 	} else { // add new key
-		for key, value := range defaultPluginConfig {
+		for key := range defaultPluginConfig {
 			if _, ok := user.PluginConfig[key]; !ok {
-				user.PluginConfig[key] = value
+				user.PluginConfig[key] = false
 				updated = true
 			}
 		}
@@ -120,13 +118,10 @@ func LoadUserByID(userID int) (*User, error) {
 				updated = true
 			}
 		}
-
-		if updated {
-			DB.Model(&user).Select("PluginConfig").Updates(&user)
-		}
 	}
 
 	if updated {
+		DB.Model(&user).Select("ModelID", "PluginConfig").Updates(&user)
 		err = config.SetCache(GetUserCacheKey(userID), user, UserCacheExpire)
 	}
 	return &user, err
