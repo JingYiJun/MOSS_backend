@@ -95,23 +95,31 @@ func ModifyUser(c *fiber.Ctx) error {
 
 		// model switch or plugin config change => update plugin config
 		if body.ModelID != nil || body.PluginConfig != nil {
-			if user.ModelID == 0 { // init
+			// init ModelID
+			if user.ModelID == 0 {
 				user.ModelID = 1
 			}
+
+			// model switch
+			if body.ModelID != nil {
+				user.ModelID = *body.ModelID
+			}
+
+			// init plugin config
 			defaultPluginConfig, err = GetPluginConfig(user.ModelID)
 			if err != nil {
 				return InternalServerError("Failed to change plugin config, please try again later")
 			}
-			if user.PluginConfig == nil { // init
+			if user.PluginConfig == nil {
 				user.PluginConfig = defaultPluginConfig
 			}
-		}
-		if body.ModelID != nil { // model switch
-			user.PluginConfig = defaultPluginConfig
-		} else if body.PluginConfig != nil { // model not switch => change plugin choice on current model is allowed
-			for key, value := range body.PluginConfig {
-				if _, ok := defaultPluginConfig[key]; ok {
-					user.PluginConfig[key] = value
+
+			// plugin config change
+			if body.PluginConfig != nil {
+				for key, value := range body.PluginConfig {
+					if _, ok := defaultPluginConfig[key]; ok {
+						user.PluginConfig[key] = value
+					}
 				}
 			}
 		}
