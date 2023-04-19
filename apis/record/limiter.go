@@ -48,6 +48,11 @@ func (i *inferLimiterStruct) Allow() bool {
 }
 
 func (i *inferLimiterStruct) AddStats(success bool) {
+	if success {
+		inferSuccessCounter.Inc()
+	} else {
+		inferFailureCounter.Inc()
+	}
 	i.Store(time.Now().UnixNano(), InferPostStats{
 		Success: success,
 		Time:    time.Now(),

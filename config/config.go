@@ -5,6 +5,8 @@ import (
 	"github.com/caarlos0/env/v8"
 )
 
+const AppName = "moss_backend"
+
 var Config struct {
 	Mode     string `env:"MODE" envDefault:"dev"`
 	Debug    bool   `env:"DEBUG" envDefault:"false"`

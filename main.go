@@ -44,6 +44,7 @@ func main() {
 	}
 
 	app := fiber.New(fiber.Config{
+		AppName:      config.AppName,
 		ErrorHandler: utils.MyErrorHandler,
 	})
 	middlewares.RegisterMiddlewares(app)

@@ -13,6 +13,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -64,6 +65,10 @@ func InferCommon(
 		configObject             Config
 		rawContentBuilder        strings.Builder
 	)
+
+	// metrics
+	userInferRequestOnFlight.Inc()
+	defer userInferRequestOnFlight.Dec()
 
 	// load config
 	err = LoadConfig(&configObject)
@@ -495,6 +500,15 @@ type InferTriggerResponse struct {
 }
 
 func inferTrigger(data []byte, inferUrl string) (i *InferTriggerResponse, err error) {
+
+	var statusCode int
+	// metrics
+	inferOnFlightCounter.Inc()
+	defer func() {
+		inferOnFlightCounter.Dec()
+		inferStatusCounter.WithLabelValues(strconv.Itoa(statusCode)).Inc()
+	}()
+
 	startTime := time.Now()
 	rsp, err := inferHttpClient.Post(inferUrl, "application/json", bytes.NewBuffer(data)) // take the ownership of data
 	if err != nil {
@@ -521,6 +535,7 @@ func inferTrigger(data []byte, inferUrl string) (i *InferTriggerResponse, err er
 	// add stats
 	defer inferLimiter.AddStats(err == nil)
 
+	statusCode = rsp.StatusCode
 	if rsp.StatusCode != 200 {
 		Logger.Error(
 			"inference error",
@@ -548,17 +563,20 @@ func inferTrigger(data []byte, inferUrl string) (i *InferTriggerResponse, err er
 		if err != nil {
 			responseString := string(response)
 			if responseString == "400" {
+				statusCode = 400
 				return nil, maxInputExceededFromInferError
 			} else if responseString == "560" {
+				statusCode = 560
 				return nil, unknownError
 			} else {
+				statusCode = 500
 				Logger.Error(
 					"unable to unmarshal response from infer",
 					zap.ByteString("response", response),
 					zap.Error(err),
 				)
+				return nil, InternalServerError()
 			}
-			return nil, InternalServerError()
 		} else {
 			Logger.Info(
 				"inference success",

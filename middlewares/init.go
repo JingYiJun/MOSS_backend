@@ -4,29 +4,27 @@ import (
 	"MOSS_backend/config"
 	"MOSS_backend/models"
 	"MOSS_backend/utils"
+	"github.com/ansrivas/fiberprometheus/v2"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/recover"
-	"github.com/gofiber/websocket/v2"
 	"go.uber.org/zap"
 	"time"
 )
 
 func RegisterMiddlewares(app *fiber.App) {
-	app.Use(recover.New(recover.Config{EnableStackTrace: true}))
 	if config.Config.Mode != "bench" {
 		app.Use(MyLogger)
 	}
 	app.Use(cors.New(cors.Config{AllowOrigins: "*"}))
-	app.Use("/ws", func(c *fiber.Ctx) error {
-		// IsWebSocketUpgrade returns true if the client
-		// requested upgrade to the WebSocket protocol.
-		if websocket.IsWebSocketUpgrade(c) {
-			return c.Next()
-		}
-		return fiber.ErrUpgradeRequired
-	})
 	app.Use(GetUserID)
+
+	// prometheus
+	prom := fiberprometheus.New(config.AppName)
+	prom.RegisterAt(app, "/metrics")
+	app.Use(prom.Middleware)
+
+	app.Use(recover.New(recover.Config{EnableStackTrace: true}))
 }
 
 func GetUserID(c *fiber.Ctx) error {
