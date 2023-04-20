@@ -403,82 +403,27 @@ func inferListener(
 				}
 				detectedOutput = before
 
-				// output sensitive check
-				if sensitive.IsSensitive(detectedOutput, user) {
-					record.ResponseSensitive = true
-					// log new record
-					record.Response = detectedOutput
-					record.Duration = float64(time.Since(startTime)) / 1000_000_000
-					var banned bool
-					banned, err = user.AddUserOffense(UserOffenseMoss)
-					if err != nil {
-						return err
-					}
-					if banned {
-						err = ctx.c.WriteJSON(InferResponseModel{
-							Status: -2, // banned
-							Output: OffenseMessage,
-						})
-					} else {
-						err = ctx.c.WriteJSON(InferResponseModel{
-							Status: -2, // sensitive
-							Output: DefaultResponse,
-						})
-					}
-					if err != nil {
-						return fmt.Errorf("write sensitive error: %v", err)
-					}
-
-					// if sensitive, jump out and record
-					return ErrSensitive
+				err = sensitiveCheck(ctx.c, record, detectedOutput, startTime, user)
+				if err != nil {
+					return err
 				}
 
-				err = ctx.c.WriteJSON(InferResponseModel{
+				_ = ctx.c.WriteJSON(InferResponseModel{
 					Status: 1,
 					Output: detectedOutput,
 					Stage:  stage,
 				})
-				if err != nil {
-					return fmt.Errorf("write response error: %v", err)
-				}
 			case 0: // end
 				if nowOutput != detectedOutput {
-					if sensitive.IsSensitive(nowOutput, user) {
-						record.ResponseSensitive = true
-						// log new record
-						record.Response = nowOutput
-						record.Duration = float64(time.Since(startTime)) / 1000_000_000
-						var banned bool
-						banned, err = user.AddUserOffense(UserOffenseMoss)
-						if err != nil {
-							return err
-						}
-						if banned {
-							err = ctx.c.WriteJSON(InferResponseModel{
-								Status: -2, // banned
-								Output: OffenseMessage,
-							})
-						} else {
-							err = ctx.c.WriteJSON(InferResponseModel{
-								Status: -2, // sensitive
-								Output: DefaultResponse,
-							})
-						}
-						if err != nil {
-							return fmt.Errorf("write sensitive error: %v", err)
-						}
-
-						// if sensitive, jump out and record
-						return ErrSensitive
+					err = sensitiveCheck(ctx.c, record, nowOutput, startTime, user)
+					if err != nil {
+						return err
 					}
-				}
-				err = ctx.c.WriteJSON(InferResponseModel{
-					Status: 1,
-					Output: nowOutput,
-					Stage:  stage,
-				})
-				if err != nil {
-					return fmt.Errorf("write response error: %v", err)
+					_ = ctx.c.WriteJSON(InferResponseModel{
+						Status: 1,
+						Output: nowOutput,
+						Stage:  stage,
+					})
 				}
 				return nil
 			case -1: // error
@@ -488,6 +433,36 @@ func inferListener(
 			return InternalServerError("Internal Server Timeout")
 		}
 	}
+}
+
+func sensitiveCheck(c *websocket.Conn, record *Record, output string, startTime time.Time, user *User) error {
+	if sensitive.IsSensitive(output, user) {
+		record.ResponseSensitive = true
+		// log new record
+		record.Response = output
+		record.Duration = float64(time.Since(startTime)) / 1000_000_000
+
+		banned, err := user.AddUserOffense(UserOffenseMoss)
+		if err != nil {
+			return err
+		}
+
+		var outputMessage string
+		if banned {
+			outputMessage = OffenseMessage
+		} else {
+			outputMessage = DefaultResponse
+		}
+
+		_ = c.WriteJSON(InferResponseModel{
+			Status: -2, // banned
+			Output: outputMessage,
+		})
+
+		// if sensitive, jump out and record
+		return ErrSensitive
+	}
+	return nil
 }
 
 type InferTriggerResponse struct {
