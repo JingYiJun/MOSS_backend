@@ -20,7 +20,7 @@ func RegisterMiddlewares(app *fiber.App) {
 	app.Use(GetUserID)
 
 	// prometheus
-	prom := fiberprometheus.New(config.AppName)
+	prom := fiberprometheus.NewWith(config.AppName, config.AppName, "http")
 	prom.RegisterAt(app, "/metrics")
 	app.Use(prom.Middleware)
 
