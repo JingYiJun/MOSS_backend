@@ -493,6 +493,13 @@ func InferWithoutLoginAsync(c *websocket.Conn) {
 		}
 		_ = DB.Create(&directRecord).Error
 
+		// return response
+		_ = c.WriteJSON(InferenceResponse{
+			Response:  record.Response,
+			Context:   record.Prefix,
+			ExtraData: record.ExtraData,
+		})
+
 		return nil
 	}
 

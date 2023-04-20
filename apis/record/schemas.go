@@ -28,5 +28,5 @@ type InferenceRequest struct {
 type InferenceResponse struct {
 	Response  string `json:"response"`
 	Context   string `json:"context"`
-	ExtraData any    `json:"extra_data"`
+	ExtraData any    `json:"extra_data,omitempty"`
 }
