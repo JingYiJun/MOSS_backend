@@ -49,6 +49,7 @@ func InferCommon(
 	record *Record,
 	prefix string,
 	user *User,
+	param map[string]float64,
 	ctx *InferWsContext,
 ) (
 	err error,
@@ -91,6 +92,10 @@ func InferCommon(
 	err = LoadParamToMap(request)
 	if err != nil {
 		return err
+	}
+
+	for key, value := range param {
+		request[key] = value
 	}
 
 	// load user plugin config, if not exist, fill with default
@@ -286,8 +291,8 @@ func InferCommon(
 	return nil
 }
 
-func Infer(record *Record, prefix string, user *User) (err error) {
-	return InferCommon(record, prefix, user, nil)
+func Infer(record *Record, prefix string, user *User, param map[string]float64) (err error) {
+	return InferCommon(record, prefix, user, param, nil)
 }
 
 func InferAsync(
@@ -295,6 +300,7 @@ func InferAsync(
 	prefix string,
 	record *Record,
 	user *User,
+	param map[string]float64,
 ) (
 	err error,
 ) {
@@ -316,11 +322,12 @@ func InferAsync(
 
 	// wait for infer
 	go func() {
-		innerErr := inferLogicPath(
+		innerErr := InferCommon(
 			record,
 			prefix,
 			user,
-			InferWsContext{
+			param,
+			&InferWsContext{
 				c:                c,
 				connectionClosed: connectionClosed,
 			},
@@ -342,16 +349,6 @@ func InferAsync(
 			return nil
 		}
 	}
-}
-
-// inferLogicPath hand out inference tasks
-func inferLogicPath(
-	record *Record,
-	prefix string,
-	user *User,
-	ctx InferWsContext,
-) error {
-	return InferCommon(record, prefix, user, &ctx)
 }
 
 // inferListener listen from output channel

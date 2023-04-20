@@ -1,6 +1,11 @@
 package record
 
+type ParamsModel struct {
+	Param map[string]float64 `json:"param"`
+}
+
 type CreateModel struct {
+	ParamsModel
 	Request string `json:"request" validate:"required"`
 }
 
@@ -17,6 +22,7 @@ type InferenceRequest struct {
 	Context      string          `json:"context"`
 	Request      string          `json:"request" validate:"min=1"`
 	PluginConfig map[string]bool `json:"plugin_config"`
+	ParamsModel
 }
 
 type InferenceResponse struct {
