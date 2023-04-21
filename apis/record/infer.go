@@ -98,6 +98,9 @@ func InferCommon(
 		request[key] = value
 	}
 
+	// session_id
+	request["session_id"] = record.ChatID
+
 	// load user plugin config, if not exist, fill with default
 	for key, value := range defaultPluginConfig {
 		if v, ok := user.PluginConfig[key]; ok {
