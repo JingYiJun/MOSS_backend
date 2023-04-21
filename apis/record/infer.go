@@ -27,7 +27,7 @@ import (
 type InferResponseModel struct {
 	Status     int    `json:"status"` // 1 for output, 0 for end, -1 for error, -2 for sensitive
 	StatusCode int    `json:"status_code,omitempty"`
-	Output     string `json:"output"`
+	Output     string `json:"output,omitempty"`
 	Stage      string `json:"stage,omitempty"`
 }
 
