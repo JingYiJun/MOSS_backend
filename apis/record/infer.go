@@ -208,7 +208,7 @@ func InferCommon(
 
 	// generate new formatted text and uuid
 	uuidText = strings.ReplaceAll(uuid.NewString(), "-", "")
-	secondFormattedInput := fmt.Sprintf("<|Results|>: %s<eor>\n", results.Result)
+	secondFormattedInput := fmt.Sprintf("<|Results|>:\n%s<eor>\n", results.Result)
 	request["x"] = fmt.Sprintf(
 		"%s%s%s\n%s<|MOSS|>:",
 		cleanedPrefix,                // context

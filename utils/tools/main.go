@@ -95,12 +95,14 @@ func Execute(c *websocket.Conn, rawCommand string, pluginConfig map[string]bool)
 	for i, t := range s.tasks {
 		results := t.postprocess()
 
-		if i > 0 { // separator is '\n'
-			resultsBuilder.WriteString("\n")
-		}
 		resultsBuilder.WriteString(t.name())
-		resultsBuilder.WriteString(" =>\n")
+		if t.getAction() == "Calculate" {
+			resultsBuilder.WriteString(" => ")
+		} else {
+			resultsBuilder.WriteString(" =>\n")
+		}
 		resultsBuilder.WriteString(results.Result)
+		resultsBuilder.WriteString("\n")
 		if results.ExtraData != nil {
 			resultTotal.ExtraData = append(resultTotal.ExtraData, results.ExtraData)
 		}

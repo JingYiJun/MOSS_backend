@@ -28,6 +28,7 @@ type ExtraDataModel struct {
 }
 
 type task interface {
+	getAction() string
 	name() string
 	request()
 	postprocess() *ResultModel
@@ -42,6 +43,10 @@ type taskModel struct {
 
 func (t *taskModel) name() string {
 	return fmt.Sprintf("%s(\"%s\")", t.action, t.args)
+}
+
+func (t *taskModel) getAction() string {
+	return t.action
 }
 
 type scheduler struct {
