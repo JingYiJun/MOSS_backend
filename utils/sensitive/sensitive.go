@@ -8,6 +8,9 @@ import (
 )
 
 func IsSensitive(content string, user *models.User) bool {
+	if content == "" {
+		return false
+	}
 	if !config.Config.EnableSensitiveCheck {
 		return false
 	}
