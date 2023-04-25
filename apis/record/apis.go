@@ -409,7 +409,7 @@ func InferWithoutLogin(c *fiber.Ctx) error {
 
 	record := Record{Request: body.Request}
 
-	err = Infer(&record, body.Context, &User{PluginConfig: body.PluginConfig}, body.Param)
+	err = Infer(&record, body.Context, &User{PluginConfig: body.PluginConfig, ModelID: body.ModelID}, body.Param)
 	if err != nil {
 		return err
 	}

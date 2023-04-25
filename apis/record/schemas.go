@@ -22,6 +22,7 @@ type InferenceRequest struct {
 	Context      string          `json:"context"`
 	Request      string          `json:"request" validate:"min=1"`
 	PluginConfig map[string]bool `json:"plugin_config"`
+	ModelID      int             `json:"model_id" default:"1"`
 	ParamsModel
 }
 

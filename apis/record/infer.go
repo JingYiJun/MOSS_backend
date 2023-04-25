@@ -107,8 +107,8 @@ func InferCommon(
 			request[key] = v && value
 			pluginConfig[key] = v && value
 		} else {
-			request[key] = value
-			pluginConfig[key] = value
+			request[key] = false
+			pluginConfig[key] = false
 		}
 	}
 
