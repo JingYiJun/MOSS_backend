@@ -24,6 +24,7 @@ import (
 	"MOSS_backend/utils"
 	"MOSS_backend/utils/auth"
 	"MOSS_backend/utils/kong"
+	"encoding/json"
 	"github.com/gofiber/fiber/v2"
 	"github.com/robfig/cron/v3"
 	"log"
@@ -44,8 +45,11 @@ func main() {
 	}
 
 	app := fiber.New(fiber.Config{
-		AppName:      config.AppName,
-		ErrorHandler: utils.MyErrorHandler,
+		AppName:               config.AppName,
+		ErrorHandler:          utils.MyErrorHandler,
+		JSONDecoder:           json.Unmarshal,
+		JSONEncoder:           json.Marshal,
+		DisableStartupMessage: true,
 	})
 	middlewares.RegisterMiddlewares(app)
 	apis.RegisterRoutes(app)

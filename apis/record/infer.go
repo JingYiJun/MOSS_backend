@@ -125,6 +125,17 @@ func InferCommon(
 		firstFormattedInput, // <|Human|>: xxx<eoh>\n
 	)
 
+	if ctx != nil {
+		uuidText = uuid.NewString()
+
+		// start a new(fake) listener
+		go func() {
+			_ = inferListener(record, uuidText, user, *ctx, "Inner Thoughts")
+		}()
+
+		request["url"] = config.Config.CallbackUrl + "?uuid=" + uuidText
+	}
+
 	// construct data to send
 	data, _ := json.Marshal(request)
 	inferTriggerResults, err := inferTrigger(data, inferUrl) // block here
@@ -392,6 +403,10 @@ func inferListener(
 			if config.Config.Debug {
 				log.Println("receive response from output channel")
 				log.Println(response)
+			}
+			// send only if stage "MOSS"
+			if stage != "MOSS" {
+				continue
 			}
 			switch response.Status {
 			case 1: // ok
