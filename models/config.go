@@ -35,7 +35,7 @@ func LoadConfig(configObjectPtr *Config) error {
 		if err := DB.First(configObjectPtr).Error; err != nil {
 			return err
 		}
-		if err := DB.First(&(configObjectPtr.ModelConfig)).Error; err != nil {
+		if err := DB.Find(&(configObjectPtr.ModelConfig)).Error; err != nil {
 			return err
 		}
 		_ = config.SetCache(configCacheName, *configObjectPtr, configCacheExpire)
