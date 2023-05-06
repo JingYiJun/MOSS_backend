@@ -13,6 +13,7 @@ type ModelConfig struct {
 	Description              string          `json:"description"`
 	DefaultPluginConfig      map[string]bool `json:"default_plugin_config" gorm:"serializer:json"`
 	Url                      string          `json:"url"`
+	CallbackUrl              string          `json:"callback_url"`
 }
 
 func (cfg *ModelConfig) TableName() string {

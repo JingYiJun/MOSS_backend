@@ -60,6 +60,7 @@ func InferCommon(
 		uuidText                 string
 		wg                       sync.WaitGroup
 		inferUrl                 string
+		callbackUrl              string
 		innerThoughtsPostprocess bool
 		defaultPluginConfig      map[string]bool
 		pluginConfig             = map[string]bool{}
@@ -77,11 +78,13 @@ func InferCommon(
 		return err
 	}
 	inferUrl = configObject.ModelConfig[0].Url
+	callbackUrl = configObject.ModelConfig[0].CallbackUrl
 	innerThoughtsPostprocess = configObject.ModelConfig[0].InnerThoughtsPostprocess
 	defaultPluginConfig = configObject.ModelConfig[0].DefaultPluginConfig
 	for i := range configObject.ModelConfig {
 		if configObject.ModelConfig[i].ID == user.ModelID {
 			inferUrl = configObject.ModelConfig[i].Url
+			callbackUrl = configObject.ModelConfig[i].CallbackUrl
 			innerThoughtsPostprocess = configObject.ModelConfig[i].InnerThoughtsPostprocess
 			defaultPluginConfig = configObject.ModelConfig[i].DefaultPluginConfig
 			break
@@ -133,7 +136,7 @@ func InferCommon(
 			_ = inferListener(record, uuidText, user, *ctx, "Inner Thoughts")
 		}()
 
-		request["url"] = config.Config.CallbackUrl + "?uuid=" + uuidText
+		request["url"] = callbackUrl + "?uuid=" + uuidText
 	}
 
 	// construct data to send
@@ -236,7 +239,7 @@ func InferCommon(
 			wg.Done()
 		}()
 
-		request["url"] = config.Config.CallbackUrl + "?uuid=" + uuidText
+		request["url"] = callbackUrl + "?uuid=" + uuidText
 	}
 
 	// infer
