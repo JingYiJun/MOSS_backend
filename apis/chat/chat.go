@@ -1,6 +1,7 @@
 package chat
 
 import (
+	"MOSS_backend/apis/record"
 	. "MOSS_backend/models"
 	. "MOSS_backend/utils"
 	"github.com/gofiber/fiber/v2"
@@ -119,12 +120,29 @@ func DeleteChat(c *fiber.Ctx) error {
 		return err
 	}
 
+	// load config
+	var configObject Config
+	err = LoadConfig(&configObject)
+	if err != nil {
+		return err
+	}
+
+	inferUrl := configObject.ModelConfig[0].Url
+	for _, modelConfig := range configObject.ModelConfig {
+		if modelConfig.ID == 2 { // mars
+			inferUrl = modelConfig.Url
+			break
+		}
+	}
+
 	var chat Chat
 	err = DB.Transaction(func(tx *gorm.DB) error {
 		err = tx.Clauses(LockingClause).Take(&chat, chatID).Error
 		if err != nil {
 			return err
 		}
+
+		_, _ = record.CloseSession(inferUrl, chatID) // close biz session
 
 		if chat.UserID != userID {
 			return Forbidden()

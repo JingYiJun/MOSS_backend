@@ -37,6 +37,7 @@ type Record struct {
 	RequestSensitive   bool           `json:"request_sensitive"`
 	ResponseSensitive  bool           `json:"response_sensitive"`
 	InnerThoughts      string         `json:"inner_thoughts"`
+	ModelID            int            `json:"model_id"`
 }
 
 type Records []Record
