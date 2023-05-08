@@ -169,11 +169,7 @@ func AddRecordAsync(c *websocket.Conn) {
 			}
 
 			// async infer
-			if user.ModelID == 2 {
-				err = InferBizWrapper(c, &chat, &record, user)
-			} else {
-				err = InferAsync(c, oldRecord.Prefix, &record, user, body.Param)
-			}
+			err = InferAsync(c, oldRecord.Prefix, &record, user, body.Param)
 			if err != nil && !errors.Is(err, ErrSensitive) {
 				//if httpError, ok := err.(*HttpError); ok && httpError.MessageType == MaxLength {
 				//	DB.Model(&chat).Update("max_length_exceeded", true)
@@ -335,11 +331,7 @@ func RegenerateAsync(c *websocket.Conn) {
 		}
 
 		// async infer
-		if user.ModelID == 2 {
-			err = InferBizWrapper(c, &chat, &record, user)
-		} else {
-			err = InferAsync(c, prefixRecord.Prefix, &record, user, nil)
-		}
+		err = InferAsync(c, prefixRecord.Prefix, &record, user, nil)
 		if err != nil && !errors.Is(err, ErrSensitive) {
 			//
 			//if httpError, ok := err.(*HttpError); ok && httpError.MessageType == MaxLength {

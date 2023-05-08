@@ -289,7 +289,6 @@ func InferCommon(
 	record.ExtraData = results.ExtraData
 	record.ProcessedExtraData = results.ProcessedExtraData
 	record.InnerThoughts = rawInnerThoughts
-	record.ModelID = user.ModelID
 
 	rawContentBuilder.WriteString(firstFormattedInput)
 	rawContentBuilder.WriteString(firstFormattedNewGenerations)
