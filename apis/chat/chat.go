@@ -3,8 +3,11 @@ package chat
 import (
 	. "MOSS_backend/models"
 	. "MOSS_backend/utils"
+	"fmt"
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"os"
 )
 
 // ListChats
@@ -146,45 +149,44 @@ func DeleteChat(c *fiber.Ctx) error {
 // @Router /chats/{chat_id}/screenshots [get]
 // @Param chat_id path int true "chat id"
 // @Success 200
-func GenerateChatScreenshot(_ *fiber.Ctx) error {
-	return BadRequest("截图分享功能暂缓开放")
-	//chatID, err := c.ParamsInt("id")
-	//if err != nil {
-	//	return err
-	//}
-	//
-	//userID, err := GetUserID(c)
-	//if err != nil {
-	//	return err
-	//}
-	//
-	//var chat Chat
-	//err = DB.Take(&chat, chatID).Error
-	//if err != nil {
-	//	return err
-	//}
-	//
-	//if userID != chat.UserID {
-	//	return Forbidden()
-	//}
-	//
-	//var records Records
-	//err = DB.Find(&records, "chat_id = ? and request_sensitive <> true and response_sensitive <> true", chatID).Error
-	//if err != nil {
-	//	return err
-	//}
-	//
-	//buf, err := GenerateImage(records.ToRecordModel())
-	//if err != nil {
-	//	return err
-	//}
-	//
-	//filename := uuid.NewString() + ".png"
-	//err = os.WriteFile(fmt.Sprintf("./screenshots/%s", filename), buf, 0644)
-	//if err != nil {
-	//	return err
-	//}
-	//
-	//url := fmt.Sprintf("https://%s/api/screenshots/%s", c.Get("Host"), filename)
-	//return c.JSON(Map{"url": url})
+func GenerateChatScreenshot(c *fiber.Ctx) error {
+	chatID, err := c.ParamsInt("id")
+	if err != nil {
+		return err
+	}
+
+	userID, err := GetUserID(c)
+	if err != nil {
+		return err
+	}
+
+	var chat Chat
+	err = DB.Take(&chat, chatID).Error
+	if err != nil {
+		return err
+	}
+
+	if userID != chat.UserID {
+		return Forbidden()
+	}
+
+	var records Records
+	err = DB.Find(&records, "chat_id = ? and request_sensitive <> true and response_sensitive <> true", chatID).Error
+	if err != nil {
+		return err
+	}
+
+	buf, err := GenerateImage(records.ToRecordModel())
+	if err != nil {
+		return err
+	}
+
+	filename := uuid.NewString() + ".png"
+	err = os.WriteFile(fmt.Sprintf("./screenshots/%s", filename), buf, 0644)
+	if err != nil {
+		return err
+	}
+
+	url := fmt.Sprintf("https://%s/api/screenshots/%s", c.Get("Host"), filename)
+	return c.JSON(Map{"url": url})
 }
