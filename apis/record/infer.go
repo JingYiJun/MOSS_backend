@@ -222,7 +222,12 @@ func InferCommon(
 
 	// generate new formatted text and uuid
 	uuidText = strings.ReplaceAll(uuid.NewString(), "-", "")
-	secondFormattedInput := fmt.Sprintf("<|Results|>:\n%s<eor>\n", results.Result)
+	var secondFormattedInput string
+	if results.Result == "None" {
+		secondFormattedInput = fmt.Sprintf("<|Results|>: %s<eor>\n", results.Result)
+	} else {
+		secondFormattedInput = fmt.Sprintf("<|Results|>:\n%s<eor>\n", results.Result)
+	}
 	request["x"] = fmt.Sprintf(
 		"%s%s%s\n%s<|MOSS|>:",
 		cleanedPrefix,                // context
