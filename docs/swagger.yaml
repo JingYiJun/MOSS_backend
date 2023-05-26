@@ -10,23 +10,38 @@ definitions:
       phone:
         description: phone number in e164 mode
         type: string
+    required:
+    - email
+    - phone
     type: object
   account.ModifyUserRequest:
     properties:
+      disable_sensitive_check:
+        type: boolean
       email:
         type: string
+      model_id:
+        minimum: 1
+        type: integer
       nickname:
         minLength: 1
         type: string
       phone:
         description: phone number in e164 mode
         type: string
+      plugin_config:
+        additionalProperties:
+          type: boolean
+        type: object
       share_consent:
         type: boolean
       verification:
         maxLength: 6
         minLength: 6
         type: string
+    required:
+    - email
+    - phone
     type: object
   account.RegisterRequest:
     properties:
@@ -45,6 +60,9 @@ definitions:
         maxLength: 6
         minLength: 6
         type: string
+    required:
+    - email
+    - phone
     type: object
   account.TokenResponse:
     properties:
@@ -71,10 +89,57 @@ definitions:
         minLength: 1
         type: string
     type: object
-  config.Response:
+  config.ModelConfigRequest:
+    properties:
+      description:
+        type: string
+      id:
+        minimum: 1
+        type: integer
+      inner_thoughts_postprocess:
+        enum:
+        - true
+        - false
+        type: boolean
+    type: object
+  config.ModelConfigResponse:
+    properties:
+      description:
+        type: string
+      id:
+        type: string
+    type: object
+  config.ModifyModelConfigRequest:
     properties:
       invite_required:
+        enum:
+        - true
+        - false
         type: boolean
+      model_config:
+        items:
+          $ref: '#/definitions/config.ModelConfigRequest'
+        type: array
+      notice:
+        type: string
+      offense_check:
+        enum:
+        - true
+        - false
+        type: boolean
+    type: object
+  config.Response:
+    properties:
+      default_plugin_config:
+        additionalProperties:
+          type: boolean
+        type: object
+      invite_required:
+        type: boolean
+      model_config:
+        items:
+          $ref: '#/definitions/config.ModelConfigResponse'
+        type: array
       notice:
         type: string
       region:
@@ -89,6 +154,8 @@ definitions:
         type: string
       id:
         type: integer
+      max_length_exceeded:
+        type: boolean
       name:
         type: string
       records:
@@ -119,6 +186,7 @@ definitions:
       like_data:
         description: 1 like, -1 dislike
         type: integer
+      processed_extra_data: {}
       request:
         type: string
       request_sensitive:
@@ -128,31 +196,37 @@ definitions:
       response_sensitive:
         type: boolean
     type: object
-  models.RecordModel:
-    properties:
-      request:
-        type: string
-      response:
-        type: string
-    type: object
   models.User:
     properties:
+      banned:
+        type: boolean
       chats:
         items:
           $ref: '#/definitions/models.Chat'
         type: array
+      disable_sensitive_check:
+        type: boolean
       email:
         type: string
       id:
         type: integer
+      is_admin:
+        type: boolean
       joined_time:
         type: string
       last_login:
         type: string
+      model_id:
+        default: 1
+        type: integer
       nickname:
         type: string
       phone:
         type: string
+      plugin_config:
+        additionalProperties:
+          type: boolean
+        type: object
       share_consent:
         type: boolean
     type: object
@@ -165,16 +239,21 @@ definitions:
     type: object
   record.InferenceRequest:
     properties:
-      records:
-        items:
-          $ref: '#/definitions/models.RecordModel'
-        type: array
+      context:
+        type: string
+      plugin_config:
+        additionalProperties:
+          type: boolean
+        type: object
       request:
         minLength: 1
         type: string
     type: object
   record.InferenceResponse:
     properties:
+      context:
+        type: string
+      extra_data: {}
       response:
         type: string
     type: object
@@ -355,6 +434,34 @@ paths:
           schema:
             $ref: '#/definitions/config.Response'
       summary: get global config
+      tags:
+      - Config
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: body
+        in: body
+        name: json
+        required: true
+        schema:
+          $ref: '#/definitions/config.ModifyModelConfigRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/config.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/config.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/config.Response'
+      summary: update global config
       tags:
       - Config
   /inference:
@@ -591,6 +698,7 @@ paths:
       parameters:
       - in: query
         name: email
+        required: true
         type: string
       - in: query
         minLength: 1
@@ -628,6 +736,7 @@ paths:
       - description: phone number in e164 mode
         in: query
         name: phone
+        required: true
         type: string
       - enum:
         - register

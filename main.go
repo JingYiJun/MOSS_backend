@@ -16,6 +16,7 @@ package main
 
 import (
 	"MOSS_backend/apis"
+	"MOSS_backend/apis/record"
 	"MOSS_backend/config"
 	_ "MOSS_backend/docs"
 	"MOSS_backend/middlewares"
@@ -23,6 +24,7 @@ import (
 	"MOSS_backend/utils"
 	"MOSS_backend/utils/auth"
 	"MOSS_backend/utils/kong"
+	"encoding/json"
 	"github.com/gofiber/fiber/v2"
 	"github.com/robfig/cron/v3"
 	"log"
@@ -43,7 +45,11 @@ func main() {
 	}
 
 	app := fiber.New(fiber.Config{
-		ErrorHandler: utils.MyErrorHandler,
+		AppName:               config.AppName,
+		ErrorHandler:          utils.MyErrorHandler,
+		JSONDecoder:           json.Unmarshal,
+		JSONEncoder:           json.Marshal,
+		DisableStartupMessage: true,
 	})
 	middlewares.RegisterMiddlewares(app)
 	apis.RegisterRoutes(app)
@@ -79,4 +85,5 @@ func startTasks() {
 		panic(err)
 	}
 	go c.Start()
+	go record.UserLockCheck()
 }

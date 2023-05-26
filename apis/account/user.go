@@ -1,9 +1,11 @@
 package account
 
 import (
+	"MOSS_backend/config"
 	. "MOSS_backend/models"
 	. "MOSS_backend/utils"
 	"MOSS_backend/utils/auth"
+
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 )
@@ -18,12 +20,7 @@ import (
 //	@Failure		404	{object}	utils.MessageResponse	"User not found"
 //	@Failure		500	{object}	utils.MessageResponse
 func GetCurrentUser(c *fiber.Ctx) error {
-	userID, err := GetUserID(c)
-	if err != nil {
-		return err
-	}
-	var user User
-	err = DB.Take(&user, userID).Error
+	user, err := LoadUser(c)
 	if err != nil {
 		return err
 	}
@@ -91,12 +88,50 @@ func ModifyUser(c *fiber.Ctx) error {
 			}
 			user.DisableSensitiveCheck = *body.DisableSensitiveCheck
 		}
+		if body.ModelID != nil { // model switch
+			user.ModelID = *body.ModelID
+		}
+		var defaultPluginConfig map[string]bool
 
+		// model switch or plugin config change => update plugin config
+		if body.ModelID != nil || body.PluginConfig != nil {
+			// init ModelID
+			if user.ModelID == 0 {
+				user.ModelID = 1
+			}
+
+			// model switch
+			if body.ModelID != nil {
+				user.ModelID = *body.ModelID
+			}
+
+			// init plugin config
+			defaultPluginConfig, err = GetPluginConfig(user.ModelID)
+			if err != nil {
+				return InternalServerError("Failed to change plugin config, please try again later")
+			}
+			if user.PluginConfig == nil {
+				user.PluginConfig = defaultPluginConfig
+			}
+
+			// plugin config change
+			if body.PluginConfig != nil {
+				for key, value := range body.PluginConfig {
+					if _, ok := defaultPluginConfig[key]; ok {
+						user.PluginConfig[key] = value
+					}
+				}
+			}
+		}
 		return tx.Save(&user).Error
 	})
+
 	if err != nil {
 		return err
 	}
+
+	// redis update
+	_ = config.SetCache(GetUserCacheKey(user.ID), user, UserCacheExpire)
 
 	return c.JSON(user)
 }

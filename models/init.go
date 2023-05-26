@@ -84,6 +84,7 @@ func InitDB() {
 		Record{},
 		ActiveStatus{},
 		Config{},
+		ModelConfig{},
 		InviteCode{},
 		Param{},
 		EmailBlacklist{},
@@ -98,5 +99,10 @@ func InitDB() {
 	err = DB.First(&configObject).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		DB.Create(&configObject)
+	}
+	var configModelObject ModelConfig
+	err = DB.First(&configModelObject).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		DB.Create(&configModelObject)
 	}
 }

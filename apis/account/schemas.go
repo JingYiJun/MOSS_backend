@@ -54,6 +54,8 @@ type ModifyUserRequest struct {
 	ShareConsent          *bool   `json:"share_consent"`
 	*EmailModel           `validate:"omitempty"`
 	*PhoneModel           `validate:"omitempty"`
-	Verification          string `json:"verification" minLength:"6" maxLength:"6" validate:"omitempty,len=6"`
-	DisableSensitiveCheck *bool  `json:"disable_sensitive_check"`
+	Verification          string          `json:"verification" minLength:"6" maxLength:"6" validate:"omitempty,len=6"`
+	DisableSensitiveCheck *bool           `json:"disable_sensitive_check"`
+	ModelID               *int            `json:"model_id" validate:"omitempty,min=1"`
+	PluginConfig          map[string]bool `json:"plugin_config" validate:"omitempty"`
 }

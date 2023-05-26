@@ -246,6 +246,49 @@
                         }
                     }
                 }
+            },
+            "patch": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Config"
+                ],
+                "summary": "update global config",
+                "parameters": [
+                    {
+                        "description": "body",
+                        "name": "json",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/config.ModifyModelConfigRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/config.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/config.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/config.Response"
+                        }
+                    }
+                }
             }
         },
         "/inference": {
@@ -611,7 +654,8 @@
                     {
                         "type": "string",
                         "name": "email",
-                        "in": "query"
+                        "in": "query",
+                        "required": true
                     },
                     {
                         "minLength": 1,
@@ -667,7 +711,8 @@
                         "type": "string",
                         "description": "phone number in e164 mode",
                         "name": "phone",
-                        "in": "query"
+                        "in": "query",
+                        "required": true
                     },
                     {
                         "enum": [
@@ -786,6 +831,10 @@
     "definitions": {
         "account.LoginRequest": {
             "type": "object",
+            "required": [
+                "email",
+                "phone"
+            ],
             "properties": {
                 "email": {
                     "type": "string"
@@ -802,9 +851,20 @@
         },
         "account.ModifyUserRequest": {
             "type": "object",
+            "required": [
+                "email",
+                "phone"
+            ],
             "properties": {
+                "disable_sensitive_check": {
+                    "type": "boolean"
+                },
                 "email": {
                     "type": "string"
+                },
+                "model_id": {
+                    "type": "integer",
+                    "minimum": 1
                 },
                 "nickname": {
                     "type": "string",
@@ -813,6 +873,12 @@
                 "phone": {
                     "description": "phone number in e164 mode",
                     "type": "string"
+                },
+                "plugin_config": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "boolean"
+                    }
                 },
                 "share_consent": {
                     "type": "boolean"
@@ -826,6 +892,10 @@
         },
         "account.RegisterRequest": {
             "type": "object",
+            "required": [
+                "email",
+                "phone"
+            ],
             "properties": {
                 "email": {
                     "type": "string"
@@ -887,11 +957,81 @@
                 }
             }
         },
-        "config.Response": {
+        "config.ModelConfigRequest": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "inner_thoughts_postprocess": {
+                    "type": "boolean",
+                    "enum": [
+                        true,
+                        false
+                    ]
+                }
+            }
+        },
+        "config.ModelConfigResponse": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "config.ModifyModelConfigRequest": {
             "type": "object",
             "properties": {
                 "invite_required": {
+                    "type": "boolean",
+                    "enum": [
+                        true,
+                        false
+                    ]
+                },
+                "model_config": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/config.ModelConfigRequest"
+                    }
+                },
+                "notice": {
+                    "type": "string"
+                },
+                "offense_check": {
+                    "type": "boolean",
+                    "enum": [
+                        true,
+                        false
+                    ]
+                }
+            }
+        },
+        "config.Response": {
+            "type": "object",
+            "properties": {
+                "default_plugin_config": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "boolean"
+                    }
+                },
+                "invite_required": {
                     "type": "boolean"
+                },
+                "model_config": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/config.ModelConfigResponse"
+                    }
                 },
                 "notice": {
                     "type": "string"
@@ -913,6 +1053,9 @@
                 },
                 "id": {
                     "type": "integer"
+                },
+                "max_length_exceeded": {
+                    "type": "boolean"
                 },
                 "name": {
                     "type": "string"
@@ -958,6 +1101,7 @@
                     "description": "1 like, -1 dislike",
                     "type": "integer"
                 },
+                "processed_extra_data": {},
                 "request": {
                     "type": "string"
                 },
@@ -972,25 +1116,20 @@
                 }
             }
         },
-        "models.RecordModel": {
-            "type": "object",
-            "properties": {
-                "request": {
-                    "type": "string"
-                },
-                "response": {
-                    "type": "string"
-                }
-            }
-        },
         "models.User": {
             "type": "object",
             "properties": {
+                "banned": {
+                    "type": "boolean"
+                },
                 "chats": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/models.Chat"
                     }
+                },
+                "disable_sensitive_check": {
+                    "type": "boolean"
                 },
                 "email": {
                     "type": "string"
@@ -998,17 +1137,30 @@
                 "id": {
                     "type": "integer"
                 },
+                "is_admin": {
+                    "type": "boolean"
+                },
                 "joined_time": {
                     "type": "string"
                 },
                 "last_login": {
                     "type": "string"
                 },
+                "model_id": {
+                    "type": "integer",
+                    "default": 1
+                },
                 "nickname": {
                     "type": "string"
                 },
                 "phone": {
                     "type": "string"
+                },
+                "plugin_config": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "boolean"
+                    }
                 },
                 "share_consent": {
                     "type": "boolean"
@@ -1029,10 +1181,13 @@
         "record.InferenceRequest": {
             "type": "object",
             "properties": {
-                "records": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.RecordModel"
+                "context": {
+                    "type": "string"
+                },
+                "plugin_config": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "boolean"
                     }
                 },
                 "request": {
@@ -1044,6 +1199,10 @@
         "record.InferenceResponse": {
             "type": "object",
             "properties": {
+                "context": {
+                    "type": "string"
+                },
+                "extra_data": {},
                 "response": {
                     "type": "string"
                 }

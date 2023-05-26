@@ -2,11 +2,12 @@ package shumei
 
 import (
 	"MOSS_backend/config"
+	"MOSS_backend/utils"
 	"bytes"
 	"encoding/json"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 	"io"
-	"log"
 	"net/http"
 	"time"
 )
@@ -47,9 +48,20 @@ func IsSensitive(content string) bool {
 		},
 	})
 
+	// timer
+	startTime := time.Now()
+	defer func() {
+		utils.Logger.Info(
+			"shumei check",
+			zap.Int64("duration", time.Since(startTime).Milliseconds()),
+		)
+	}()
+
 	rsp, err := client.Post(url, "application/json", bytes.NewBuffer(data))
 	if err != nil {
-		log.Println(err)
+		utils.Logger.Error("shu mei: post error",
+			zap.Error(err),
+		)
 		return false
 	}
 
@@ -59,24 +71,33 @@ func IsSensitive(content string) bool {
 
 	data, err = io.ReadAll(rsp.Body)
 	if err != nil {
-		log.Println("shu mei: read body error")
+		utils.Logger.Error("shu mei: read body error",
+			zap.Error(err),
+		)
 		return false
 	}
 
 	if rsp.StatusCode != 200 {
-		log.Println("shu mei: platform error, status code ", rsp.StatusCode)
+		utils.Logger.Error("shu mei: platform error",
+			zap.Int("status code", rsp.StatusCode),
+		)
 		return false
 	}
 
 	var response Response
 	err = json.Unmarshal(data, &response)
 	if err != nil {
-		log.Println("shu mei: response decode error: ", string(data))
+		utils.Logger.Error("shu mei: response decode error",
+			zap.String("response", string(data)),
+			zap.Error(err),
+		)
 		return false
 	}
 
 	if response.Code != 1100 {
-		log.Println("shu mei: check error", response.Message)
+		utils.Logger.Warn("shu mei: check error",
+			zap.String("message", response.Message),
+		)
 		return false
 	} else {
 		if response.RiskLevel == "PASS" {

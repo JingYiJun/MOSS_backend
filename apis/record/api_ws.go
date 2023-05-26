@@ -8,13 +8,36 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
+	"strconv"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/gofiber/websocket/v2"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
-	"log"
-	"strconv"
-	"sync/atomic"
 )
+
+var userLockMap sync.Map
+
+type UserLockValue struct {
+	LockTime time.Time
+}
+
+func UserLockCheck() {
+	ticker := time.NewTicker(time.Hour)
+	for range ticker.C {
+		userLockMap.Range(func(key, value interface{}) bool {
+			userLockValue := value.(UserLockValue)
+			// delete lock before 1 minute
+			if userLockValue.LockTime.Before(time.Now().Add(-time.Minute)) {
+				userLockMap.Delete(key)
+			}
+			return true
+		})
+	}
+}
 
 // AddRecordAsync
 // @Summary add a record
@@ -43,10 +66,6 @@ func AddRecordAsync(c *websocket.Conn) {
 			if httpError, ok := err.(*HttpError); ok {
 				response.StatusCode = httpError.Code
 			}
-			if errors.Is(err, maxLengthExceededError) {
-				chat.MaxLengthExceeded = true
-				DB.Save(&chat)
-			}
 			_ = c.WriteJSON(response)
 		}
 	}()
@@ -59,7 +78,7 @@ func AddRecordAsync(c *websocket.Conn) {
 
 		// read body
 		if _, message, err = c.ReadMessage(); err != nil {
-			return fmt.Errorf("error receive message: %s\n", err)
+			return fmt.Errorf("error receive message: %s", err)
 		}
 
 		// unmarshal body
@@ -69,10 +88,27 @@ func AddRecordAsync(c *websocket.Conn) {
 			return fmt.Errorf("error unmarshal text: %s", err)
 		}
 
+		if body.Request == "" {
+			return BadRequest("request is empty")
+		} else if len([]rune(body.Request)) > 1000 {
+			return maxInputExceededError
+		}
+
 		// get user id
 		user, err = LoadUserFromWs(c)
 		if err != nil {
 			return Unauthorized()
+		}
+
+		// check user lock
+		if _, ok := userLockMap.LoadOrStore(user.ID, UserLockValue{LockTime: time.Now()}); ok {
+			return userRequestingError
+		}
+		defer userLockMap.Delete(user.ID)
+
+		// infer limiter
+		if !inferLimiter.Allow() {
+			return unknownError
 		}
 
 		banned, err = user.CheckUserOffense()
@@ -92,11 +128,6 @@ func AddRecordAsync(c *websocket.Conn) {
 		// permission
 		if chat.UserID != user.ID {
 			return Forbidden()
-		}
-
-		// max length exceeded
-		if chat.MaxLengthExceeded {
-			return maxLengthExceededError
 		}
 
 		record := Record{
@@ -130,19 +161,19 @@ func AddRecordAsync(c *websocket.Conn) {
 		} else {
 			/* infer */
 
-			// find all records to make dialogs, without sensitive content
-			var records Records
-			err = DB.Find(&records, "chat_id = ? and request_sensitive <> true and response_sensitive <> true", chatID).Error
-			if err != nil {
+			// find last record prefix to make dialogs, without sensitive content
+			var oldRecord Record
+			err = DB.Last(&oldRecord, "chat_id = ? AND request_sensitive = ? AND response_sensitive = ?", chatID, false, false).Error
+			if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 				return err
 			}
 
 			// async infer
-			err = InferAsync(c, record.Request, records.ToRecordModel(), &record, user)
-			if err != nil {
-				if httpError, ok := err.(*HttpError); ok && httpError.MessageType == MaxLength {
-					DB.Model(&chat).Update("max_length_exceeded", true)
-				}
+			err = InferAsync(c, oldRecord.Prefix, &record, user, body.Param)
+			if err != nil && !errors.Is(err, ErrSensitive) {
+				//if httpError, ok := err.(*HttpError); ok && httpError.MessageType == MaxLength {
+				//	DB.Model(&chat).Update("max_length_exceeded", true)
+				//}
 				return err
 			}
 		}
@@ -206,10 +237,6 @@ func RegenerateAsync(c *websocket.Conn) {
 			if httpError, ok := err.(*HttpError); ok {
 				response.StatusCode = httpError.Code
 			}
-			if errors.Is(err, maxLengthExceededError) {
-				chat.MaxLengthExceeded = true
-				DB.Save(&chat)
-			}
 			err = c.WriteJSON(response)
 			if err != nil {
 				log.Println("write err error: ", err)
@@ -229,6 +256,17 @@ func RegenerateAsync(c *websocket.Conn) {
 			return Unauthorized()
 		}
 
+		// check user lock
+		if _, ok := userLockMap.LoadOrStore(user.ID, UserLockValue{LockTime: time.Now()}); ok {
+			return userRequestingError
+		}
+		defer userLockMap.Delete(user.ID)
+
+		// infer limiter
+		if !inferLimiter.Allow() {
+			return unknownError
+		}
+
 		banned, err = user.CheckUserOffense()
 		if err != nil {
 			return err
@@ -246,11 +284,6 @@ func RegenerateAsync(c *websocket.Conn) {
 		// permission
 		if chat.UserID != user.ID {
 			return Forbidden()
-		}
-
-		// max length exceeded
-		if chat.MaxLengthExceeded {
-			return maxLengthExceededError
 		}
 
 		// get the latest record
@@ -290,24 +323,20 @@ func RegenerateAsync(c *websocket.Conn) {
 
 		/* infer */
 
-		// find all records to make dialogs, without sensitive content
-		var records Records
-		err = DB.Find(&records, "chat_id = ? and request_sensitive <> true and response_sensitive <> true", chatID).Error
-		if err != nil {
+		// find last record prefix to make dialogs, without sensitive content
+		var prefixRecord Record
+		err = DB.Last(&prefixRecord, "chat_id = ? AND request_sensitive = false AND response_sensitive = false AND id < ?", chatID, oldRecord.ID).Error
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
 
-		// remove the latest record
-		if len(records) > 0 {
-			records = records[0 : len(records)-1]
-		}
-
 		// async infer
-		err = InferAsync(c, record.Request, records.ToRecordModel(), &record, user)
-		if err != nil {
-			if httpError, ok := err.(*HttpError); ok && httpError.MessageType == MaxLength {
-				DB.Model(&chat).Update("max_length_exceeded", true)
-			}
+		err = InferAsync(c, prefixRecord.Prefix, &record, user, nil)
+		if err != nil && !errors.Is(err, ErrSensitive) {
+			//
+			//if httpError, ok := err.(*HttpError); ok && httpError.MessageType == MaxLength {
+			//	DB.Model(&chat).Update("max_length_exceeded", true)
+			//}
 			return err
 		}
 
@@ -396,7 +425,10 @@ func InferWithoutLoginAsync(c *websocket.Conn) {
 
 	defer func() {
 		if err != nil {
-			log.Println(err)
+			Logger.Error(
+				"client websocket return with error",
+				zap.Error(err),
+			)
 			response := InferResponseModel{Status: -1, Output: err.Error()}
 			if httpError, ok := err.(*HttpError); ok {
 				response.StatusCode = httpError.Code
@@ -409,7 +441,7 @@ func InferWithoutLoginAsync(c *websocket.Conn) {
 
 		// read body
 		if _, message, err = c.ReadMessage(); err != nil {
-			return fmt.Errorf("error receive message: %s\n", err)
+			return fmt.Errorf("error receive message: %s", err)
 		}
 
 		// unmarshal body
@@ -419,8 +451,19 @@ func InferWithoutLoginAsync(c *websocket.Conn) {
 			return fmt.Errorf("error unmarshal text: %s", err)
 		}
 
+		if body.Request == "" {
+			return BadRequest("request is empty")
+		} else if len([]rune(body.Request)) > 1000 {
+			return maxInputExceededError
+		}
+
+		// infer limiter
+		if !inferLimiter.Allow() {
+			return unknownError
+		}
+
 		// sensitive request check
-		if sensitive.IsSensitive(body.String(), &User{}) {
+		if sensitive.IsSensitive(body.Context, &User{}) {
 
 			err = c.WriteJSON(InferResponseModel{
 				Status: -2, // sensitive
@@ -432,8 +475,9 @@ func InferWithoutLoginAsync(c *websocket.Conn) {
 		} else {
 			/* infer */
 
+			record.Request = body.Request
 			// async infer
-			err = InferAsync(c, body.Request, body.Records, &record, &User{})
+			err = InferAsync(c, body.Context, &record, &User{}, body.Param)
 			if err != nil {
 				return err
 			}
@@ -441,10 +485,20 @@ func InferWithoutLoginAsync(c *websocket.Conn) {
 
 		// store into database
 		directRecord := DirectRecord{
-			Records:  append(body.Records, RecordModel{Request: body.Request, Response: record.Response}),
-			Duration: record.Duration,
+			Duration:  record.Duration,
+			Context:   record.Prefix,
+			Request:   record.Request,
+			Response:  record.Response,
+			ExtraData: record.ExtraData,
 		}
 		_ = DB.Create(&directRecord).Error
+
+		// return response
+		_ = c.WriteJSON(InferenceResponse{
+			Response:  record.Response,
+			Context:   record.Prefix,
+			ExtraData: record.ExtraData,
+		})
 
 		return nil
 	}

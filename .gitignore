@@ -1,2 +1,3 @@
 .idea
 sqlite.db
+utils/tools/tools_test.go

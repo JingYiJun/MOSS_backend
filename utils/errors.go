@@ -86,7 +86,7 @@ func NotFound(messages ...string) *HttpError {
 }
 
 func InternalServerError(messages ...string) *HttpError {
-	message := "Internal Server Error"
+	message := "Unknown Error"
 	if len(messages) > 0 {
 		message = messages[0]
 	}

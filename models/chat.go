@@ -21,17 +21,22 @@ type Chat struct {
 type Chats []Chat
 
 type Record struct {
-	ID                int            `json:"id"`
-	CreatedAt         time.Time      `json:"created_at"`
-	DeletedAt         gorm.DeletedAt `json:"-" gorm:"index:idx_record_chat_deleted,priority:2"`
-	Duration          float64        `json:"duration"` // 处理时间，单位 s
-	ChatID            int            `json:"chat_id" gorm:"index:idx_record_chat_deleted,priority:1"`
-	Request           string         `json:"request"`
-	Response          string         `json:"response"`
-	LikeData          int            `json:"like_data"` // 1 like, -1 dislike
-	Feedback          string         `json:"feedback"`
-	RequestSensitive  bool           `json:"request_sensitive"`
-	ResponseSensitive bool           `json:"response_sensitive"`
+	ID                 int            `json:"id"`
+	CreatedAt          time.Time      `json:"created_at"`
+	DeletedAt          gorm.DeletedAt `json:"-" gorm:"index:idx_record_chat_deleted,priority:2"`
+	Duration           float64        `json:"duration"` // 处理时间，单位 s
+	ChatID             int            `json:"chat_id" gorm:"index:idx_record_chat_deleted,priority:1"`
+	Request            string         `json:"request"`
+	Response           string         `json:"response"`
+	Prefix             string         `json:"-"`
+	RawContent         string         `json:"raw_content"`
+	ExtraData          any            `json:"-" gorm:"serializer:json"` //`json:"extra_data" gorm:"serializer:json"`
+	ProcessedExtraData any            `json:"processed_extra_data" gorm:"serializer:json"`
+	LikeData           int            `json:"like_data"` // 1 like, -1 dislike
+	Feedback           string         `json:"feedback"`
+	RequestSensitive   bool           `json:"request_sensitive"`
+	ResponseSensitive  bool           `json:"response_sensitive"`
+	InnerThoughts      string         `json:"inner_thoughts"`
 }
 
 type Records []Record
@@ -73,10 +78,28 @@ type Param struct {
 	Value float64
 }
 
+func LoadParamToMap(m map[string]any) error {
+	if DB == nil {
+		return nil
+	}
+	var params []Param
+	err := DB.Find(&params).Error
+	if err != nil {
+		return err
+	}
+	for _, param := range params {
+		m[param.Name] = param.Value
+	}
+	return nil
+}
+
 type DirectRecord struct {
 	ID               int
 	CreatedAt        time.Time
-	Records          []RecordModel `gorm:"serializer:json"`
 	Duration         float64
 	ConsumerUsername string
+	Context          string
+	Request          string
+	Response         string
+	ExtraData        any `json:"extra_data" gorm:"serializer:json"`
 }

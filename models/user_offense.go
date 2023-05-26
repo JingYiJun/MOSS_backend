@@ -37,7 +37,7 @@ func (user *User) CheckUserOffense() (bool, error) {
 	)
 
 	var configObject Config
-	err = DB.First(&configObject).Error
+	err = LoadConfig(&configObject)
 	if err != nil {
 		return false, err
 	}
@@ -60,7 +60,7 @@ func (user *User) CheckUserOffense() (bool, error) {
 	}
 	if count >= 3 {
 		user.Banned = true
-		err = DB.Save(user).Error
+		err = DB.Model(&user).Select("Banned").Updates(user).Error
 		if err != nil {
 			return false, err
 		}
@@ -79,7 +79,7 @@ func (user *User) CheckUserOffense() (bool, error) {
 	}
 	if count >= 10 {
 		user.Banned = true
-		err = DB.Save(user).Error
+		err = DB.Model(&user).Select("Banned").Updates(user).Error
 		if err != nil {
 			return false, err
 		}

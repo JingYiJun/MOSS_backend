@@ -8,8 +8,8 @@ import (
 	"github.com/eko/gocache/lib/v4/cache"
 	gocacheStore "github.com/eko/gocache/store/go_cache/v4"
 	redisStore "github.com/eko/gocache/store/redis/v4"
-	"github.com/go-redis/redis/v8"
 	gocache "github.com/patrickmn/go-cache"
+	"github.com/redis/go-redis/v9"
 	"math/big"
 	"time"
 )

@@ -1,39 +1,36 @@
 package chat
 
 import (
-	"MOSS_backend/config"
 	"MOSS_backend/data"
 	"MOSS_backend/models"
-	"bytes"
 	"context"
-	"encoding/json"
-	"errors"
 	"github.com/chromedp/chromedp"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"text/template"
 )
 
+var imageTemplate, _ = template.New("image").Funcs(map[string]any{"replace": ContentProcess}).Parse(string(data.ImageTemplate))
+
 func GenerateImage(records []models.RecordModel) ([]byte, error) {
-	if !config.Config.OpenScreenshot {
-		return nil, errors.New("截图功能暂缓开放")
-	}
-	ctx, cancel := chromedp.NewContext(context.Background())
+	// disable javascript in headless chrome
+	opts := append(chromedp.DefaultExecAllocatorOptions[:],
+		chromedp.Flag("blink-settings", "scriptEnabled=false"),
+	)
+	ctx, cancel := chromedp.NewExecAllocator(context.Background(), opts...)
+	defer cancel()
+
+	ctx, cancel = chromedp.NewContext(context.Background())
 	defer cancel()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-		for i := range records {
-			records[i].Request = contentProcess(records[i].Request)
-			records[i].Response = contentProcess(records[i].Response)
-		}
-		recordsData, _ := json.Marshal(records)
-		_, _ = w.Write(bytes.Replace(
-			data.ImageTemplate,
-			[]byte(`[{"request": "你好", "response": "你好，很高兴认识你，我是moss，一个聊天助手，巴拉巴拉巴拉巴拉，"}]`),
-			recordsData,
-			1,
-		))
+		_ = imageTemplate.Execute(w, struct {
+			Records []models.RecordModel
+		}{
+			Records: records,
+		})
 	}))
 	defer server.Close()
 
@@ -46,7 +43,7 @@ func GenerateImage(records []models.RecordModel) ([]byte, error) {
 	return buf, err
 }
 
-func contentProcess(content string) string {
+func ContentProcess(content string) string {
 	recordLines := strings.Split(content, "\n")
 	var builder strings.Builder
 	for i, recordLine := range recordLines {
