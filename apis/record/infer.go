@@ -344,6 +344,10 @@ func InferAsync(
 
 	// wait for infer
 	go func() {
+		Logger.Error( // $$$
+			fmt.Sprintf("=!=InferWsContext: %v, record: %v, prefix: %v", c, record, prefix),
+			zap.Error(err),
+		)
 		innerErr := InferCommon(
 			record,
 			prefix,
