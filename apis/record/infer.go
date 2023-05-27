@@ -38,7 +38,7 @@ type responseChannel struct {
 
 var InferResponseChannel sync.Map
 
-var inferHttpClient = http.Client{Timeout: 2 * time.Minute}
+var inferHttpClient = http.Client{Timeout: 120 * time.Second}
 
 type InferWsContext struct {
 	c                *websocket.Conn
@@ -141,15 +141,7 @@ func InferCommon(
 
 	// construct data to send
 	data, _ := json.Marshal(request)
-	Logger.Error( // infer error $$$
-		fmt.Sprintf("==??!==data request: %+v, record %+v", request, record),
-		zap.Error(err),
-	)
 	inferTriggerResults, err := inferTrigger(data, inferUrl) // block here
-	Logger.Error( // infer error $$
-		fmt.Sprintf("===infer trigger results: %+v", inferTriggerResults),
-		zap.Error(err),
-	)
 	if err != nil {
 		return err
 	}
@@ -310,9 +302,6 @@ func InferCommon(
 	rawContentBuilder.WriteString(secondFormattedNewGenerations)
 	rawContentBuilder.WriteString("\n")
 	record.RawContent = rawContentBuilder.String()
-	Logger.Error( // $$3
-		fmt.Sprintf("raw content: %s, records else: %+v", record.RawContent, record),
-	)
 	// end
 	if ctx != nil {
 		err = ctx.c.WriteJSON(InferResponseModel{Status: 0})
@@ -354,10 +343,6 @@ func InferAsync(
 
 	// wait for infer
 	go func() {
-		Logger.Error( // $$$
-			fmt.Sprintf("=!=InferWsContext: %+v, record: %+v, prefix: %v", c, record, prefix),
-			zap.Error(err),
-		)
 		innerErr := InferCommon(
 			record,
 			prefix,
@@ -373,10 +358,6 @@ func InferAsync(
 		} else {
 			close(successChan)
 		}
-		Logger.Error( // $$$
-			fmt.Sprintf("===InferWsContext: %+v, record: %+v", c, record),
-			zap.Error(err),
-		)	
 	}()
 
 	for {
@@ -548,10 +529,6 @@ func inferTrigger(data []byte, inferUrl string) (i *InferTriggerResponse, err er
 		Logger.Error("fail to read response body", zap.Error(err))
 		return nil, InternalServerError()
 	}
-	Logger.Error( // $$$
-		fmt.Sprintf("--==infer response: +%v", string(response)),
-		zap.Error(err),
-	)
 
 	latency := int(time.Since(startTime))
 	duration := float64(latency) / 1000_000_000
