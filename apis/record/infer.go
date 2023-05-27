@@ -38,7 +38,7 @@ type responseChannel struct {
 
 var InferResponseChannel sync.Map
 
-var inferHttpClient = http.Client{Timeout: 1 * time.Minute}
+var inferHttpClient = http.Client{Timeout: 5 * time.Minute}
 
 type InferWsContext struct {
 	c                *websocket.Conn
