@@ -359,6 +359,10 @@ func InferAsync(
 		} else {
 			close(successChan)
 		}
+		Logger.Error( // $$$
+			fmt.Sprintf("===InferWsContext: %v, record: %v", c, record),
+			zap.Error(err),
+		)	
 	}()
 
 	for {
