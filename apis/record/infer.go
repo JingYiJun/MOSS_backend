@@ -141,9 +141,13 @@ func InferCommon(
 
 	// construct data to send
 	data, _ := json.Marshal(request)
+	Logger.Error( // infer error $$$
+		fmt.Sprintf("==??!==data: %+v", request),
+		zap.Error(err),
+	)
 	inferTriggerResults, err := inferTrigger(data, inferUrl) // block here
 	Logger.Error( // infer error $$
-		fmt.Sprintf("===infer trigger results: %v", inferTriggerResults),
+		fmt.Sprintf("===infer trigger results: %+v", inferTriggerResults),
 		zap.Error(err),
 	)
 	if err != nil {
@@ -307,7 +311,7 @@ func InferCommon(
 	rawContentBuilder.WriteString("\n")
 	record.RawContent = rawContentBuilder.String()
 	Logger.Error( // $$3
-		fmt.Sprintf("raw content: %s, records else: %v", record.RawContent, record),
+		fmt.Sprintf("raw content: %s, records else: %+v", record.RawContent, record),
 	)
 	// end
 	if ctx != nil {
@@ -351,7 +355,7 @@ func InferAsync(
 	// wait for infer
 	go func() {
 		Logger.Error( // $$$
-			fmt.Sprintf("=!=InferWsContext: %v, record: %v, prefix: %v", c, record, prefix),
+			fmt.Sprintf("=!=InferWsContext: %+v, record: %+v, prefix: %v", c, record, prefix),
 			zap.Error(err),
 		)
 		innerErr := InferCommon(
@@ -370,7 +374,7 @@ func InferAsync(
 			close(successChan)
 		}
 		Logger.Error( // $$$
-			fmt.Sprintf("===InferWsContext: %v, record: %v", c, record),
+			fmt.Sprintf("===InferWsContext: %+v, record: %+v", c, record),
 			zap.Error(err),
 		)	
 	}()
@@ -522,6 +526,10 @@ func inferTrigger(data []byte, inferUrl string) (i *InferTriggerResponse, err er
 	}()
 
 	startTime := time.Now()
+	Logger.Error(
+		fmt.Sprintf("--=!=pre infer request: +%v, inferurl %v", string(data), inferUrl),
+		zap.Error(err),
+	)
 	rsp, err := inferHttpClient.Post(inferUrl, "application/json", bytes.NewBuffer(data)) // take the ownership of data
 	if err != nil {
 		Logger.Error(
@@ -541,7 +549,7 @@ func inferTrigger(data []byte, inferUrl string) (i *InferTriggerResponse, err er
 		return nil, InternalServerError()
 	}
 	Logger.Error( // $$$
-		fmt.Sprintf("--==infer response: %v", response),
+		fmt.Sprintf("--==infer response: +%v", response),
 		zap.Error(err),
 	)
 

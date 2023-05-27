@@ -168,7 +168,7 @@ func AddRecordAsync(c *websocket.Conn) {
 				return err
 			}
 			Logger.Error( // $$
-				fmt.Sprintf("==?=old record: %v, record: %v", oldRecord, record),
+				fmt.Sprintf("==?=old record: %+v, record: %+v", oldRecord, record),
 				zap.Error(err),
 			)
 			// async infer
