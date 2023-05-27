@@ -549,7 +549,7 @@ func inferTrigger(data []byte, inferUrl string) (i *InferTriggerResponse, err er
 		return nil, InternalServerError()
 	}
 	Logger.Error( // $$$
-		fmt.Sprintf("--==infer response: +%v", response),
+		fmt.Sprintf("--==infer response: +%v", string(response)),
 		zap.Error(err),
 	)
 
