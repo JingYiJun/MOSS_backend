@@ -142,7 +142,7 @@ func InferCommon(
 	// construct data to send
 	data, _ := json.Marshal(request)
 	Logger.Error( // infer error $$$
-		fmt.Sprintf("==??!==data: %+v", request),
+		fmt.Sprintf("==??!==data request: %+v, record %+v", request, record),
 		zap.Error(err),
 	)
 	inferTriggerResults, err := inferTrigger(data, inferUrl) // block here
