@@ -391,8 +391,8 @@ func inferListener(
 	}()
 
 	startTime := time.Now()
-
-	var timer = time.NewTimer(11 * time.Second)
+	var inferListenerTimeLimit = 90 * time.Second
+	var timer = time.NewTimer(inferListenerTimeLimit)
 
 	var nowOutput string
 	var detectedOutput string
@@ -406,7 +406,7 @@ func inferListener(
 		}
 		select {
 		case response := <-outputChan:
-			timer.Reset(11 * time.Second)
+			timer.Reset(inferListenerTimeLimit)
 			if config.Config.Debug {
 				log.Println("receive response from output channel")
 				log.Println(response)
