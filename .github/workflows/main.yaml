@@ -28,6 +28,6 @@ jobs:
         with:
           push: true
           tags: |
-            registry.cn-shanghai.aliyuncs.com/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.APP_NAME }}:latest
-            registry.cn-shanghai.aliyuncs.com/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.APP_NAME }}:master
+            registry.cn-shanghai.aliyuncs.com/${{ secrets.ACR_NAMESPACE }}/${{ env.APP_NAME }}:latest
+            registry.cn-shanghai.aliyuncs.com/${{ secrets.ACR_NAMESPACE }}/${{ env.APP_NAME }}:master
 
