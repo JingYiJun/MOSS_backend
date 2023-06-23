@@ -23,7 +23,7 @@ var (
 // error messages
 var (
 	userRequestingError            = BadRequest("上一次请求还未结束，请稍后再试。User requesting, please wait and try again")
-	maxInputExceededError          = BadRequest("单次输入限长为 1000 字符。Input no more than 1000 characters").WithMessageType(MaxLength)
+	maxInputExceededError          = BadRequest("单次输入限长为 2048 字符。Input no more than 2048 characters").WithMessageType(MaxLength)
 	maxInputExceededFromInferError = BadRequest("单次输入超长，请减少字数并重试。Input max length exceeded, please reduce length and try again").WithMessageType(MaxLength)
 	unknownError                   = InternalServerError("未知错误，请刷新或等待一分钟后再试。Unknown error, please refresh or wait a minute and try again")
 	ErrSensitive                   = errors.New("sensitive")

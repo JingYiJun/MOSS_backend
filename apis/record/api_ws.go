@@ -90,7 +90,7 @@ func AddRecordAsync(c *websocket.Conn) {
 
 		if body.Request == "" {
 			return BadRequest("request is empty")
-		} else if len([]rune(body.Request)) > 1000 {
+		} else if len([]rune(body.Request)) > 2048 {
 			return maxInputExceededError
 		}
 
@@ -453,7 +453,7 @@ func InferWithoutLoginAsync(c *websocket.Conn) {
 
 		if body.Request == "" {
 			return BadRequest("request is empty")
-		} else if len([]rune(body.Request)) > 1000 {
+		} else if len([]rune(body.Request)) > 2048 {
 			return maxInputExceededError
 		}
 
