@@ -16,17 +16,18 @@ jobs:
         uses: docker/setup-qemu-action@master
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@master
-      - name: Login to DockerHub
-        uses: docker/login-action@master
+      - name: Login to ACR
+        uses: aliyun/acr-login@master
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          login-server: https://registry.cn-shanghai.aliyuncs.com
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
       - name: Build and push
         id: docker_build
         uses: docker/build-push-action@master
         with:
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.APP_NAME }}:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.APP_NAME }}:master
+            registry.cn-shanghai.aliyuncs.com/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.APP_NAME }}:latest
+            registry.cn-shanghai.aliyuncs.com/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.APP_NAME }}:master
 
