@@ -167,7 +167,6 @@ func AddRecordAsync(c *websocket.Conn) {
 			if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 				return err
 			}
-
 			// async infer
 			err = InferAsync(c, oldRecord.Prefix, &record, user, body.Param)
 			if err != nil && !errors.Is(err, ErrSensitive) {

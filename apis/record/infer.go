@@ -38,7 +38,7 @@ type responseChannel struct {
 
 var InferResponseChannel sync.Map
 
-var inferHttpClient = http.Client{Timeout: 1 * time.Minute}
+var inferHttpClient = http.Client{Timeout: 120 * time.Second}
 
 type InferWsContext struct {
 	c                *websocket.Conn
@@ -302,7 +302,6 @@ func InferCommon(
 	rawContentBuilder.WriteString(secondFormattedNewGenerations)
 	rawContentBuilder.WriteString("\n")
 	record.RawContent = rawContentBuilder.String()
-
 	// end
 	if ctx != nil {
 		err = ctx.c.WriteJSON(InferResponseModel{Status: 0})
@@ -392,8 +391,8 @@ func inferListener(
 	}()
 
 	startTime := time.Now()
-
-	var timer = time.NewTimer(11 * time.Second)
+	var inferListenerTimeLimit = 90 * time.Second
+	var timer = time.NewTimer(inferListenerTimeLimit)
 
 	var nowOutput string
 	var detectedOutput string
@@ -407,7 +406,7 @@ func inferListener(
 		}
 		select {
 		case response := <-outputChan:
-			timer.Reset(11 * time.Second)
+			timer.Reset(inferListenerTimeLimit)
 			if config.Config.Debug {
 				log.Println("receive response from output channel")
 				log.Println(response)
