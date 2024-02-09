@@ -84,7 +84,7 @@ func OpenAICreateChatCompletion(c *fiber.Ctx) (err error) {
 	}
 
 	record := Record{Request: requestMessage}
-	err = Infer(&record, prefix, &User{PluginConfig: nil, ModelID: modelConfig.ID}, nil)
+	err = Infer(&record, prefix, nil, &User{PluginConfig: nil, ModelID: modelConfig.ID}, nil)
 	if err != nil {
 		return err
 	}

@@ -1,10 +1,6 @@
 package record
 
 import (
-	"MOSS_backend/config"
-	. "MOSS_backend/models"
-	. "MOSS_backend/utils"
-	"MOSS_backend/utils/sensitive"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,6 +9,11 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"MOSS_backend/config"
+	. "MOSS_backend/models"
+	. "MOSS_backend/utils"
+	"MOSS_backend/utils/sensitive"
 
 	"github.com/gofiber/websocket/v2"
 	"go.uber.org/zap"
@@ -161,14 +162,22 @@ func AddRecordAsync(c *websocket.Conn) {
 		} else {
 			/* infer */
 
-			// find last record prefix to make dialogs, without sensitive content
-			var oldRecord Record
-			err = DB.Last(&oldRecord, "chat_id = ? AND request_sensitive = ? AND response_sensitive = ?", chatID, false, false).Error
+			// find record prefix to make dialogs, without sensitive content
+			var oldRecords Records
+			err = DB.Last(&oldRecords, "chat_id = ? AND request_sensitive = ? AND response_sensitive = ?", chatID, false, false).Error
 			if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 				return err
 			}
+
 			// async infer
-			err = InferAsync(c, oldRecord.Prefix, &record, user, body.Param)
+			err = InferAsync(
+				c,
+				oldRecords.GetPrefix(),
+				&record,
+				oldRecords.ToRecordModel(),
+				user,
+				body.Param,
+			)
 			if err != nil && !errors.Is(err, ErrSensitive) {
 				//if httpError, ok := err.(*HttpError); ok && httpError.MessageType == MaxLength {
 				//	DB.Model(&chat).Update("max_length_exceeded", true)
@@ -322,15 +331,22 @@ func RegenerateAsync(c *websocket.Conn) {
 
 		/* infer */
 
-		// find last record prefix to make dialogs, without sensitive content
-		var prefixRecord Record
-		err = DB.Last(&prefixRecord, "chat_id = ? AND request_sensitive = false AND response_sensitive = false AND id < ?", chatID, oldRecord.ID).Error
+		// find old records to make dialogs, without sensitive content
+		var oldRecords Records
+		err = DB.Last(&oldRecords, "chat_id = ? AND request_sensitive = false AND response_sensitive = false AND id < ?", chatID, oldRecord.ID).Error
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
 
 		// async infer
-		err = InferAsync(c, prefixRecord.Prefix, &record, user, nil)
+		err = InferAsync(
+			c,
+			oldRecords.GetPrefix(),
+			&record,
+			oldRecords.ToRecordModel(),
+			user,
+			nil,
+		)
 		if err != nil && !errors.Is(err, ErrSensitive) {
 			//
 			//if httpError, ok := err.(*HttpError); ok && httpError.MessageType == MaxLength {
@@ -429,7 +445,8 @@ func InferWithoutLoginAsync(c *websocket.Conn) {
 				zap.Error(err),
 			)
 			response := InferResponseModel{Status: -1, Output: err.Error()}
-			if httpError, ok := err.(*HttpError); ok {
+			var httpError *HttpError
+			if errors.As(err, &httpError) {
 				response.StatusCode = httpError.Code
 			}
 			_ = c.WriteJSON(response)
@@ -475,8 +492,15 @@ func InferWithoutLoginAsync(c *websocket.Conn) {
 			/* infer */
 
 			record.Request = body.Request
-			// async infer
-			err = InferAsync(c, body.Context, &record, &User{}, body.Param)
+			// async infer TODO: parse record from context
+			err = InferAsync(
+				c,
+				body.Context,
+				&record,
+				nil,
+				&User{},
+				body.Param,
+			)
 			if err != nil {
 				return err
 			}

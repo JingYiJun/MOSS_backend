@@ -23,6 +23,7 @@ require (
 	github.com/prometheus/client_golang v1.18.0
 	github.com/redis/go-redis/v9 v9.4.0
 	github.com/robfig/cron/v3 v3.0.1
+	github.com/sashabaranov/go-openai v1.19.3
 	github.com/swaggo/swag v1.16.3
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.0.857
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/ses v1.0.857

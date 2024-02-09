@@ -1,12 +1,8 @@
 package record
 
 import (
-	"MOSS_backend/config"
-	. "MOSS_backend/models"
-	. "MOSS_backend/utils"
-	"MOSS_backend/utils/sensitive"
-	"MOSS_backend/utils/tools"
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,6 +14,14 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/sashabaranov/go-openai"
+
+	"MOSS_backend/config"
+	. "MOSS_backend/models"
+	. "MOSS_backend/utils"
+	"MOSS_backend/utils/sensitive"
+	"MOSS_backend/utils/tools"
 
 	"github.com/gofiber/websocket/v2"
 	"github.com/google/uuid"
@@ -45,50 +49,145 @@ type InferWsContext struct {
 	connectionClosed *atomic.Bool
 }
 
+func InferOpenAI(
+	record *Record,
+	postRecord RecordModels,
+	model *ModelConfig,
+	user *User,
+	ctx *InferWsContext,
+) (
+	err error,
+) {
+	openaiConfig := openai.DefaultConfig("")
+	openaiConfig.BaseURL = model.Url
+	client := openai.NewClientWithConfig(openaiConfig)
+
+	request := openai.ChatCompletionRequest{
+		Model:    model.Description,
+		Messages: postRecord.ToOpenAIMessages(),
+	}
+
+	if ctx == nil {
+		response, err := client.CreateChatCompletion(
+			context.Background(),
+			request,
+		)
+		if err != nil {
+			return err
+		}
+
+		if len(response.Choices) == 0 {
+			return unknownError
+		}
+
+		record.Response = response.Choices[0].Message.Content
+	} else {
+		// streaming
+
+		stream, err := client.CreateChatCompletionStream(
+			context.Background(),
+			request,
+		)
+		if err != nil {
+			return err
+		}
+		defer stream.Close()
+
+		startTime := time.Now()
+
+		var resultBuilder strings.Builder
+		for {
+			if ctx.connectionClosed.Load() {
+				return interruptError
+			}
+			response, err := stream.Recv()
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			if err != nil {
+				return err
+			}
+
+			if len(response.Choices) == 0 {
+				return unknownError
+			}
+
+			resultBuilder.WriteString(response.Choices[0].Delta.Content)
+			err = sensitiveCheck(ctx.c, record, resultBuilder.String(), startTime, user)
+			if err != nil {
+				return err
+			}
+			_ = ctx.c.WriteJSON(InferResponseModel{
+				Status: 1,
+				Output: resultBuilder.String(),
+				Stage:  "MOSS",
+			})
+		}
+
+		record.Response = resultBuilder.String()
+		record.Duration = float64(time.Since(startTime)) / 1000_000_000
+		_ = ctx.c.WriteJSON(InferResponseModel{
+			Status: 0,
+			Output: resultBuilder.String(),
+			Stage:  "MOSS",
+		})
+	}
+
+	return nil
+}
+
 func InferCommon(
 	record *Record,
 	prefix string,
+	postRecords RecordModels,
 	user *User,
 	param map[string]float64,
 	ctx *InferWsContext,
 ) (
 	err error,
 ) {
-	var (
-		innerErr                 error
-		request                  = map[string]any{}
-		uuidText                 string
-		wg                       sync.WaitGroup
-		inferUrl                 string
-		callbackUrl              string
-		innerThoughtsPostprocess bool
-		defaultPluginConfig      map[string]bool
-		pluginConfig             = map[string]bool{}
-		configObject             Config
-		rawContentBuilder        strings.Builder
-	)
-
 	// metrics
 	userInferRequestOnFlight.Inc()
 	defer userInferRequestOnFlight.Dec()
 
-	// load config
-	err = LoadConfig(&configObject)
+	// load model config
+	model, err := LoadModelConfigByID(user.ModelID)
 	if err != nil {
-		return err
-	}
-	inferUrl = configObject.ModelConfig[0].Url
-	callbackUrl = configObject.ModelConfig[0].CallbackUrl
-	innerThoughtsPostprocess = configObject.ModelConfig[0].InnerThoughtsPostprocess
-	defaultPluginConfig = configObject.ModelConfig[0].DefaultPluginConfig
-	for i := range configObject.ModelConfig {
-		if configObject.ModelConfig[i].ID == user.ModelID {
-			inferUrl = configObject.ModelConfig[i].Url
-			callbackUrl = configObject.ModelConfig[i].CallbackUrl
-			innerThoughtsPostprocess = configObject.ModelConfig[i].InnerThoughtsPostprocess
-			defaultPluginConfig = configObject.ModelConfig[i].DefaultPluginConfig
-			break
+		model, err = LoadModelConfigByID(config.Config.DefaultModelID)
+		if err != nil {
+			return err
 		}
+	}
+
+	// dispatch
+	if model.APIType == APITypeOpenAI {
+		return InferOpenAI(record, postRecords, model, user, ctx)
+	} else {
+		return InferMOSS(record, prefix, user, model, param, ctx)
+	}
+}
+
+func InferMOSS(
+	record *Record,
+	prefix string,
+	user *User,
+	model *ModelConfig,
+	param map[string]float64,
+	ctx *InferWsContext,
+) (
+	err error,
+) {
+	var (
+		innerErr          error
+		request           = map[string]any{}
+		uuidText          string
+		wg                sync.WaitGroup
+		pluginConfig      = map[string]bool{}
+		rawContentBuilder strings.Builder
+	)
+
+	if model == nil {
+		return errors.New("model is nil")
 	}
 
 	// load params from db
@@ -105,7 +204,7 @@ func InferCommon(
 	request["session_id"] = record.ChatID
 
 	// load user plugin config, if not exist, fill with default
-	for key, value := range defaultPluginConfig {
+	for key, value := range model.DefaultPluginConfig {
 		if v, ok := user.PluginConfig[key]; ok {
 			request[key] = v && value
 			pluginConfig[key] = v && value
@@ -136,12 +235,12 @@ func InferCommon(
 			_ = inferListener(record, uuidText, user, *ctx, "Inner Thoughts")
 		}()
 
-		request["url"] = callbackUrl + "?uuid=" + uuidText
+		request["url"] = model.CallbackUrl + "?uuid=" + uuidText
 	}
 
 	// construct data to send
 	data, _ := json.Marshal(request)
-	inferTriggerResults, err := inferTrigger(data, inferUrl) // block here
+	inferTriggerResults, err := inferTrigger(data, model.Url) // block here
 	if err != nil {
 		return err
 	}
@@ -203,7 +302,7 @@ func InferCommon(
 				zap.String("command", rawCommand),
 			)
 		}
-		if innerThoughtsPostprocess {
+		if model.InnerThoughtsPostprocess {
 			firstFormattedNewGenerations = innerThoughtsRegexp.ReplaceAllString(firstFormattedNewGenerations, "<|Inner Thoughts|>: None<eot>")
 			rawInnerThoughts = "None"
 		}
@@ -244,12 +343,12 @@ func InferCommon(
 			wg.Done()
 		}()
 
-		request["url"] = callbackUrl + "?uuid=" + uuidText
+		request["url"] = model.CallbackUrl + "?uuid=" + uuidText
 	}
 
 	// infer
 	data, _ = json.Marshal(request)
-	inferTriggerResults, err = inferTrigger(data, inferUrl)
+	inferTriggerResults, err = inferTrigger(data, model.Url)
 	if err != nil {
 		return err
 	}
@@ -312,14 +411,30 @@ func InferCommon(
 	return nil
 }
 
-func Infer(record *Record, prefix string, user *User, param map[string]float64) (err error) {
-	return InferCommon(record, prefix, user, param, nil)
+func Infer(
+	record *Record,
+	prefix string,
+	postRecord RecordModels,
+	user *User,
+	param map[string]float64,
+) (
+	err error,
+) {
+	return InferCommon(
+		record,
+		prefix,
+		postRecord,
+		user,
+		param,
+		nil,
+	)
 }
 
 func InferAsync(
 	c *websocket.Conn,
 	prefix string,
 	record *Record,
+	postRecord RecordModels,
 	user *User,
 	param map[string]float64,
 ) (
@@ -346,6 +461,7 @@ func InferAsync(
 		innerErr := InferCommon(
 			record,
 			prefix,
+			postRecord,
 			user,
 			param,
 			&InferWsContext{
@@ -460,7 +576,13 @@ func inferListener(
 	}
 }
 
-func sensitiveCheck(c *websocket.Conn, record *Record, output string, startTime time.Time, user *User) error {
+func sensitiveCheck(
+	c *websocket.Conn,
+	record *Record,
+	output string,
+	startTime time.Time,
+	user *User,
+) error {
 	if sensitive.IsSensitive(output, user) {
 		record.ResponseSensitive = true
 		// log new record

@@ -9,6 +9,12 @@ import (
 	"MOSS_backend/utils"
 )
 
+type APIType string
+
+const (
+	APITypeOpenAI APIType = "openai"
+)
+
 type ModelConfig struct {
 	ID                       int             `json:"id"`
 	InnerThoughtsPostprocess bool            `json:"inner_thoughts_postprocess" default:"false"`
@@ -16,6 +22,7 @@ type ModelConfig struct {
 	DefaultPluginConfig      map[string]bool `json:"default_plugin_config" gorm:"serializer:json"`
 	Url                      string          `json:"url"`
 	CallbackUrl              string          `json:"callback_url"`
+	APIType                  APIType         `json:"api_type"`
 }
 
 type ModelConfigs = []*ModelConfig
@@ -59,6 +66,14 @@ func LoadModelConfigs() (ModelConfigs, error) {
 func LoadModelConfigByName(name string) (*ModelConfig, error) {
 	var modelConfig ModelConfig
 	if err := DB.Where("description = ?", name).First(&modelConfig).Error; err != nil {
+		return nil, err
+	}
+	return &modelConfig, nil
+}
+
+func LoadModelConfigByID(id int) (*ModelConfig, error) {
+	var modelConfig ModelConfig
+	if err := DB.Where("id = ?", id).First(&modelConfig).Error; err != nil {
 		return nil, err
 	}
 	return &modelConfig, nil

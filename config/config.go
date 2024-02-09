@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+
 	"github.com/caarlos0/env/v8"
 )
 
@@ -61,6 +62,8 @@ var Config struct {
 	// DefaultPluginConfig map[string]bool `env:"DEFAULT_PLUGIN_CONFIG"`
 
 	// InnerThoughtsPostprocess bool `env:"INNER_THOUGHTS_POSTPROCESS" envDefault:"false"`
+
+	DefaultModelID int `env:"DEFAULT_MODEL_ID" envDefault:"1"`
 }
 
 func InitConfig() {

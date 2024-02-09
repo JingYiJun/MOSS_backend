@@ -1,9 +1,11 @@
 package models
 
 import (
-	"github.com/gofiber/fiber/v2"
-	"gorm.io/gorm"
 	"time"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/sashabaranov/go-openai"
+	"gorm.io/gorm"
 )
 
 type Chat struct {
@@ -67,9 +69,48 @@ func (records Records) ToRecordModel() (recordModel []RecordModel) {
 	return
 }
 
+func (records Records) ToOpenAIMessages() (messages []openai.ChatCompletionMessage) {
+	for _, record := range records {
+		messages = append(messages,
+			openai.ChatCompletionMessage{
+				Role:    "user",
+				Content: record.Request,
+			},
+			openai.ChatCompletionMessage{
+				Role:    "assistant",
+				Content: record.Response,
+			})
+	}
+	return
+}
+
+func (records Records) GetPrefix() string {
+	if len(records) == 0 {
+		return ""
+	}
+	return records[len(records)-1].Prefix
+}
+
 type RecordModel struct {
 	Request  string `json:"request"`
 	Response string `json:"response"`
+}
+
+type RecordModels []RecordModel
+
+func (recordModels RecordModels) ToOpenAIMessages() (messages []openai.ChatCompletionMessage) {
+	for _, record := range recordModels {
+		messages = append(messages,
+			openai.ChatCompletionMessage{
+				Role:    "user",
+				Content: record.Request,
+			},
+			openai.ChatCompletionMessage{
+				Role:    "assistant",
+				Content: record.Response,
+			})
+	}
+	return
 }
 
 type Param struct {

@@ -1,15 +1,17 @@
 package record
 
 import (
+	"errors"
+	"time"
+
+	"github.com/gofiber/fiber/v2"
+	"golang.org/x/exp/slices"
+	"gorm.io/gorm"
+
 	"MOSS_backend/config"
 	. "MOSS_backend/models"
 	. "MOSS_backend/utils"
 	"MOSS_backend/utils/sensitive"
-	"errors"
-	"github.com/gofiber/fiber/v2"
-	"golang.org/x/exp/slices"
-	"gorm.io/gorm"
-	"time"
 )
 
 // ListRecords
@@ -129,15 +131,21 @@ func AddRecord(c *fiber.Ctx) error {
 	} else {
 		/* infer */
 
-		// find last record prefix to make dialogs, without sensitive content
-		var oldRecord Record
-		err = DB.Last(&oldRecord, "chat_id = ? AND request_sensitive = ? AND response_sensitive = ?", chatID, false, false).Error
+		// find old records to make dialogs, without sensitive content
+		var oldRecords Records
+		err = DB.Find(&oldRecords, "chat_id = ? AND request_sensitive = ? AND response_sensitive = ?", chatID, false, false).Error
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
 
 		// infer request
-		err = Infer(&record, oldRecord.Prefix, user, body.Param)
+		err = Infer(
+			&record,
+			oldRecords.GetPrefix(),
+			oldRecords.ToRecordModel(),
+			user,
+			body.Param,
+		)
 		if err != nil {
 			//if errors.Is(err, maxLengthExceededError) {
 			//	chat.MaxLengthExceeded = true
@@ -259,15 +267,21 @@ func RetryRecord(c *fiber.Ctx) error {
 
 	/* infer */
 
-	// find last record prefix to make dialogs, without sensitive content
-	var prefixRecord Record
-	err = DB.Last(&prefixRecord, "chat_id = ? AND request_sensitive = false AND response_sensitive = false AND id < ?", chatID, oldRecord.ID).Error
+	// find ole records to make dialogs, without sensitive content
+	var oldRecords Records
+	err = DB.Find(&oldRecords, "chat_id = ? AND request_sensitive = false AND response_sensitive = false AND id < ?", chatID, oldRecord.ID).Error
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return err
 	}
 
 	// infer request
-	err = Infer(&record, prefixRecord.Prefix, user, nil)
+	err = Infer(
+		&record,
+		oldRecords.GetPrefix(),
+		oldRecords.ToRecordModel(),
+		user,
+		nil,
+	)
 	if err != nil {
 		//if errors.Is(err, maxLengthExceededError) {
 		//	chat.MaxLengthExceeded = true
@@ -409,7 +423,14 @@ func InferWithoutLogin(c *fiber.Ctx) error {
 
 	record := Record{Request: body.Request}
 
-	err = Infer(&record, body.Context, &User{PluginConfig: body.PluginConfig, ModelID: body.ModelID}, body.Param)
+	// TODO: parse record model from context
+	err = Infer(
+		&record,
+		body.Context,
+		nil,
+		&User{PluginConfig: body.PluginConfig, ModelID: body.ModelID},
+		body.Param,
+	)
 	if err != nil {
 		return err
 	}
