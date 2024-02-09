@@ -1,10 +1,12 @@
 package models
 
 import (
+	"time"
+
+	"go.uber.org/zap"
+
 	"MOSS_backend/config"
 	"MOSS_backend/utils"
-	"go.uber.org/zap"
-	"time"
 )
 
 type ModelConfig struct {
@@ -15,6 +17,8 @@ type ModelConfig struct {
 	Url                      string          `json:"url"`
 	CallbackUrl              string          `json:"callback_url"`
 }
+
+type ModelConfigs = []*ModelConfig
 
 func (cfg *ModelConfig) TableName() string {
 	return "language_model_config"
@@ -42,6 +46,22 @@ func LoadConfig(configObjectPtr *Config) error {
 		_ = config.SetCache(configCacheName, *configObjectPtr, configCacheExpire)
 	}
 	return nil
+}
+
+func LoadModelConfigs() (ModelConfigs, error) {
+	var modelConfigs ModelConfigs
+	if err := DB.Find(&modelConfigs).Error; err != nil {
+		return nil, err
+	}
+	return modelConfigs, nil
+}
+
+func LoadModelConfigByName(name string) (*ModelConfig, error) {
+	var modelConfig ModelConfig
+	if err := DB.Where("description = ?", name).First(&modelConfig).Error; err != nil {
+		return nil, err
+	}
+	return &modelConfig, nil
 }
 
 func UpdateConfig(configObjectPtr *Config) error {

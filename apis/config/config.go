@@ -1,9 +1,10 @@
 package config
 
 import (
+	"github.com/gofiber/fiber/v2"
+
 	. "MOSS_backend/models"
 	. "MOSS_backend/utils"
-	"github.com/gofiber/fiber/v2"
 )
 
 // GetConfig
@@ -31,10 +32,10 @@ func GetConfig(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(Response{
-		Region:              region,
-		InviteRequired:      configObject.InviteRequired,
-		Notice:              configObject.Notice,
-		ModelConfig:         FromModelConfig(configObject.ModelConfig),
+		Region:         region,
+		InviteRequired: configObject.InviteRequired,
+		Notice:         configObject.Notice,
+		ModelConfig:    FromModelConfig(configObject.ModelConfig),
 	})
 }
 
@@ -90,10 +91,10 @@ func PatchConfig(c *fiber.Ctx) error {
 							for k, v := range *(newSingleCfg.DefaultPluginConfig) {
 								if _, ok := configObject.ModelConfig[i].DefaultPluginConfig[k]; ok {
 									configObject.ModelConfig[i].DefaultPluginConfig[k] = v
-								} 
+								}
 							}
 						}
-						
+
 					}
 				}
 			}

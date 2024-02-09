@@ -1,12 +1,13 @@
 package apis
 
 import (
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/swagger"
+
 	"MOSS_backend/apis/account"
 	"MOSS_backend/apis/chat"
 	"MOSS_backend/apis/config"
 	"MOSS_backend/apis/record"
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/swagger"
 )
 
 func RegisterRoutes(app *fiber.App) {
@@ -28,5 +29,4 @@ func RegisterRoutes(app *fiber.App) {
 	record.RegisterRoutes(routes)
 	config.RegisterRoutes(routes)
 
-	routes.Static("/draw", "./draw")
 }

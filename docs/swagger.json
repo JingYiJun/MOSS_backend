@@ -640,6 +640,65 @@
                 }
             }
         },
+        "/v1/chats/completions": {
+            "post": {
+                "tags": [
+                    "openai"
+                ],
+                "summary": "Create a chat completion in OpenAI API protocol",
+                "parameters": [
+                    {
+                        "description": "json",
+                        "name": "json",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/record.OpenAIChatCompletionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/record.OpenAIChatCompletionResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/models": {
+            "get": {
+                "tags": [
+                    "openai"
+                ],
+                "summary": "List models in OpenAI API protocol",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/record.OpenAIModels"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/models/{name}": {
+            "get": {
+                "tags": [
+                    "openai"
+                ],
+                "summary": "Retrieve a model in OpenAI API protocol",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/record.OpenAIModel"
+                        }
+                    }
+                }
+            }
+        },
         "/verify/email": {
             "get": {
                 "description": "verify with email in query, Send verification email",
@@ -960,6 +1019,12 @@
         "config.ModelConfigRequest": {
             "type": "object",
             "properties": {
+                "default_plugin_config": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "boolean"
+                    }
+                },
                 "description": {
                     "type": "string"
                 },
@@ -979,11 +1044,17 @@
         "config.ModelConfigResponse": {
             "type": "object",
             "properties": {
+                "default_plugin_config": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "boolean"
+                    }
+                },
                 "description": {
                     "type": "string"
                 },
                 "id": {
-                    "type": "string"
+                    "type": "integer"
                 }
             }
         },
@@ -1018,12 +1089,6 @@
         "config.Response": {
             "type": "object",
             "properties": {
-                "default_plugin_config": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "boolean"
-                    }
-                },
                 "invite_required": {
                     "type": "boolean"
                 },
@@ -1097,11 +1162,17 @@
                 "id": {
                     "type": "integer"
                 },
+                "inner_thoughts": {
+                    "type": "string"
+                },
                 "like_data": {
                     "description": "1 like, -1 dislike",
                     "type": "integer"
                 },
                 "processed_extra_data": {},
+                "raw_content": {
+                    "type": "string"
+                },
                 "request": {
                     "type": "string"
                 },
@@ -1173,6 +1244,12 @@
                 "request"
             ],
             "properties": {
+                "param": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number"
+                    }
+                },
                 "request": {
                     "type": "string"
                 }
@@ -1183,6 +1260,16 @@
             "properties": {
                 "context": {
                     "type": "string"
+                },
+                "model_id": {
+                    "type": "integer",
+                    "default": 1
+                },
+                "param": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number"
+                    }
                 },
                 "plugin_config": {
                     "type": "object",
@@ -1222,6 +1309,136 @@
                         0,
                         -1
                     ]
+                }
+            }
+        },
+        "record.OpenAIChatCompletionChoice": {
+            "type": "object",
+            "properties": {
+                "finish_reason": {
+                    "type": "string"
+                },
+                "index": {
+                    "type": "integer"
+                },
+                "logprobs": {},
+                "message": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/record.OpenAIMessage"
+                    }
+                }
+            }
+        },
+        "record.OpenAIChatCompletionRequest": {
+            "type": "object",
+            "required": [
+                "messages",
+                "model"
+            ],
+            "properties": {
+                "messages": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/record.OpenAIMessage"
+                    }
+                },
+                "model": {
+                    "type": "string"
+                }
+            }
+        },
+        "record.OpenAIChatCompletionResponse": {
+            "type": "object",
+            "properties": {
+                "choices": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/record.OpenAIChatCompletionChoice"
+                    }
+                },
+                "created": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "model": {
+                    "type": "string"
+                },
+                "object": {
+                    "type": "string"
+                },
+                "system_fingerprint": {
+                    "type": "string"
+                },
+                "usage": {
+                    "$ref": "#/definitions/record.OpenAIChatCompletionUsage"
+                }
+            }
+        },
+        "record.OpenAIChatCompletionUsage": {
+            "type": "object",
+            "properties": {
+                "completion_tokens": {
+                    "type": "integer"
+                },
+                "prompt_tokens": {
+                    "type": "integer"
+                },
+                "total_tokens": {
+                    "type": "integer"
+                }
+            }
+        },
+        "record.OpenAIMessage": {
+            "type": "object",
+            "required": [
+                "content",
+                "role"
+            ],
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string",
+                    "enum": [
+                        "system",
+                        "user",
+                        "assistant"
+                    ]
+                }
+            }
+        },
+        "record.OpenAIModel": {
+            "type": "object",
+            "properties": {
+                "created": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "object": {
+                    "type": "string"
+                },
+                "owned_by": {
+                    "type": "string"
+                }
+            }
+        },
+        "record.OpenAIModels": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/record.OpenAIModel"
+                    }
+                },
+                "object": {
+                    "type": "string"
                 }
             }
         },

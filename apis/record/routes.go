@@ -19,4 +19,9 @@ func RegisterRoutes(routes fiber.Router) {
 	// infer without login
 	routes.Post("/inference", InferWithoutLogin)
 	routes.Get("/ws/inference", websocket.New(InferWithoutLoginAsync))
+
+	// OpenAI API protocol
+	routes.Get("/v1/models", OpenAIListModels)
+	routes.Get("/v1/models/:name", OpenAIRetrieveModel)
+	routes.Post("/v1/chat/completions", OpenAICreateChatCompletion)
 }

@@ -91,6 +91,10 @@ definitions:
     type: object
   config.ModelConfigRequest:
     properties:
+      default_plugin_config:
+        additionalProperties:
+          type: boolean
+        type: object
       description:
         type: string
       id:
@@ -104,10 +108,14 @@ definitions:
     type: object
   config.ModelConfigResponse:
     properties:
+      default_plugin_config:
+        additionalProperties:
+          type: boolean
+        type: object
       description:
         type: string
       id:
-        type: string
+        type: integer
     type: object
   config.ModifyModelConfigRequest:
     properties:
@@ -130,10 +138,6 @@ definitions:
     type: object
   config.Response:
     properties:
-      default_plugin_config:
-        additionalProperties:
-          type: boolean
-        type: object
       invite_required:
         type: boolean
       model_config:
@@ -183,10 +187,14 @@ definitions:
         type: string
       id:
         type: integer
+      inner_thoughts:
+        type: string
       like_data:
         description: 1 like, -1 dislike
         type: integer
       processed_extra_data: {}
+      raw_content:
+        type: string
       request:
         type: string
       request_sensitive:
@@ -232,6 +240,10 @@ definitions:
     type: object
   record.CreateModel:
     properties:
+      param:
+        additionalProperties:
+          type: number
+        type: object
       request:
         type: string
     required:
@@ -241,6 +253,13 @@ definitions:
     properties:
       context:
         type: string
+      model_id:
+        default: 1
+        type: integer
+      param:
+        additionalProperties:
+          type: number
+        type: object
       plugin_config:
         additionalProperties:
           type: boolean
@@ -268,6 +287,92 @@ definitions:
         - 0
         - -1
         type: integer
+    type: object
+  record.OpenAIChatCompletionChoice:
+    properties:
+      finish_reason:
+        type: string
+      index:
+        type: integer
+      logprobs: {}
+      message:
+        items:
+          $ref: '#/definitions/record.OpenAIMessage'
+        type: array
+    type: object
+  record.OpenAIChatCompletionRequest:
+    properties:
+      messages:
+        items:
+          $ref: '#/definitions/record.OpenAIMessage'
+        type: array
+      model:
+        type: string
+    required:
+    - messages
+    - model
+    type: object
+  record.OpenAIChatCompletionResponse:
+    properties:
+      choices:
+        items:
+          $ref: '#/definitions/record.OpenAIChatCompletionChoice'
+        type: array
+      created:
+        type: integer
+      id:
+        type: string
+      model:
+        type: string
+      object:
+        type: string
+      system_fingerprint:
+        type: string
+      usage:
+        $ref: '#/definitions/record.OpenAIChatCompletionUsage'
+    type: object
+  record.OpenAIChatCompletionUsage:
+    properties:
+      completion_tokens:
+        type: integer
+      prompt_tokens:
+        type: integer
+      total_tokens:
+        type: integer
+    type: object
+  record.OpenAIMessage:
+    properties:
+      content:
+        type: string
+      role:
+        enum:
+        - system
+        - user
+        - assistant
+        type: string
+    required:
+    - content
+    - role
+    type: object
+  record.OpenAIModel:
+    properties:
+      created:
+        type: integer
+      id:
+        type: string
+      object:
+        type: string
+      owned_by:
+        type: string
+    type: object
+  record.OpenAIModels:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/record.OpenAIModel'
+        type: array
+      object:
+        type: string
     type: object
   utils.MessageResponse:
     properties:
@@ -692,6 +797,43 @@ paths:
       summary: modify user, need login
       tags:
       - user
+  /v1/chats/completions:
+    post:
+      parameters:
+      - description: json
+        in: body
+        name: json
+        required: true
+        schema:
+          $ref: '#/definitions/record.OpenAIChatCompletionRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/record.OpenAIChatCompletionResponse'
+      summary: Create a chat completion in OpenAI API protocol
+      tags:
+      - openai
+  /v1/models:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/record.OpenAIModels'
+      summary: List models in OpenAI API protocol
+      tags:
+      - openai
+  /v1/models/{name}:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/record.OpenAIModel'
+      summary: Retrieve a model in OpenAI API protocol
+      tags:
+      - openai
   /verify/email:
     get:
       description: verify with email in query, Send verification email
