@@ -64,7 +64,8 @@ func AddRecordAsync(c *websocket.Conn) {
 				zap.Error(err),
 			)
 			response := InferResponseModel{Status: -1, Output: err.Error()}
-			if httpError, ok := err.(*HttpError); ok {
+			var httpError *HttpError
+			if errors.As(err, &httpError) {
 				response.StatusCode = httpError.Code
 			}
 			_ = c.WriteJSON(response)
@@ -79,14 +80,14 @@ func AddRecordAsync(c *websocket.Conn) {
 
 		// read body
 		if _, message, err = c.ReadMessage(); err != nil {
-			return fmt.Errorf("error receive message: %s", err)
+			return fmt.Errorf("error receive message: %v", err)
 		}
 
 		// unmarshal body
 		var body CreateModel
 		err = json.Unmarshal(message, &body)
 		if err != nil {
-			return fmt.Errorf("error unmarshal text: %s", err)
+			return fmt.Errorf("error unmarshal text: %v", err)
 		}
 
 		if body.Request == "" {
@@ -457,14 +458,14 @@ func InferWithoutLoginAsync(c *websocket.Conn) {
 
 		// read body
 		if _, message, err = c.ReadMessage(); err != nil {
-			return fmt.Errorf("error receive message: %s", err)
+			return fmt.Errorf("error receive message: %v", err)
 		}
 
 		// unmarshal body
 		var body InferenceRequest
 		err = json.Unmarshal(message, &body)
 		if err != nil {
-			return fmt.Errorf("error unmarshal text: %s", err)
+			return fmt.Errorf("error unmarshal text: %v", err)
 		}
 
 		if body.Request == "" {

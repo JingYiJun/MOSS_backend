@@ -1,15 +1,17 @@
 package kong
 
 import (
-	"MOSS_backend/config"
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/gofiber/fiber/v2"
-	"github.com/pkg/errors"
 	"io"
 	"net/http"
 	"strconv"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/pkg/errors"
+
+	"MOSS_backend/config"
 )
 
 type JwtCredential struct {
@@ -56,7 +58,7 @@ func Ping() error {
 	}
 
 	if req.StatusCode != 200 {
-		return fmt.Errorf("error connect to kong[%s]: %s", config.Config.KongUrl, err)
+		return fmt.Errorf("error connect to kong[%s]: %v", config.Config.KongUrl, err)
 	} else {
 		fmt.Println("ping kong success")
 	}

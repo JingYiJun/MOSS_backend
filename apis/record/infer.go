@@ -765,7 +765,7 @@ func ReceiveInferResponse(c *websocket.Conn) {
 		var inferResponse InferResponseModel
 		err = json.Unmarshal(message, &inferResponse)
 		if err != nil {
-			log.Printf("receive from infer error message type: %s\n, error: %s", string(message), err)
+			log.Printf("receive from infer error message type: %s\n, error: %v", string(message), err)
 			continue
 		}
 
