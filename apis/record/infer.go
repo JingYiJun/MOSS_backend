@@ -69,15 +69,19 @@ func InferOpenAI(
 	openaiConfig.BaseURL = model.Url
 	client := openai.NewClientWithConfig(openaiConfig)
 
+	var messages = make([]openai.ChatCompletionMessage, 0, len(postRecord)+2)
+	messages = append(messages, openai.ChatCompletionMessage{
+		Role:    "system",
+		Content: model.OpenAISystemPrompt,
+	})
+	messages = append(messages, postRecord.ToOpenAIMessages()...)
+	messages = append(messages, openai.ChatCompletionMessage{
+		Role:    "user",
+		Content: record.Request,
+	})
 	request := openai.ChatCompletionRequest{
-		Model: model.OpenAIModelName,
-		Messages: append(
-			postRecord.ToOpenAIMessages(),
-			openai.ChatCompletionMessage{
-				Role:    "user",
-				Content: record.Request,
-			},
-		),
+		Model:    model.OpenAIModelName,
+		Messages: messages,
 	}
 
 	if ctx == nil {
@@ -137,6 +141,7 @@ func InferOpenAI(
 
 			resultBuilder.WriteString(response.Choices[0].Delta.Content)
 			nowOutput = resultBuilder.String()
+
 			before, _, found := CutLastAny(nowOutput, ",.?!\n，。？！")
 			if !found || before == detectedOutput {
 				continue

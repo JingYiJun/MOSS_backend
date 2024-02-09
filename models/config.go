@@ -24,6 +24,7 @@ type ModelConfig struct {
 	CallbackUrl              string          `json:"callback_url"`
 	APIType                  APIType         `json:"api_type"`
 	OpenAIModelName          string          `json:"openai_model_name"`
+	OpenAISystemPrompt       string          `json:"openai_system_prompt"`
 }
 
 type ModelConfigs = []*ModelConfig
