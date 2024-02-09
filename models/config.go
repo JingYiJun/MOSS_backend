@@ -23,6 +23,7 @@ type ModelConfig struct {
 	Url                      string          `json:"url"`
 	CallbackUrl              string          `json:"callback_url"`
 	APIType                  APIType         `json:"api_type"`
+	OpenAIModelName          string          `json:"openai_model_name"`
 }
 
 type ModelConfigs = []*ModelConfig

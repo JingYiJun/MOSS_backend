@@ -63,7 +63,7 @@ func InferOpenAI(
 	client := openai.NewClientWithConfig(openaiConfig)
 
 	request := openai.ChatCompletionRequest{
-		Model:    model.Description,
+		Model:    model.OpenAIModelName,
 		Messages: postRecord.ToOpenAIMessages(),
 	}
 
