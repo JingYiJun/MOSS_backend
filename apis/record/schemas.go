@@ -138,7 +138,7 @@ func (messages OpenAIMessages) Build() (prefix string, request string, err error
 }
 
 type OpenAIChatCompletionRequest struct {
-	Messages OpenAIMessages `json:"messages" validate:"required,dive,dive"`
+	Messages OpenAIMessages `json:"messages" validate:"required,min=1,dive"`
 	Model    string         `json:"model" validate:"required"`
 }
 
