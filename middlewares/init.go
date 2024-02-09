@@ -1,15 +1,17 @@
 package middlewares
 
 import (
-	"MOSS_backend/config"
-	"MOSS_backend/models"
-	"MOSS_backend/utils"
+	"time"
+
 	"github.com/ansrivas/fiberprometheus/v2"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"go.uber.org/zap"
-	"time"
+
+	"MOSS_backend/config"
+	"MOSS_backend/models"
+	"MOSS_backend/utils"
 )
 
 func RegisterMiddlewares(app *fiber.App) {
@@ -44,6 +46,11 @@ func MyLogger(c *fiber.Ctx) error {
 		if err := c.App().ErrorHandler(c, chainErr); err != nil {
 			_ = c.SendStatus(fiber.StatusInternalServerError)
 		}
+	}
+
+	// not log for prometheus metrics
+	if c.Path() == "/metrics" {
+		return nil
 	}
 
 	latency := time.Since(startTime).Milliseconds()
