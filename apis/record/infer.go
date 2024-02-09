@@ -180,7 +180,7 @@ func InferOpenAI(
 			})
 		}
 
-		record.Response = resultBuilder.String()
+		record.Response = nowOutput
 		record.Duration = float64(time.Since(startTime)) / 1000_000_000
 		_ = ctx.c.WriteJSON(InferResponseModel{
 			Status: 0,
