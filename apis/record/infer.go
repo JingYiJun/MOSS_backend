@@ -83,6 +83,9 @@ func InferOpenAI(
 		record.Response = response.Choices[0].Message.Content
 	} else {
 		// streaming
+		if config.Config.Debug {
+			Logger.Info("openai streaming")
+		}
 
 		stream, err := client.CreateChatCompletionStream(
 			context.Background(),
@@ -96,6 +99,9 @@ func InferOpenAI(
 		startTime := time.Now()
 
 		var resultBuilder strings.Builder
+		var nowOutput string
+		var detectedOutput string
+
 		for {
 			if ctx.connectionClosed.Load() {
 				return interruptError
@@ -113,13 +119,31 @@ func InferOpenAI(
 			}
 
 			resultBuilder.WriteString(response.Choices[0].Delta.Content)
-			err = sensitiveCheck(ctx.c, record, resultBuilder.String(), startTime, user)
+			nowOutput = resultBuilder.String()
+			before, _, found := CutLastAny(nowOutput, ",.?!\n，。？！")
+			if !found || before == detectedOutput {
+				continue
+			}
+			detectedOutput = before
+			err = sensitiveCheck(ctx.c, record, detectedOutput, startTime, user)
+			if err != nil {
+				return err
+			}
+
+			_ = ctx.c.WriteJSON(InferResponseModel{
+				Status: 1,
+				Output: detectedOutput,
+				Stage:  "MOSS",
+			})
+		}
+		if nowOutput != detectedOutput {
+			err = sensitiveCheck(ctx.c, record, nowOutput, startTime, user)
 			if err != nil {
 				return err
 			}
 			_ = ctx.c.WriteJSON(InferResponseModel{
 				Status: 1,
-				Output: resultBuilder.String(),
+				Output: nowOutput,
 				Stage:  "MOSS",
 			})
 		}
@@ -583,6 +607,10 @@ func sensitiveCheck(
 	startTime time.Time,
 	user *User,
 ) error {
+	if config.Config.Debug {
+		Logger.Info("sensitive checking", zap.String("output", output))
+	}
+
 	if sensitive.IsSensitive(output, user) {
 		record.ResponseSensitive = true
 		// log new record
