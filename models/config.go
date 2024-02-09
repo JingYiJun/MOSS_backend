@@ -26,6 +26,7 @@ type ModelConfig struct {
 	OpenAIModelName          string          `json:"openai_model_name"`
 	OpenAISystemPrompt       string          `json:"openai_system_prompt"`
 	EnableSensitiveCheck     bool            `json:"enable_sensitive_check"`
+	EndDelimiter             string          `json:"end_delimiter"`
 }
 
 type ModelConfigs = []*ModelConfig

@@ -142,6 +142,11 @@ func InferOpenAI(
 			resultBuilder.WriteString(response.Choices[0].Delta.Content)
 			nowOutput = resultBuilder.String()
 
+			if model.EndDelimiter != "" && strings.Contains(nowOutput, model.EndDelimiter) {
+				nowOutput = strings.Split(nowOutput, model.EndDelimiter)[0]
+				break
+			}
+
 			before, _, found := CutLastAny(nowOutput, ",.?!\n，。？！")
 			if !found || before == detectedOutput {
 				continue
@@ -179,7 +184,7 @@ func InferOpenAI(
 		record.Duration = float64(time.Since(startTime)) / 1000_000_000
 		_ = ctx.c.WriteJSON(InferResponseModel{
 			Status: 0,
-			Output: resultBuilder.String(),
+			Output: nowOutput,
 			Stage:  "MOSS",
 		})
 	}
