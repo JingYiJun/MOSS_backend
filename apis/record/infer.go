@@ -58,16 +58,30 @@ func InferOpenAI(
 ) (
 	err error,
 ) {
+	defer func() {
+		if v := recover(); v != nil {
+			Logger.Error("infer openai panicked", zap.Any("error", v))
+			err = unknownError
+		}
+	}()
+
 	openaiConfig := openai.DefaultConfig("")
 	openaiConfig.BaseURL = model.Url
 	client := openai.NewClientWithConfig(openaiConfig)
 
 	request := openai.ChatCompletionRequest{
-		Model:    model.OpenAIModelName,
-		Messages: postRecord.ToOpenAIMessages(),
+		Model: model.OpenAIModelName,
+		Messages: append(
+			postRecord.ToOpenAIMessages(),
+			openai.ChatCompletionMessage{
+				Role:    "user",
+				Content: record.Request,
+			},
+		),
 	}
 
 	if ctx == nil {
+		// openai client may panic when status code is 400
 		response, err := client.CreateChatCompletion(
 			context.Background(),
 			request,
@@ -84,7 +98,10 @@ func InferOpenAI(
 	} else {
 		// streaming
 		if config.Config.Debug {
-			Logger.Info("openai streaming")
+			Logger.Info("openai streaming",
+				zap.String("model", model.OpenAIModelName),
+				zap.String("url", model.Url),
+			)
 		}
 
 		stream, err := client.CreateChatCompletionStream(
