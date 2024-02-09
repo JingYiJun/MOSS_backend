@@ -25,6 +25,7 @@ type ModelConfig struct {
 	APIType                  APIType         `json:"api_type"`
 	OpenAIModelName          string          `json:"openai_model_name"`
 	OpenAISystemPrompt       string          `json:"openai_system_prompt"`
+	EnableSensitiveCheck     bool            `json:"enable_sensitive_check"`
 }
 
 type ModelConfigs = []*ModelConfig

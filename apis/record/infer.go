@@ -147,9 +147,11 @@ func InferOpenAI(
 				continue
 			}
 			detectedOutput = before
-			err = sensitiveCheck(ctx.c, record, detectedOutput, startTime, user)
-			if err != nil {
-				return err
+			if model.EnableSensitiveCheck {
+				err = sensitiveCheck(ctx.c, record, detectedOutput, startTime, user)
+				if err != nil {
+					return err
+				}
 			}
 
 			_ = ctx.c.WriteJSON(InferResponseModel{
@@ -159,10 +161,13 @@ func InferOpenAI(
 			})
 		}
 		if nowOutput != detectedOutput {
-			err = sensitiveCheck(ctx.c, record, nowOutput, startTime, user)
-			if err != nil {
-				return err
+			if model.EnableSensitiveCheck {
+				err = sensitiveCheck(ctx.c, record, nowOutput, startTime, user)
+				if err != nil {
+					return err
+				}
 			}
+
 			_ = ctx.c.WriteJSON(InferResponseModel{
 				Status: 1,
 				Output: nowOutput,
