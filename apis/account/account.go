@@ -1,12 +1,14 @@
 package account
 
 import (
+	"errors"
+	"time"
+
+	"MOSS_backend/config"
 	. "MOSS_backend/models"
 	. "MOSS_backend/utils"
 	"MOSS_backend/utils/auth"
 	"MOSS_backend/utils/kong"
-	"errors"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -109,6 +111,7 @@ func Register(c *fiber.Ctx) error {
 		return err
 	}
 	remoteIP := GetRealIP(c)
+	user.ModelID = config.Config.DefaultModelID
 
 	if registered {
 		if deleted {
@@ -316,8 +319,8 @@ func VerifyWithEmail(c *fiber.Ctx) error {
 		if !login {
 			scope = "register"
 		} else {
-			scope = "modify" 
-			DeleteUserCacheByID(userID)// 已登录的，清空缓存
+			scope = "modify"
+			DeleteUserCacheByID(userID) // 已登录的，清空缓存
 		}
 	} else {
 		if !login {

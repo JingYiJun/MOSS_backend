@@ -1,14 +1,15 @@
 package models
 
 import (
-	"MOSS_backend/config"
-	"MOSS_backend/utils"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"strconv"
 	"strings"
 	"time"
+
+	"MOSS_backend/config"
+	"MOSS_backend/utils"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/websocket/v2"
@@ -90,8 +91,15 @@ func LoadUserByID(userID int) (*User, error) {
 	updated := false
 
 	if user.ModelID == 0 {
-		user.ModelID = 1
+		user.ModelID = config.Config.DefaultModelID
 		updated = true
+	} else {
+		var modelConfig ModelConfig
+		err = DB.Take(&modelConfig, user.ModelID).Error
+		if err != nil {
+			user.ModelID = config.Config.DefaultModelID
+			updated = true
+		}
 	}
 
 	var defaultPluginConfig map[string]bool

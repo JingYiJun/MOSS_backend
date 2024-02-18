@@ -97,7 +97,7 @@ func ModifyUser(c *fiber.Ctx) error {
 		if body.ModelID != nil || body.PluginConfig != nil {
 			// init ModelID
 			if user.ModelID == 0 {
-				user.ModelID = 1
+				user.ModelID = config.Config.DefaultModelID
 			}
 
 			// model switch
