@@ -28,7 +28,7 @@ type ModifyModel struct {
 type InferenceRequest struct {
 	Context      string          `json:"context"`
 	Request      string          `json:"request" validate:"min=1"`
-	Records      RecordModels    `json:"records"`
+	Records      RecordModels    `json:"records" validate:"omitempty,dive"`
 	PluginConfig map[string]bool `json:"plugin_config"`
 	ModelID      int             `json:"model_id"`
 	ParamsModel
@@ -36,7 +36,7 @@ type InferenceRequest struct {
 
 type InferenceResponse struct {
 	Response  string `json:"response"`
-	Context   string `json:"context"`
+	Context   string `json:"context,omitempty"`
 	ExtraData any    `json:"extra_data,omitempty"`
 }
 

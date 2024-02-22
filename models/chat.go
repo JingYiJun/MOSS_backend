@@ -92,8 +92,8 @@ func (records Records) GetPrefix() string {
 }
 
 type RecordModel struct {
-	Request  string `json:"request"`
-	Response string `json:"response"`
+	Request  string `json:"request" validate:"required"`
+	Response string `json:"response" validate:"required"`
 }
 
 type RecordModels []RecordModel
