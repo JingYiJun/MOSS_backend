@@ -28,8 +28,9 @@ type ModifyModel struct {
 type InferenceRequest struct {
 	Context      string          `json:"context"`
 	Request      string          `json:"request" validate:"min=1"`
+	Records      RecordModels    `json:"records"`
 	PluginConfig map[string]bool `json:"plugin_config"`
-	ModelID      int             `json:"model_id" default:"1"`
+	ModelID      int             `json:"model_id"`
 	ParamsModel
 }
 
@@ -135,6 +136,22 @@ func (messages OpenAIMessages) Build() (prefix string, request string, err error
 		}
 	}
 	return builder.String(), request, nil
+}
+
+func (messages OpenAIMessages) BuildRecordModels() (models RecordModels, request string, err error) {
+	err = messages.ValidateSequence()
+	if err != nil {
+		return nil, "", err
+	}
+	models = make(RecordModels, len(messages)/2)
+	for i := 0; i < len(messages); i += 2 {
+		models[i/2] = RecordModel{
+			Request:  messages[i].Content,
+			Response: messages[i+1].Content,
+		}
+	}
+	request = models[len(models)-1].Request
+	return models, request, nil
 }
 
 type OpenAIChatCompletionRequest struct {

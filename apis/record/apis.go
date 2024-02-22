@@ -423,11 +423,10 @@ func InferWithoutLogin(c *fiber.Ctx) error {
 
 	record := Record{Request: body.Request}
 
-	// TODO: parse record model from context
 	err = Infer(
 		&record,
 		body.Context,
-		nil,
+		body.Records,
 		&User{PluginConfig: body.PluginConfig, ModelID: body.ModelID},
 		body.Param,
 	)

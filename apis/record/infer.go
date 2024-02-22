@@ -207,12 +207,17 @@ func InferCommon(
 	defer userInferRequestOnFlight.Dec()
 
 	// load model config
+	modelID := user.ModelID
+	if modelID == 0 {
+		modelID = config.Config.DefaultModelID
+	}
 	model, err := LoadModelConfigByID(user.ModelID)
 	if err != nil {
 		model, err = LoadModelConfigByID(config.Config.DefaultModelID)
 		if err != nil {
 			return err
 		}
+		modelID = config.Config.DefaultModelID
 	}
 
 	// dispatch

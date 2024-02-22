@@ -493,13 +493,12 @@ func InferWithoutLoginAsync(c *websocket.Conn) {
 			/* infer */
 
 			record.Request = body.Request
-			// async infer TODO: parse record from context
 			err = InferAsync(
 				c,
 				body.Context,
 				&record,
-				nil,
-				&User{},
+				body.Records,
+				&User{PluginConfig: body.PluginConfig, ModelID: body.ModelID},
 				body.Param,
 			)
 			if err != nil {
