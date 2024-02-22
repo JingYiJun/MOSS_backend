@@ -82,6 +82,7 @@ func InferOpenAI(
 	request := openai.ChatCompletionRequest{
 		Model:    model.OpenAIModelName,
 		Messages: messages,
+		Stop:     []string{model.EndDelimiter},
 	}
 
 	if ctx == nil {
