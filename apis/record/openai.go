@@ -67,9 +67,10 @@ func OpenAICreateChatCompletion(c *fiber.Ctx) (err error) {
 
 	if requestMessage == "" {
 		return BadRequest("request is empty")
-	} else if len([]rune(requestMessage)) > 2048 {
-		return maxInputExceededError
 	}
+	//if len([]rune(requestMessage)) > 2048 {
+	//	return maxInputExceededError
+	//}
 
 	// infer limiter
 	if !inferLimiter.Allow() {

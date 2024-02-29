@@ -72,9 +72,10 @@ func AddRecord(c *fiber.Ctx) error {
 
 	if body.Request == "" {
 		return BadRequest("request is empty")
-	} else if len([]rune(body.Request)) > 2048 {
-		return maxInputExceededError
 	}
+	//if len([]rune(body.Request)) > 2048 {
+	//	return maxInputExceededError
+	//}
 
 	user, err := LoadUser(c)
 	if err != nil {
@@ -405,9 +406,10 @@ func InferWithoutLogin(c *fiber.Ctx) error {
 
 	if body.Request == "" {
 		return BadRequest("request is empty")
-	} else if len([]rune(body.Request)) > 2048 {
-		return maxInputExceededError
 	}
+	//if len([]rune(body.Request)) > 2048 {
+	//	return maxInputExceededError
+	//}
 
 	// infer limiter
 	if !inferLimiter.Allow() {
