@@ -2,6 +2,7 @@ package account
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"MOSS_backend/config"
@@ -68,7 +69,17 @@ func Register(c *fiber.Ctx) error {
 	}
 
 	// check Invite code
-	if configObject.InviteRequired {
+	var inviteRequired = configObject.InviteRequired
+	if body.EmailModel != nil {
+		// check email suffix in no need invite code
+		for _, emailSuffix := range config.Config.NoNeedInviteCodeEmailSuffix {
+			if strings.HasSuffix(body.Email, emailSuffix) {
+				inviteRequired = false
+				break
+			}
+		}
+	}
+	if inviteRequired {
 		if body.InviteCode == nil {
 			return errCollection.ErrNeedInviteCode
 		}

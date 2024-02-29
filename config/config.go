@@ -63,7 +63,8 @@ var Config struct {
 
 	// InnerThoughtsPostprocess bool `env:"INNER_THOUGHTS_POSTPROCESS" envDefault:"false"`
 
-	DefaultModelID int `env:"DEFAULT_MODEL_ID" envDefault:"1"`
+	DefaultModelID              int      `env:"DEFAULT_MODEL_ID" envDefault:"1"`
+	NoNeedInviteCodeEmailSuffix []string `env:"NO_NEED_INVITE_CODE_EMAIL_SUFFIX" envSeparator:"," envDefault:"fudan.edu.cn"`
 }
 
 func InitConfig() {
