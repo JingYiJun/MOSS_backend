@@ -1,16 +1,13 @@
 package record
 
 import (
-	"slices"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 
-	"MOSS_backend/config"
 	. "MOSS_backend/models"
 	. "MOSS_backend/utils"
-	"MOSS_backend/utils/sensitive"
 )
 
 // OpenAIListModels
@@ -73,16 +70,16 @@ func OpenAICreateChatCompletion(c *fiber.Ctx) (err error) {
 	//}
 
 	// infer limiter
-	if !inferLimiter.Allow() {
-		return unknownError
-	}
+	//if !inferLimiter.Allow() {
+	//	return unknownError
+	//}
 
-	consumerUsername := c.Get("X-Consumer-Username")
-	passSensitiveCheck := slices.Contains(config.Config.PassSensitiveCheckUsername, consumerUsername)
+	//consumerUsername := c.Get("X-Consumer-Username")
+	//passSensitiveCheck := slices.Contains(config.Config.PassSensitiveCheckUsername, consumerUsername)
 
-	if !passSensitiveCheck && sensitive.IsSensitive(prefix+"\n"+requestMessage, &User{}) {
-		return BadRequest(DefaultResponse).WithMessageType(Sensitive)
-	}
+	//if !passSensitiveCheck && sensitive.IsSensitive(prefix+"\n"+requestMessage, &User{}) {
+	//	return BadRequest(DefaultResponse).WithMessageType(Sensitive)
+	//}
 
 	recordModels, _, err := request.Messages.BuildRecordModels()
 	if err != nil {
@@ -90,14 +87,19 @@ func OpenAICreateChatCompletion(c *fiber.Ctx) (err error) {
 	}
 
 	record := Record{Request: requestMessage}
-	err = Infer(&record, prefix, recordModels, &User{PluginConfig: nil, ModelID: modelConfig.ID}, nil)
+	err = Infer(&record, prefix, recordModels, &User{
+		PluginConfig:          nil,
+		ModelID:               modelConfig.ID,
+		IsAdmin:               true,
+		DisableSensitiveCheck: true,
+	}, nil)
 	if err != nil {
 		return err
 	}
 
-	if !passSensitiveCheck && sensitive.IsSensitive(record.Response, &User{}) {
-		return BadRequest(DefaultResponse).WithMessageType(Sensitive)
-	}
+	//if !passSensitiveCheck && sensitive.IsSensitive(record.Response, &User{}) {
+	//	return BadRequest(DefaultResponse).WithMessageType(Sensitive)
+	//}
 
 	return c.JSON(&OpenAIChatCompletionResponse{
 		Id:                "chatcmpl-" + uuid.Must(uuid.NewUUID()).String(),
