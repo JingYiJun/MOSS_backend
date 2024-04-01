@@ -17,8 +17,7 @@ RUN go build -ldflags "-s -w" -o auth
 FROM alpine
 
 # Installs latest Chromium package.
-RUN apk upgrade --no-cache --available \
-    && apk add --no-cache \
+RUN apk add --no-cache \
       chromium-swiftshader \
       ttf-freefont \
       font-noto-emoji \
