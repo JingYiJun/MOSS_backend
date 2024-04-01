@@ -143,14 +143,14 @@ func (messages OpenAIMessages) BuildRecordModels() (models RecordModels, request
 	if err != nil {
 		return nil, "", err
 	}
-	models = make(RecordModels, len(messages)/2)
+	models = make(RecordModels, 0, len(messages)/2)
 	for i := 0; i < len(messages)-1; i += 2 {
-		models[i/2] = RecordModel{
+		models = append(models, RecordModel{
 			Request:  messages[i].Content,
 			Response: messages[i+1].Content,
-		}
+		})
 	}
-	request = models[len(models)-1].Request
+	request = messages[len(messages)-1].Content
 	return models, request, nil
 }
 
