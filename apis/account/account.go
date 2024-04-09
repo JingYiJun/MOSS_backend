@@ -140,7 +140,7 @@ func Register(c *fiber.Ctx) error {
 			user.UpdateIP(remoteIP)
 			user.ShareConsent = true
 			// set invite code
-			if configObject.InviteRequired {
+			if inviteRequired {
 				user.InviteCode = inviteCode.Code
 			}
 			err = DB.Save(&user).Error
@@ -156,7 +156,7 @@ func Register(c *fiber.Ctx) error {
 		user.ShareConsent = true
 
 		// set invite code
-		if configObject.InviteRequired {
+		if inviteRequired {
 			user.InviteCode = inviteCode.Code
 		}
 
@@ -185,7 +185,7 @@ func Register(c *fiber.Ctx) error {
 	}
 
 	// update inviteCode
-	if configObject.InviteRequired {
+	if inviteRequired {
 		inviteCode.IsActivated = true
 		DB.Save(&inviteCode)
 	}
@@ -371,7 +371,15 @@ func VerifyWithEmail(c *fiber.Ctx) error {
 
 	if scope == "register" {
 		// check Invite code
-		if configObject.InviteRequired {
+		inviteRequired := configObject.InviteRequired
+		// check email suffix in no need invite code
+		for _, emailSuffix := range config.Config.NoNeedInviteCodeEmailSuffix {
+			if strings.HasSuffix(query.Email, emailSuffix) {
+				inviteRequired = false
+				break
+			}
+		}
+		if inviteRequired {
 			if query.InviteCode == nil {
 				return errCollection.ErrNeedInviteCode
 			}
