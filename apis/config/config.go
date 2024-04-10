@@ -20,16 +20,17 @@ func GetConfig(c *fiber.Ctx) error {
 		return err
 	}
 
-	var region string
-	ok, err := IsInChina(GetRealIP(c))
-	if err != nil {
-		return err
-	}
-	if ok {
-		region = "cn"
-	} else {
-		region = "global"
-	}
+	//var region string
+	//ok, err := IsInChina(GetRealIP(c))
+	//if err != nil {
+	//	return err
+	//}
+	//if ok {
+	//	region = "cn"
+	//} else {
+	//	region = "global"
+	//}
+	var region = "global"
 
 	return c.JSON(Response{
 		Region:         region,
