@@ -8,6 +8,7 @@ import (
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common/profile"
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common/regions"
 	ses "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/ses/v20201002"
+	"go.uber.org/zap"
 )
 
 func SendCodeEmail(code, receiver string) error {
@@ -37,7 +38,11 @@ func SendCodeEmail(code, receiver string) error {
 	request.TriggerType = common.Uint64Ptr(1)
 
 	// 返回的resp是一个SendEmailResponse的实例，与请求对象对应
-	_, err = client.SendEmail(request)
+	resp, err := client.SendEmail(request)
+	if err != nil {
+		return err
+	}
+	Logger.Info("SendEmailResponse", zap.String("Response", resp.ToJsonString()))
 	return err
 }
 
