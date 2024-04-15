@@ -123,6 +123,7 @@ func ListJwtCredentials(userID int) ([]*JwtCredential, error) {
 		return nil, err
 	}
 	if statusCode != 200 {
+
 		return nil, fmt.Errorf("list credential error: %v", string(body))
 	}
 
@@ -136,10 +137,10 @@ func ListJwtCredentials(userID int) ([]*JwtCredential, error) {
 }
 
 func GetJwtCredential(userID int) (*JwtCredential, error) {
-	jwtCredentials, err := ListJwtCredentials(userID)
-	if err != nil {
-		return nil, err
-	}
+	jwtCredentials, _ := ListJwtCredentials(userID)
+	//if err != nil {
+	//	return nil, err
+	//}
 	if len(jwtCredentials) == 0 {
 		return CreateJwtCredential(userID)
 	} else {
@@ -172,7 +173,11 @@ func DeleteJwtCredential(userID int) error {
 	for i := range jwtCredentials {
 		innerErr := deleteAJwtCredential(jwtCredentials[i].ID)
 		if innerErr != nil {
-			err = errors.Wrap(innerErr, err.Error())
+			if err == nil {
+				err = innerErr
+			} else {
+				err = errors.Wrap(innerErr, err.Error())
+			}
 		}
 	}
 	return err
