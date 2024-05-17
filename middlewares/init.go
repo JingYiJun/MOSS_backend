@@ -19,7 +19,7 @@ func RegisterMiddlewares(app *fiber.App) {
 		app.Use(MyLogger)
 	}
 	app.Use(cors.New(cors.Config{AllowOrigins: "*"}))
-	app.Use(GetUserID)
+	//app.Use(GetUserID)
 
 	// prometheus
 	prom := fiberprometheus.NewWith(config.AppName, config.AppName, "http")
