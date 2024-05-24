@@ -49,21 +49,21 @@ func InferYocsefAsyncAPI(c *websocket.Conn) {
 			return BadRequest("内容不能为空")
 		}
 
-		ctx, cancel := context.WithCancelCause(context.Background())
-		defer cancel(errors.New("procedure finished"))
+		//ctx, cancel := context.WithCancelCause(context.Background())
+		//defer cancel(errors.New("procedure finished"))
 
 		// listen to interrupt and connection close
-		go func() {
-			defer cancel(errors.New("client connection closed or interrupt"))
-			_, _, innerErr := c.ReadMessage()
-			if innerErr != nil {
-				return
-			}
-		}()
+		//go func() {
+		//	defer cancel(errors.New("client connection closed or interrupt"))
+		//	_, _, innerErr := c.ReadMessage()
+		//	if innerErr != nil {
+		//		return
+		//	}
+		//}()
 
 		var record *DirectRecord
 		record, err = service.InferYocsef(
-			ctx,
+			context.Background(),
 			c,
 			body.Request,
 			body.Records,
