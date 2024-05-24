@@ -55,13 +55,14 @@ func InferYocsefAsyncAPI(c *websocket.Conn) {
 		// listen to interrupt and connection close
 		go func() {
 			defer cancel(errors.New("client connection closed or interrupt"))
-			_, _, err := c.ReadMessage()
-			if err != nil {
+			_, _, innerErr := c.ReadMessage()
+			if innerErr != nil {
 				return
 			}
 		}()
 
-		record, err := service.InferYocsef(
+		var record *DirectRecord
+		record, err = service.InferYocsef(
 			ctx,
 			c,
 			body.Request,

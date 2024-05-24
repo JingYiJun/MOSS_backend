@@ -77,13 +77,15 @@ func InferYocsef(
 	var detectedOutput string
 
 	for {
-		line, err := reader.ReadBytes('\n')
+		var line []byte
+		line, err = reader.ReadBytes('\n')
 		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
 			return nil, err
 		}
+
 		line = bytes.Trim(line, " \n\r")
 		if strings.HasPrefix(string(line), "event") {
 			continue
@@ -126,14 +128,11 @@ func InferYocsef(
 		}
 		detectedOutput = before
 
-		err = w.WriteJSON(InferResponseModel{
+		_ = w.WriteJSON(InferResponseModel{
 			Status: 1,
 			Output: nowOutput,
 			Stage:  "MOSS",
 		})
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	if ctx.Err() != nil {
