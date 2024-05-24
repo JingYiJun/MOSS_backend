@@ -67,6 +67,10 @@ func InferYocsef(
 	}
 	defer res.Body.Close()
 
+	if res.StatusCode != http.StatusOK {
+		return nil, errors.New("yocsef 推理模型暂不可用")
+	}
+
 	var reader = bufio.NewReader(res.Body)
 	var resultBuilder strings.Builder
 	var nowOutput string
@@ -143,7 +147,7 @@ func InferYocsef(
 		})
 	}
 
-	err = w.WriteJSON(InferResponseModel{
+	_ = w.WriteJSON(InferResponseModel{
 		Status: 0,
 		Output: nowOutput,
 		Stage:  "MOSS",

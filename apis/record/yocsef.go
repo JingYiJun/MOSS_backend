@@ -46,7 +46,7 @@ func InferYocsefAsyncAPI(c *websocket.Conn) {
 		}
 
 		if body.Request == "" {
-			return BadRequest("request is empty")
+			return BadRequest("内容不能为空")
 		}
 
 		ctx, cancel := context.WithCancelCause(context.Background())
