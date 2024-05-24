@@ -41,7 +41,7 @@ func CutLastAny(s string, chars string) (before, after string, found bool) {
 			}
 		}
 		if index > 0 {
-			maxIndex = min(maxIndex, index)
+			maxIndex = max(maxIndex, index)
 		}
 	}
 	if maxIndex == -1 {
