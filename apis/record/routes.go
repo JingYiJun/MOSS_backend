@@ -26,5 +26,5 @@ func RegisterRoutes(routes fiber.Router) {
 	routes.Post("/v1/chat/completions", OpenAICreateChatCompletion)
 
 	// yocsef API
-	routes.Get("/yocsef/inference", websocket.New(InferYocsefAsyncAPI))
+	routes.Get("/ws/yocsef/inference", websocket.New(InferYocsefAsyncAPI))
 }
