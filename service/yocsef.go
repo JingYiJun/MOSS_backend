@@ -80,11 +80,12 @@ func InferYocsef(
 		if err != nil {
 			return nil, err
 		}
+		line = bytes.Trim(line, " \n\r")
 		if strings.HasPrefix(string(line), "event") {
 			continue
 		}
 		if strings.HasPrefix(string(line), "data") {
-			line = line[6:]
+			line = bytes.TrimPrefix(line, []byte("data:"))
 		}
 		line = bytes.Trim(line, " \n\r")
 		if len(line) == 0 {
@@ -98,7 +99,7 @@ func InferYocsef(
 		var response map[string]any
 		err = json.Unmarshal(line, &response)
 		if err != nil {
-			return nil, err
+			continue
 		}
 
 		var ok bool
