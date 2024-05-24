@@ -65,6 +65,9 @@ var Config struct {
 
 	DefaultModelID              int      `env:"DEFAULT_MODEL_ID" envDefault:"1"`
 	NoNeedInviteCodeEmailSuffix []string `env:"NO_NEED_INVITE_CODE_EMAIL_SUFFIX" envSeparator:"," envDefault:"fudan.edu.cn"`
+
+	// yocsef
+	YocsefInferenceUrl string `env:"YOCSEF_INFERENCE_URL"`
 }
 
 func InitConfig() {

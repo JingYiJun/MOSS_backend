@@ -141,7 +141,7 @@ func (t *searchTask) postprocess() (r *ResultModel) {
 			}
 			tmpAnswer := value.(Map)["summ"].(string)
 			tmpAnswerRune := []rune(clean(tmpAnswer))
-			tmpAnswerRune = tmpAnswerRune[:utils.Min(len(tmpAnswerRune), 400)]
+			tmpAnswerRune = tmpAnswerRune[:min(len(tmpAnswerRune), 400)]
 			tmpAnswer = string(tmpAnswerRune)
 			tmpSample = append(tmpSample, fmt.Sprintf("<|%d|>: %s", t.s.searchResultsIndex, tmpAnswer))
 

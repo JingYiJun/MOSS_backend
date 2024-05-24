@@ -2,7 +2,6 @@ package utils
 
 import (
 	"github.com/gofiber/fiber/v2"
-	"golang.org/x/exp/constraints"
 )
 
 type CanPreprocess interface {
@@ -27,23 +26,7 @@ func GetRealIP(c *fiber.Ctx) string {
 }
 
 func StripContent(content string, length int) string {
-	return string([]rune(content)[:Min(len([]rune(content)), length)])
-}
-
-func Min[T constraints.Ordered](x, y T) T {
-	if x < y {
-		return x
-	} else {
-		return y
-	}
-}
-
-func Max[T constraints.Ordered](x, y T) T {
-	if x > y {
-		return x
-	} else {
-		return y
-	}
+	return string([]rune(content)[:min(len([]rune(content)), length)])
 }
 
 func CutLastAny(s string, chars string) (before, after string, found bool) {
@@ -58,7 +41,7 @@ func CutLastAny(s string, chars string) (before, after string, found bool) {
 			}
 		}
 		if index > 0 {
-			maxIndex = Max(maxIndex, index)
+			maxIndex = min(maxIndex, index)
 		}
 	}
 	if maxIndex == -1 {
@@ -66,4 +49,17 @@ func CutLastAny(s string, chars string) (before, after string, found bool) {
 	} else {
 		return string(sourceRunes[:maxIndex+1]), string(sourceRunes[maxIndex+1:]), true
 	}
+}
+
+type JSONReader interface {
+	ReadJson(any) error
+}
+
+type JSONWriter interface {
+	WriteJSON(any) error
+}
+
+type JsonReaderWriter interface {
+	JSONReader
+	JSONWriter
 }
