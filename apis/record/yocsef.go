@@ -74,7 +74,7 @@ func InferYocsefAsyncAPI(c *websocket.Conn) {
 
 		DB.Create(&record)
 
-		_ = c.WriteJSON(record)
+		_ = c.WriteJSON(InferenceResponse{Response: record.Response})
 
 		return nil
 	}
