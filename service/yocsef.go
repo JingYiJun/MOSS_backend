@@ -65,7 +65,9 @@ func InferYocsef(
 	if err != nil {
 		return
 	}
-	defer res.Body.Close()
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(res.Body)
 
 	if res.StatusCode != http.StatusOK {
 		return nil, errors.New("yocsef 推理模型暂不可用")
@@ -133,6 +135,10 @@ func InferYocsef(
 			Output: nowOutput,
 			Stage:  "MOSS",
 		})
+	}
+
+	if nowOutput == "" {
+		return nil, errors.New("yocsef 推理模型暂不可用")
 	}
 
 	if ctx.Err() != nil {
