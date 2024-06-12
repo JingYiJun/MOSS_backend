@@ -19,15 +19,14 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@master
 
-      - name: Login to ACR
+      - name: Login to Aliyun ACR
         uses: aliyun/acr-login@master
         with:
           login-server: https://registry.cn-shanghai.aliyuncs.com
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
-      - name: Build and push
-        id: docker_build
+      - name: Build and push Aliyun ACR
         uses: docker/build-push-action@master
         with:
           push: true
@@ -41,8 +40,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push
-        id: docker_build
+      - name: Build and push to DockerHub
         uses: docker/build-push-action@master
         with:
           push: true
