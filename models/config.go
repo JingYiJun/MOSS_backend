@@ -11,8 +11,16 @@ import (
 
 type APIType string
 
+
 const (
-	APITypeOpenAI APIType = "openai"
+	APITypeMOSS APIType = "moss"
+	APITypeMOSS2 APIType = "moss2"
+)
+
+const (
+	FuncCallStart string = "func_call"
+	FuncCallEnd string =  "<|end_of_func_call|>"
+	MossEnd 	string = "<|end_of_moss|>"
 )
 
 type ModelConfig struct {
@@ -26,7 +34,7 @@ type ModelConfig struct {
 	OpenAIModelName          string          `json:"openai_model_name"`
 	OpenAISystemPrompt       string          `json:"openai_system_prompt"`
 	EnableSensitiveCheck     bool            `json:"enable_sensitive_check"`
-	EndDelimiter             string          `json:"end_delimiter"`
+	EndDelimiter             []string         `json:"end_delimiter"`
 }
 
 type ModelConfigs = []*ModelConfig

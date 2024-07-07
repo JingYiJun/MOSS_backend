@@ -52,7 +52,7 @@ func CutLastAny(s string, chars string) (before, after string, found bool) {
 }
 
 type JSONReader interface {
-	ReadJson(any) error
+	ReadJSON(any) error
 }
 
 type JSONWriter interface {

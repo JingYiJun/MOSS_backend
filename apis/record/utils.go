@@ -16,6 +16,7 @@ var (
 	mossRegexp                    = regexp.MustCompile(`<\|MOSS\|>:([\s\S]+?)(<eo\w>)`)
 	secondGenerationsFormatRegexp = regexp.MustCompile(`^<\|MOSS\|>:[\s\S]+?<eo\w>$`)
 	firstGenerationsFormatRegexp  = regexp.MustCompile(`^<\|Inner Thoughts\|>:[\s\S]+?<eo\w>\n *?<\|Commands\|>:[\s\S]+?<eo\w>$`)
+	funcCallRegexp				  = regexp.MustCompile(`(?s)func_call\s*(.*?)<\|end_of_func_call\|>`)
 )
 
 //var maxLengthExceededError = BadRequest("The maximum context length is exceeded").WithMessageType(MaxLength)
